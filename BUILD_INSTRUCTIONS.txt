@@ -1,0 +1,14 @@
+OBJECT DETECTIVE — ANDROID INSTALL BUILD
+
+Package: com.objectdetective.app
+Target: Android 15 / API 35 (works on Galaxy S25)
+
+1. Open the android folder in Android Studio.
+2. Let Gradle sync/download Android dependencies.
+3. Select Build > Build APK(s).
+4. The debug APK will be in android/app/build/outputs/apk/debug/app-debug.apk.
+5. Transfer that APK to the Galaxy S25 and open it. Allow installation from the source when Android asks.
+
+For Google Play, create a signed Android App Bundle (.aab) using Build > Generate Signed Bundle / APK.
+
+NOTE: The supplied web app is in Demo Mode until the Supabase Edge Function URL is configured. The Android shell itself is complete and points at the bundled app.

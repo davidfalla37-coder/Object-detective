@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#090e19">
+<meta name="description" content="Object Detective — photograph mystery objects and investigate what they are.">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg">
+<title>Object Detective</title>
+<style>
+:root{--bg:#070b14;--panel:#111827;--panel2:#172238;--line:#293750;--text:#f8fafc;--muted:#9aacbf;--accent:#fff;--good:#8ff0b2;--warn:#f3d38a}
+*{box-sizing:border-box}html{background:var(--bg)}body{margin:0;background:radial-gradient(circle at 50% -10%,#1a2a45 0,#070b14 48%);color:var(--text);font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+button,input{font:inherit}.app{max-width:560px;margin:auto;min-height:100vh;padding:16px 16px calc(32px + env(safe-area-inset-bottom))}
+header{display:flex;align-items:center;justify-content:space-between;padding:8px 2px 18px}.brand{display:flex;gap:10px;align-items:center}.mark{width:42px;height:42px;border-radius:13px;background:#fff;color:#0b1020;display:grid;place-items:center;font-size:23px;box-shadow:0 8px 25px #0006}.brand b{display:block;font-size:18px}.brand span{font-size:11px;color:var(--muted)}
+.pill{font-size:10px;letter-spacing:.08em;text-transform:uppercase;border:1px solid var(--line);color:#b7c5d7;border-radius:999px;padding:7px 9px}
+.card{background:linear-gradient(145deg,#111a2b,#0e1625);border:1px solid var(--line);border-radius:24px;padding:18px;margin:12px 0;box-shadow:0 18px 50px #0005}
+.hero{padding:12px 12px 20px}.hero .feature{width:100%;display:block;border-radius:18px;margin-bottom:18px}.hero h1{font-size:35px;line-height:1;margin:0 0 10px;letter-spacing:-.04em}.hero p{margin:0;color:var(--muted);line-height:1.55}
+.camera{height:315px;border:2px dashed #50617d;border-radius:19px;background:#0b1322;display:grid;place-items:center;overflow:hidden;position:relative}.camera img{width:100%;height:100%;object-fit:cover;display:none}.prompt{text-align:center;padding:20px}.prompt .emoji{font-size:54px;margin-bottom:5px}.prompt strong{display:block;font-size:16px}.hint{font-size:12px;color:#7f92aa;margin-top:7px}
+button{border:0;border-radius:16px;padding:15px 14px;font-weight:850;cursor:pointer}.primary{width:100%;background:#f8fafc;color:#090e19;margin-top:11px}.secondary{background:var(--panel2);color:#fff;border:1px solid var(--line)}.grid{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:12px}.grid button{font-size:13px}
+.hidden{display:none!important}.status{text-align:center;color:#cbd5e1;padding:12px;font-size:13px}.spinner{display:inline-block;width:15px;height:15px;border:2px solid #64748b;border-top-color:#fff;border-radius:50%;vertical-align:-3px;margin-right:7px;animation:s .8s linear infinite}@keyframes s{to{transform:rotate(360deg)}}
+.result-head{display:flex;justify-content:space-between;align-items:center;gap:8px}.result-head h2{margin:0}.confidence{font-size:10px;color:var(--good);background:#143523;padding:6px 8px;border-radius:999px;white-space:nowrap}
+.row{display:flex;justify-content:space-between;gap:14px;padding:12px 0;border-bottom:1px solid var(--line);font-size:14px}.row:last-of-type{border-bottom:0}.label{color:var(--muted)}.value{text-align:right;font-weight:750}.explain{color:#b7c5d7;line-height:1.55;font-size:14px}.warning{background:#2c2411;border:1px solid #5c4a21;color:var(--warn);border-radius:14px;padding:12px;font-size:12px;line-height:1.45;margin-top:12px}
+.history-item{display:flex;justify-content:space-between;gap:10px;padding:12px 0;border-bottom:1px solid var(--line)}.history-item:last-child{border:0}.history-item b{font-size:14px}.history-item small{color:var(--muted)}.empty{color:var(--muted);font-size:13px}
+footer{text-align:center;color:#62738b;font-size:11px;padding:12px 0 0}
+</style>
+</head>
+<body>
+<main class="app">
+<header><div class="brand"><div class="mark">🕵️</div><div><b>Object Detective</b><span>AI mystery-object investigator</span></div></div><div class="pill">v1.0</div></header>
+
+<section class="card hero"><img class="feature" src="assets/object-detective-feature.png" alt="Object Detective app preview"><h1>What is this thing?</h1><p>Photograph an unknown object and get a cautious identification, likely purpose, compatibility clues and a value estimate.</p></section>
+
+<section class="card">
+<div class="camera"><div class="prompt" id="prompt"><div class="emoji">📷</div><strong>Take a clear photo</strong><div class="hint">Good light • show the whole object • include markings if possible</div></div><img id="preview" alt="Photographed object"></div>
+<input id="file" type="file" accept="image/jpeg,image/png,image/webp" capture="environment" hidden>
+<button class="primary" id="investigate">📸 Investigate Object</button>
+<div class="status hidden" id="status"><span class="spinner"></span>Examining the evidence…</div>
+</section>
+
+<section class="card hidden" id="result">
+<div class="result-head"><h2>Investigation</h2><span class="confidence" id="confidence"></span></div>
+<div class="row"><span class="label">Likely object</span><span class="value" id="object"></span></div>
+<div class="row"><span class="label">Category</span><span class="value" id="category"></span></div>
+<div class="row"><span class="label">Purpose</span><span class="value" id="purpose"></span></div>
+<div class="row"><span class="label">Estimated value</span><span class="value" id="value"></span></div>
+<div class="row"><span class="label">Condition</span><span class="value" id="condition"></span></div>
+<p class="explain" id="explanation"></p>
+<div class="warning hidden" id="warning"></div>
+<div class="grid">
+<button class="secondary" onclick="compatibility()">🚗 Compatibility</button>
+<button class="secondary" onclick="valueSearch()">💷 Value evidence</button>
+<button class="secondary" onclick="findOne()">🛒 Find one</button>
+<button class="secondary" onclick="sellDraft()">🏷️ Sell it</button>
+</div>
+</section>
+
+<section class="card">
+<h2>Recent investigations</h2><div id="history" class="empty">Your investigations will appear here.</div>
+</section>
+<footer>AI results are estimates, not proof. Verify expensive, safety-critical or vehicle parts before buying, fitting or using them.</footer>
+</main>
+<script>
+const CONFIG={FUNCTION_URL:""}; // Set your deployed Supabase function URL here.
+const file=document.querySelector('#file'), preview=document.querySelector('#preview'), prompt=document.querySelector('#prompt'), result=document.querySelector('#result'), status=document.querySelector('#status');
+let current=null;
+document.querySelector('#investigate').onclick=()=>file.click();
+file.onchange=async()=>{const f=file.files?.[0];if(!f)return;preview.src=URL.createObjectURL(f);preview.style.display='block';prompt.style.display='none';result.classList.add('hidden');status.classList.remove('hidden');
+try{let data;if(CONFIG.FUNCTION_URL){const image=await dataUrl(f);const r=await fetch(CONFIG.FUNCTION_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({image})});data=await r.json();if(!r.ok)throw Error(data.error||'Investigation failed');}else{await wait(800);data={object:"Example metal mounting bracket",category:"Automotive / hardware",purpose:"Structural mounting or support",value_estimate:"£8–£25 used (demo)",condition:"Cannot confirm from one photo",confidence:82,explanation:"This is DEMO MODE. Connect the Supabase function to get a real AI investigation.",compatibility:"Unknown — a part number, dimensions and vehicle/model details would be needed.",warning:"Demo result only. Do not use this result to identify or fit a safety-critical part."};}current=data;render(data);save(data)}catch(e){alert(e.message)}finally{status.classList.add('hidden')}};
+function dataUrl(f){return new Promise((ok,no)=>{const r=new FileReader;r.onload=()=>ok(r.result);r.onerror=no;r.readAsDataURL(f)})}function wait(ms){return new Promise(r=>setTimeout(r,ms))}
+function render(d){result.classList.remove('hidden');for(const [id,key] of Object.entries({object:"object",category:"category",purpose:"purpose",value:"value_estimate",condition:"condition",confidence:"confidence",explanation:"explanation"}))document.getElementById(id).textContent=id==="confidence"?(d[key]??0)+"% confidence":d[key]||"Unknown";const w=document.getElementById('warning');if(d.warning){w.textContent=d.warning;w.classList.remove('hidden')}else w.classList.add('hidden');result.scrollIntoView({behavior:"smooth",block:"start"})}
+function save(d){let h=JSON.parse(localStorage.getItem("od_history")||"[]");h.unshift({name:d.object||"Unknown object",value:d.value_estimate||"Unknown",date:new Date().toLocaleDateString("en-GB")});localStorage.setItem("od_history",JSON.stringify(h.slice(0,10)));drawHistory()}
+function drawHistory(){const h=JSON.parse(localStorage.getItem("od_history")||"[]"),el=document.getElementById("history");if(!h.length){el.textContent="Your investigations will appear here.";return}el.className="";el.innerHTML=h.map(x=>`<div class="history-item"><div><b>${escapeHtml(x.name)}</b><br><small>${escapeHtml(x.date)}</small></div><b>${escapeHtml(x.value)}</b></div>`).join("")}
+function escapeHtml(s){return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c]))}
+function compatibility(){alert(current?.compatibility||"No compatibility evidence available.")}function valueSearch(){alert("Production hook: search current listings and show source-backed prices.")}function findOne(){alert("Production hook: search retailers/marketplaces for the identified item.")}function sellDraft(){alert("Production hook: generate a marketplace listing from this investigation.")}
+drawHistory();
+if("serviceWorker"in navigator)navigator.serviceWorker.register("sw.js");
+</script>
+</body></html>
