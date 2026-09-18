@@ -16,7 +16,7 @@ class MainActivity : Activity() {
         webView.webViewClient = WebViewClient()
         webView.settings.javaScriptEnabled = true
         webView.settings.domStorageEnabled = true
-
+        webView.addJavascriptInterface(WebAppInterface(), "Android")
         webView.loadUrl("file:///android_asset/index.html")
     }
 }
