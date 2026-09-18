@@ -1,63 +1,107 @@
 package com.objectdetective.app
 
+import android.Manifest
 import android.app.Activity
+import android.content.ActivityNotFoundException
+import android.content.Intent
+import android.content.pm.PackageManager
+import android.net.Uri
 import android.os.Bundle
+import android.webkit.PermissionRequest
 import android.webkit.ValueCallback
 import android.webkit.WebChromeClient
+import android.webkit.WebResourceRequest
+import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
-import android.content.Intent
-import android.net.Uri
+import android.widget.Toast
 
 class MainActivity : Activity() {
-
+    private lateinit var webView: WebView
     private var fileCallback: ValueCallback<Array<Uri>>? = null
+
+    private val cameraRequestCode = 1001
+    private val fileRequestCode = 1002
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        val webView = WebView(this)
+        webView = WebView(this)
         setContentView(webView)
 
-        webView.webViewClient = WebViewClient()
-        webView.settings.javaScriptEnabled = true
-        webView.settings.domStorageEnabled = true
+        if (checkSelfPermission(Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
+            requestPermissions(arrayOf(Manifest.permission.CAMERA), cameraRequestCode)
+        }
+
+        webView.settings.apply {
+            javaScriptEnabled = true
+            domStorageEnabled = true
+            allowFileAccess = true
+            allowContentAccess = true
+            mediaPlaybackRequiresUserGesture = false
+            cacheMode = WebSettings.LOAD_NO_CACHE
+        }
+
+        webView.webViewClient = object : WebViewClient() {
+            override fun shouldOverrideUrlLoading(
+                view: WebView,
+                request: WebResourceRequest
+            ): Boolean = false
+        }
 
         webView.webChromeClient = object : WebChromeClient() {
+            override fun onPermissionRequest(request: PermissionRequest) {
+                runOnUiThread { request.grant(request.resources) }
+            }
+
             override fun onShowFileChooser(
                 webView: WebView?,
-                filePathCallback: ValueCallback<Array<Uri>>?,
+                callback: ValueCallback<Array<Uri>>?,
                 fileChooserParams: FileChooserParams?
             ): Boolean {
                 fileCallback?.onReceiveValue(null)
-                fileCallback = filePathCallback
+                fileCallback = callback
 
-                val intent = Intent(Intent.ACTION_GET_CONTENT).apply {
-                    
-             type = "image/*"
-addCategory(Intent.CATEGORY_OPENABLE)
-}
+                val chooserIntent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
+                    addCategory(Intent.CATEGORY_OPENABLE)
+                    type = "image/*"
+                    putExtra(Intent.EXTRA_MIME_TYPES, arrayOf("image/jpeg", "image/png", "image/webp"))
+                }
 
-startActivityForResult(intent, 1001)
-return true
-}
-}
+                return try {
+                    startActivityForResult(chooserIntent, fileRequestCode)
+                    true
+                } catch (_: ActivityNotFoundException) {
+                    fileCallback?.onReceiveValue(null)
+                    fileCallback = null
+                    Toast.makeText(this@MainActivity, "No photo picker was found", Toast.LENGTH_LONG).show()
+                    false
+                }
+            }
+        }
 
-webView.loadUrl("file:///android_asset/index.html")
-}
+        webView.clearCache(true)
+        webView.loadUrl("file:///android_asset/index.html")
+    }
 
-override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
-    super.onActivityResult(requestCode, resultCode, data)
+    @Deprecated("Uses the compatible activity result method for this lightweight project")
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode != fileRequestCode) return
 
-    if (requestCode == 1001) {
-        val result = if (resultCode == RESULT_OK) {
-            data?.data?.let { arrayOf(it) }
+        val selectedUris = if (resultCode == RESULT_OK) {
+            data?.clipData?.let { clip ->
+                Array(clip.itemCount) { index -> clip.getItemAt(index).uri }
+            } ?: data?.data?.let { arrayOf(it) }
         } else {
             null
         }
 
-        fileCallback?.onReceiveValue(result)
+        fileCallback?.onReceiveValue(selectedUris)
         fileCallback = null
     }
+
+    override fun onBackPressed() {
+        if (webView.canGoBack()) webView.goBack() else super.onBackPressed()
+    }
 }
-}       
