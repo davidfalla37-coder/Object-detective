@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <title>Object Detective</title>
+  <style>
+    :root{color-scheme:dark;--bg:#07101f;--panel:#111c30;--line:#293b59;--text:#f8fafc;--muted:#a7b4c7;--accent:#64d6ff;--danger:#ffb4b4}
+    *{box-sizing:border-box}body{margin:0;background:linear-gradient(160deg,#15233d 0,var(--bg) 42%);color:var(--text);font-family:system-ui,-apple-system,"Segoe UI",sans-serif}
+    main{max-width:620px;min-height:100vh;margin:auto;padding:24px 18px 40px}h1{font-size:42px;line-height:1;margin:12px 0}p{color:var(--muted);line-height:1.5}
+    .card{background:rgba(17,28,48,.95);border:1px solid var(--line);border-radius:22px;padding:18px;margin-top:18px;box-shadow:0 18px 50px #0005}
+    .photo{aspect-ratio:4/3;border:2px dashed #486184;border-radius:16px;display:grid;place-items:center;overflow:hidden;background:#091426;text-align:center;color:var(--muted)}
+    .photo img{width:100%;height:100%;object-fit:contain;display:none}.emoji{font-size:52px;display:block}
+    .buttons{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px}button{border:0;border-radius:14px;padding:15px;font-size:16px;font-weight:750}button.primary{background:#f8fafc;color:#07101f}button.secondary{background:#1b2a44;color:#fff;border:1px solid #354b6c}button:disabled{opacity:.45}
+    #status{margin-top:14px;text-align:center;color:var(--accent)}#error{margin-top:14px;color:var(--danger);white-space:pre-wrap}.hidden{display:none!important}
+    h2{margin:0 0 8px}.row{display:flex;justify-content:space-between;gap:18px;padding:11px 0;border-bottom:1px solid var(--line)}.label{color:var(--muted)}.value{text-align:right;font-weight:700}.explain{color:#d5deeb}.warning{padding:12px;border-radius:12px;background:#332712;color:#f7d794;margin-top:12px}
+  </style>
+</head>
+<body>
+<main>
+  <h1>🔎 Object Detective</h1>
+  <p>Take or choose a clear photo and discover what the object is, what it does, and what it may be worth.</p>
+
+  <section class="card">
+    <div class="photo"><div id="placeholder"><span class="emoji">📷</span>Choose a clear photograph</div><img id="preview" alt="Selected object"></div>
+    <input id="file" type="file" accept="image/jpeg,image/png,image/webp" capture="environment" hidden>
+    <div class="buttons">
+      <button class="secondary" id="choose">Choose photo</button>
+      <button class="primary" id="identify" disabled>Identify object</button>
+    </div>
+    <div id="status" class="hidden">Examining the photograph…</div>
+    <div id="error" class="hidden"></div>
+  </section>
+
+  <section class="card hidden" id="result">
+    <h2>Investigation result</h2>
+    <div class="row"><span class="label">Likely object</span><span class="value" id="object"></span></div>
+    <div class="row"><span class="label">Category</span><span class="value" id="category"></span></div>
+    <div class="row"><span class="label">Purpose</span><span class="value" id="purpose"></span></div>
+    <div class="row"><span class="label">Estimated value</span><span class="value" id="value_estimate"></span></div>
+    <div class="row"><span class="label">Condition</span><span class="value" id="condition"></span></div>
+    <div class="row"><span class="label">Confidence</span><span class="value" id="confidence"></span></div>
+    <p class="explain" id="explanation"></p>
+    <p class="explain" id="compatibility"></p>
+    <div class="warning hidden" id="warning"></div>
+  </section>
+</main>
+<script>
+const FUNCTION_URL='https://gboyflbwcobhzbvpdtat.supabase.co/functions/v1/investigate-object';
+const file=document.getElementById('file');
+const choose=document.getElementById('choose');
+const identify=document.getElementById('identify');
+const preview=document.getElementById('preview');
+const placeholder=document.getElementById('placeholder');
+const statusBox=document.getElementById('status');
+const errorBox=document.getElementById('error');
+const result=document.getElementById('result');
+let selectedFile=null;
+
+choose.onclick=()=>file.click();
+file.onchange=()=>{
+  selectedFile=file.files&&file.files[0];
+  if(!selectedFile)return;
+  preview.src=URL.createObjectURL(selectedFile);
+  preview.style.display='block';
+  placeholder.classList.add('hidden');
+  identify.disabled=false;
+  result.classList.add('hidden');
+  errorBox.classList.add('hidden');
+};
+
+identify.onclick=async()=>{
+  if(!selectedFile)return;
+  identify.disabled=true;choose.disabled=true;
+  statusBox.classList.remove('hidden');errorBox.classList.add('hidden');result.classList.add('hidden');
+  try{
+    const image=await compressImage(selectedFile,1600,.82);
+    const response=await fetch(FUNCTION_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({image})});
+    const data=await response.json().catch(()=>({}));
+    if(!response.ok)throw new Error(data?.error?.message||data?.error||`Investigation failed (${response.status})`);
+    render(data);
+  }catch(error){
+    errorBox.textContent=error.message||'The investigation failed. Please try again.';
+    errorBox.classList.remove('hidden');
+  }finally{
+    statusBox.classList.add('hidden');identify.disabled=false;choose.disabled=false;
+  }
+};
+
+function compressImage(input,maxSide,quality){
+  return new Promise((resolve,reject)=>{
+    const reader=new FileReader();
+    reader.onerror=()=>reject(new Error('Could not read the photograph.'));
+    reader.onload=()=>{
+      const image=new Image();
+      image.onerror=()=>reject(new Error('That image format could not be opened.'));
+      image.onload=()=>{
+        const scale=Math.min(1,maxSide/Math.max(image.width,image.height));
+        const canvas=document.createElement('canvas');
+        canvas.width=Math.max(1,Math.round(image.width*scale));canvas.height=Math.max(1,Math.round(image.height*scale));
+        canvas.getContext('2d').drawImage(image,0,0,canvas.width,canvas.height);
+        resolve(canvas.toDataURL('image/jpeg',quality));
+      };
+      image.src=reader.result;
+    };
+    reader.readAsDataURL(input);
+  });
+}
+
+function render(data){
+  const fields=['object','category','purpose','value_estimate','condition'];
+  for(const id of fields)document.getElementById(id).textContent=data[id]||'Unknown';
+  document.getElementById('confidence').textContent=Number.isFinite(Number(data.confidence))?`${data.confidence}%`:'Unknown';
+  document.getElementById('explanation').textContent=data.explanation||'';
+  document.getElementById('compatibility').textContent=data.compatibility?`Compatibility: ${data.compatibility}`:'';
+  const warning=document.getElementById('warning');
+  if(data.warning){warning.textContent=data.warning;warning.classList.remove('hidden')}else warning.classList.add('hidden');
+  result.classList.remove('hidden');result.scrollIntoView({behavior:'smooth',block:'start'});
+}
+</script>
+</body>
+</html>
