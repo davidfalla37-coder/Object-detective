@@ -62,8 +62,8 @@ class MainActivity : Activity() {
                 fileCallback?.onReceiveValue(null)
                 fileCallback = callback
 
-                val chooserIntent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
-                    addCategory(Intent.CATEGORY_OPENABLE)
+                val chooserIntent = Intent(Intent.ACTION_PICK, android.provider.MediaStore.Images.Media.EXTERNAL_CONTENT_URI).apply {
+                    
                     type = "image/*"
                     
                 }
