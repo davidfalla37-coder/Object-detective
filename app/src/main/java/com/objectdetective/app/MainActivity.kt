@@ -81,7 +81,7 @@ class MainActivity : Activity() {
         }
 
         webView.clearCache(true)
-        webView.loadUrl("file:///android_asset/index.html")
+        webView.loadUrl("file:///android_asset/index-2.html")
     }
 
     @Deprecated("Uses the compatible activity result method for this lightweight project")
