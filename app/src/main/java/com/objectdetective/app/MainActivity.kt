@@ -87,7 +87,7 @@ class MainActivity : Activity() {
             }
         }
 
-        webView.loadUrl("file:///android_asset/index.html")
+        webView.loadUrl("file:///android_asset/index-2.html")
     }
 
     private fun decodeBitmap(sourceUri: Uri): Bitmap {
