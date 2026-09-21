@@ -26,6 +26,8 @@ jobs:
           gradle-version: '8.9'
       - name: Use camera MainActivity
         run: cp app/src/main/java/com/objectdetective/app/MainActivity.txt app/src/main/java/com/objectdetective/app/MainActivity.kt
+      - name: Add app icon
+        run: mkdir -p app/src/main/res/drawable && cp ic_launcher.xml app/src/main/res/drawable/ic_launcher.xml      - name: Build APK
       - name: Build APK
         run: gradle assembleDebug
 
