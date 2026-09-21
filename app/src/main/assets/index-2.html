@@ -43,6 +43,17 @@
     <p class="explain" id="explanation"></p>
     <p class="explain" id="compatibility"></p>
     <div class="warning hidden" id="warning"></div>
+        <div id="shops" class="hidden">
+      <h2>Find one like this</h2>
+      <p>Check the listing matches your item before buying.</p>
+      <div class="buttons">
+        <a id="shop-ebay" href="#">eBay</a>
+        <a id="shop-amazon" href="#">Amazon</a>
+        <a id="shop-etsy" href="#">Etsy</a>
+        <a id="shop-vinted" href="#">Vinted</a>
+        <a id="shop-google" href="#">Google Shopping</a>
+      </div>
+    </div>
   </section>
 </main>
 <script>
@@ -115,6 +126,17 @@ function render(data){
   document.getElementById('compatibility').textContent=data.compatibility?`Compatibility: ${data.compatibility}`:'';
   const warning=document.getElementById('warning');
   if(data.warning){warning.textContent=data.warning;warning.classList.remove('hidden')}else warning.classList.add('hidden');
+    const query=encodeURIComponent(data.object||'');
+  const shops={
+    ebay:'https://www.ebay.co.uk/sch/i.html?_nkw=',
+    amazon:'https://www.amazon.co.uk/s?k=',
+    etsy:'https://www.etsy.com/uk/search?q=',
+    vinted:'https://www.vinted.co.uk/catalog?search_text=',
+    google:'https://www.google.com/search?tbm=shop&q='
+  };
+  for(const [name,url] of Object.entries(shops))
+    document.getElementById('shop-'+name).href=url+query;
+  document.getElementById('shops').classList.toggle('hidden',!query);
   result.classList.remove('hidden');result.scrollIntoView({behavior:'smooth',block:'start'});
 }
 </script>
