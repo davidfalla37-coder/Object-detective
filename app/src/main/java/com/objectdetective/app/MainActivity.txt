@@ -61,6 +61,7 @@ class MainActivity : Activity() {
             allowContentAccess = true
             mediaPlaybackRequiresUserGesture = false
             cacheMode = WebSettings.LOAD_DEFAULT
+            textZoom = 100
         }
 
         webView.webViewClient = object : WebViewClient() {
