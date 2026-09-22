@@ -12,7 +12,7 @@
     .card{background:rgba(17,28,48,.95);border:1px solid var(--line);border-radius:22px;padding:18px;margin-top:18px;box-shadow:0 18px 50px #0005}
     .photo{aspect-ratio:4/3;border:2px dashed #486184;border-radius:16px;display:grid;place-items:center;overflow:hidden;background:#091426;text-align:center;color:var(--muted)}
     .photo img{width:100%;height:100%;object-fit:contain;display:none}.emoji{font-size:52px;display:block}
-    .photo-guide{margin:12px 0 0;font-size:14px}.photo-count{color:var(--accent);font-weight:750}.thumbs{display:flex;gap:8px;margin-top:10px;overflow-x:auto}.thumb{width:68px;height:68px;flex:0 0 68px;border-radius:12px;object-fit:cover;border:2px solid #354b6c}.tip{padding:11px 12px;border-radius:12px;background:#0b1930;border:1px solid #233b5c;color:#c9d6e8;margin-top:12px;font-size:14px}
+    .photo-guide{margin:12px 0 0;font-size:14px}.photo-count{color:var(--accent);font-weight:750}.thumbs{display:flex;gap:8px;margin-top:10px;overflow-x:auto}.thumb-wrap{position:relative;flex:0 0 78px}.thumb{width:78px;height:78px;border-radius:12px;object-fit:cover;border:2px solid #354b6c}.thumb-remove{position:absolute;right:3px;top:3px;width:25px;height:25px;min-height:0;padding:0;border-radius:50%;background:#07101fdd;color:#fff;font-size:15px}.quality{margin-top:10px;padding:10px 12px;border-radius:12px;font-size:14px;border:1px solid #29506b;background:#0b2131;color:#bcecff}.quality.warn{border-color:#745a25;background:#2d2512;color:#ffe2a3}.tip{padding:11px 12px;border-radius:12px;background:#0b1930;border:1px solid #233b5c;color:#c9d6e8;margin-top:12px;font-size:14px}
     .buttons{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px;margin-top:14px}button{border:0;border-radius:14px;padding:15px 10px;min-height:52px;font-size:16px;line-height:1.2;font-weight:750}button.primary{background:#f8fafc;color:#07101f}button.secondary{background:#1b2a44;color:#fff;border:1px solid #354b6c}button:disabled{opacity:.45}
     #status{margin-top:14px;text-align:center;color:var(--accent)}#error{margin-top:14px;color:var(--danger);white-space:pre-wrap}.hidden{display:none!important}
     h2{margin:0 0 8px}.row{display:flex;justify-content:space-between;gap:18px;padding:11px 0;border-bottom:1px solid var(--line)}.label{color:var(--muted)}.value{text-align:right;font-weight:700}.explain{color:#d5deeb}.warning{padding:12px;border-radius:12px;background:#332712;color:#f7d794;margin-top:12px}
@@ -29,6 +29,7 @@
     <div class="photo"><div id="placeholder"><span class="emoji">📷</span>Take a clear photograph</div><img id="preview" alt="Selected object"></div>
     <p class="photo-guide"><span class="photo-count" id="photo-count">0 of 3 photos</span> — extra angles help prevent incorrect guesses.</p>
     <div class="thumbs hidden" id="thumbs" aria-label="Selected photographs"></div>
+    <div class="quality hidden" id="quality" role="status"></div>
     <div class="tip" id="photo-tip">Start with a photograph showing the whole object.</div>
     <input id="file" type="file" accept="image/*" capture="environment" hidden>
     <div class="buttons">
@@ -77,18 +78,23 @@ const result=document.getElementById('result');
 const photoCount=document.getElementById('photo-count');
 const photoTip=document.getElementById('photo-tip');
 const thumbs=document.getElementById('thumbs');
+const qualityBox=document.getElementById('quality');
 const clear=document.getElementById('clear');
 let selectedFiles=[];
+let photoChecks=[];
 
 choose.onclick=()=>{
   if(selectedFiles.length>=3)return;
   file.value='';
   file.click();
 };
-file.onchange=()=>{
+file.onchange=async()=>{
   const selectedFile=file.files&&file.files[0];
   if(!selectedFile||selectedFiles.length>=3)return;
+  choose.disabled=true;
+  const check=await inspectPhoto(selectedFile).catch(()=>({level:'warn',message:'Photo quality could not be checked.'}));
   selectedFiles.push(selectedFile);
+  photoChecks.push(check);
   preview.src=URL.createObjectURL(selectedFile);
   preview.style.display='block';
   placeholder.classList.add('hidden');
@@ -100,6 +106,7 @@ file.onchange=()=>{
 
 clear.onclick=()=>{
   selectedFiles=[];
+  photoChecks=[];
   preview.removeAttribute('src');preview.style.display='none';
   placeholder.classList.remove('hidden');
   identify.disabled=true;result.classList.add('hidden');errorBox.classList.add('hidden');
@@ -115,10 +122,18 @@ function updatePhotoGuide(){
   thumbs.classList.toggle('hidden',count===0);
   thumbs.innerHTML='';
   selectedFiles.forEach((item,index)=>{
+    const wrap=document.createElement('div');wrap.className='thumb-wrap';
     const image=document.createElement('img');
     image.className='thumb';image.alt=`Photograph ${index+1}`;image.src=URL.createObjectURL(item);
-    thumbs.appendChild(image);
+    const remove=document.createElement('button');remove.className='thumb-remove';remove.type='button';remove.textContent='×';remove.setAttribute('aria-label',`Remove photograph ${index+1}`);
+    remove.onclick=()=>{selectedFiles.splice(index,1);photoChecks.splice(index,1);if(selectedFiles.length){preview.src=URL.createObjectURL(selectedFiles[selectedFiles.length-1])}else{preview.removeAttribute('src');preview.style.display='none';placeholder.classList.remove('hidden')}result.classList.add('hidden');updatePhotoGuide()};
+    wrap.append(image,remove);thumbs.appendChild(wrap);
   });
+  const warnings=photoChecks.map((check,index)=>check.level==='warn'?`Photo ${index+1}: ${check.message}`:'').filter(Boolean);
+  qualityBox.classList.toggle('hidden',count===0);
+  qualityBox.classList.toggle('warn',warnings.length>0);
+  qualityBox.textContent=warnings.length?warnings.join(' '):'✓ Photo quality looks good for identification.';
+  identify.disabled=count===0;
   photoTip.textContent=count===0?'Start with a photograph showing the whole object.':count===1?'For better accuracy, add the label, logo or model number.':count===2?'A final close-up of distinctive details can confirm the exact model.':'Three useful views are ready for investigation.';
 }
 
@@ -128,7 +143,7 @@ identify.onclick=async()=>{
   statusBox.classList.remove('hidden');errorBox.classList.add('hidden');result.classList.add('hidden');
   try{
     const image=await buildInvestigationImage(selectedFiles,1800,.86);
-    const response=await fetch(FUNCTION_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({image})});
+    const response=await fetch(FUNCTION_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({image,photoCount:selectedFiles.length,mode:'multi-angle-accuracy'})});
     const data=await response.json().catch(()=>({}));
     if(!response.ok)throw new Error(data?.error?.message||data?.error||`Investigation failed (${response.status})`);
     render(data);
@@ -139,6 +154,30 @@ identify.onclick=async()=>{
     statusBox.classList.add('hidden');identify.disabled=false;choose.disabled=selectedFiles.length>=3;
   }
 };
+
+async function inspectPhoto(input){
+  const image=await loadImage(input);
+  const smallest=Math.min(image.naturalWidth||image.width,image.naturalHeight||image.height);
+  if(smallest<600)return{level:'warn',message:'resolution is low—move closer and retake it.'};
+  const canvas=document.createElement('canvas'),size=96;
+  canvas.width=size;canvas.height=size;
+  const context=canvas.getContext('2d',{willReadFrequently:true});
+  context.drawImage(image,0,0,size,size);
+  const pixels=context.getImageData(0,0,size,size).data;
+  let brightness=0,edges=0,samples=0;
+  const grey=new Float32Array(size*size);
+  for(let i=0,p=0;i<pixels.length;i+=4,p++){grey[p]=pixels[i]*.299+pixels[i+1]*.587+pixels[i+2]*.114;brightness+=grey[p]}
+  brightness/=grey.length;
+  for(let y=1;y<size-1;y++)for(let x=1;x<size-1;x++){
+    const p=y*size+x;
+    edges+=Math.abs(4*grey[p]-grey[p-1]-grey[p+1]-grey[p-size]-grey[p+size]);samples++;
+  }
+  const sharpness=edges/samples;
+  if(brightness<38)return{level:'warn',message:'it is too dark—use more light and retake it.'};
+  if(brightness>225)return{level:'warn',message:'it is overexposed—reduce glare and retake it.'};
+  if(sharpness<7)return{level:'warn',message:'it may be blurry—hold steady and retake it.'};
+  return{level:'good',message:'Quality looks good.'};
+}
 
 function loadImage(input){
   return new Promise((resolve,reject)=>{
