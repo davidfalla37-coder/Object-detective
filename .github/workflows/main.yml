@@ -22,25 +22,29 @@ jobs:
 
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
-        with:
-          gradle-version: '8.9'
 
-      - name: Keep the same test signing key
-        uses: actions/cache@v4
-        with:
-          path: ~/.android/debug.keystore
-          key: object-detective-debug-signing-v1
+      - name: Make Gradle executable
+        run: chmod +x gradlew
 
-      - name: Use camera MainActivity
-        run: cp app/src/main/java/com/objectdetective/app/MainActivity.txt app/src/main/java/com/objectdetective/app/MainActivity.kt
-      - name: Add app icon
-        run: mkdir -p app/src/main/res/drawable && cp ic_launcher.xml app/src/main/res/drawable/ic_launcher.xml      
-      - name: Build APK
-        run: gradle assembleDebug
+      - name: Restore signing keystore
+        run: |
+          echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 --decode > object-detective-release.jks
 
-      - name: Upload APK
+      - name: Build signed APK
+        env:
+          KEYSTORE_FILE: ${{ github.workspace }}/object-detective-release.jks
+          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: ./gradlew assembleRelease
+
+      - name: Find and rename APK
+        run: |
+          APK=$(find app/build/outputs/apk/release -name "*.apk" | head -1)
+          cp "$APK" Object-Detective-signed.apk
+
+      - name: Upload signed APK
         uses: actions/upload-artifact@v4
         with:
-          name: Object-Detective-APK
-          path: '**/build/outputs/apk/**/*.apk'
-          if-no-files-found: error
+          name: Object-Detective-Signed-APK
+          path: Object-Detective-signed.apk
