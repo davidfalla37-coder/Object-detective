@@ -1,4 +1,4 @@
-name: Build Object Detective APK
+name: Build Signed Object Detective APK
 
 on:
   workflow_dispatch:
@@ -20,31 +20,38 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      - name: Set up Gradle
+      - name: Install Gradle
         uses: gradle/actions/setup-gradle@v4
-
-      - name: Make Gradle executable
-        run: chmod +x gradlew
+        with:
+          gradle-version: '8.7'
 
       - name: Restore signing keystore
-        run: |
-          echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 --decode > object-detective-release.jks
-
-      - name: Build signed APK
         env:
-          KEYSTORE_FILE: ${{ github.workspace }}/object-detective-release.jks
-          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
-          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
-          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
-        run: ./gradlew assembleRelease
+          KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+        run: printf '%s' "$KEYSTORE_BASE64" | base64 --decode > signing-key.jks
 
-      - name: Find and rename APK
+      - name: Build APK
+        run: gradle --no-daemon assembleDebug
+
+      - name: Sign APK
+        env:
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
-          APK=$(find app/build/outputs/apk/release -name "*.apk" | head -1)
-          cp "$APK" Object-Detective-signed.apk
+          BUILD_TOOLS="$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)"
+          "$BUILD_TOOLS/apksigner" sign \
+            --ks signing-key.jks \
+            --ks-key-alias "$KEY_ALIAS" \
+            --ks-pass "pass:$KEYSTORE_PASSWORD" \
+            --key-pass "pass:$KEY_PASSWORD" \
+            --out Object-Detective-signed.apk \
+            app/build/outputs/apk/debug/app-debug.apk
+          "$BUILD_TOOLS/apksigner" verify --verbose Object-Detective-signed.apk
 
       - name: Upload signed APK
         uses: actions/upload-artifact@v4
         with:
-          name: Object-Detective-Signed-APK
+          name: Object-Detective-SIGNED-APK
           path: Object-Detective-signed.apk
+          if-no-files-found: error
