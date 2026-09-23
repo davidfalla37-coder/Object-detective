@@ -42,14 +42,13 @@ jobs:
         env:
           KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
-          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
           BUILD_TOOLS="$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)"
           "$BUILD_TOOLS/apksigner" sign \
             --ks signing-key.jks \
             --ks-key-alias "$KEY_ALIAS" \
             --ks-pass "pass:$KEYSTORE_PASSWORD" \
-            --key-pass "pass:$KEY_PASSWORD" \
+            --key-pass "pass:$KEYSTORE_PASSWORD" \
             --out Object-Detective-signed.apk \
             app/build/outputs/apk/debug/app-debug.apk
           "$BUILD_TOOLS/apksigner" verify --verbose Object-Detective-signed.apk
