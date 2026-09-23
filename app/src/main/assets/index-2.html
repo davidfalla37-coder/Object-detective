@@ -1,0 +1,246 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <title>Object Detective</title>
+  <style>
+    :root{color-scheme:dark;--bg:#07101f;--panel:#111c30;--line:#293b59;--text:#f8fafc;--muted:#a7b4c7;--accent:#64d6ff;--danger:#ffb4b4}
+    html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
+    *{box-sizing:border-box}body{margin:0;background:linear-gradient(160deg,#15233d 0,var(--bg) 42%);color:var(--text);font-family:system-ui,-apple-system,"Segoe UI",sans-serif;font-size:16px}
+    main{max-width:620px;min-height:100vh;margin:auto;padding:24px 18px 40px}h1{font-size:clamp(32px,10vw,42px);line-height:1.05;margin:12px 0}p{color:var(--muted);line-height:1.5}
+    .card{background:rgba(17,28,48,.95);border:1px solid var(--line);border-radius:22px;padding:18px;margin-top:18px;box-shadow:0 18px 50px #0005}
+    .photo{aspect-ratio:4/3;border:2px dashed #486184;border-radius:16px;display:grid;place-items:center;overflow:hidden;background:#091426;text-align:center;color:var(--muted)}
+    .photo img{width:100%;height:100%;object-fit:contain;display:none}.emoji{font-size:52px;display:block}
+    .photo-guide{margin:12px 0 0;font-size:14px}.photo-count{color:var(--accent);font-weight:750}.thumbs{display:flex;gap:8px;margin-top:10px;overflow-x:auto}.thumb-wrap{position:relative;flex:0 0 78px}.thumb{width:78px;height:78px;border-radius:12px;object-fit:cover;border:2px solid #354b6c}.thumb-remove{position:absolute;right:3px;top:3px;width:25px;height:25px;min-height:0;padding:0;border-radius:50%;background:#07101fdd;color:#fff;font-size:15px}.quality{margin-top:10px;padding:10px 12px;border-radius:12px;font-size:14px;border:1px solid #29506b;background:#0b2131;color:#bcecff}.quality.warn{border-color:#745a25;background:#2d2512;color:#ffe2a3}.tip{padding:11px 12px;border-radius:12px;background:#0b1930;border:1px solid #233b5c;color:#c9d6e8;margin-top:12px;font-size:14px}
+    .buttons{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px;margin-top:14px}button{border:0;border-radius:14px;padding:15px 10px;min-height:52px;font-size:16px;line-height:1.2;font-weight:750}button.primary{background:#f8fafc;color:#07101f}button.secondary{background:#1b2a44;color:#fff;border:1px solid #354b6c}button:disabled{opacity:.45}
+    #status{margin-top:14px;text-align:center;color:var(--accent)}#error{margin-top:14px;color:var(--danger);white-space:pre-wrap}.hidden{display:none!important}
+    h2{margin:0 0 8px}.row{display:flex;justify-content:space-between;gap:18px;padding:11px 0;border-bottom:1px solid var(--line)}.label{color:var(--muted)}.value{text-align:right;font-weight:700}.explain{color:#d5deeb}.warning{padding:12px;border-radius:12px;background:#332712;color:#f7d794;margin-top:12px}
+    #shops a{display:grid;place-items:center;min-height:50px;padding:10px;border-radius:14px;background:#1b2a44;border:1px solid #354b6c;color:#fff;font-weight:750;text-align:center;text-decoration:none}
+    @media(max-width:380px){.buttons{grid-template-columns:1fr}h1{font-size:32px}}
+  </style>
+</head>
+<body>
+<main>
+  <h1>🔎 Object Detective</h1>
+  <p>Take or choose a clear photo and discover what the object is, what it does, and what it may be worth.</p>
+
+  <section class="card">
+    <div class="photo"><div id="placeholder"><span class="emoji">📷</span>Take a clear photograph</div><img id="preview" alt="Selected object"></div>
+    <p class="photo-guide"><span class="photo-count" id="photo-count">0 of 3 photos</span> — extra angles help prevent incorrect guesses.</p>
+    <div class="thumbs hidden" id="thumbs" aria-label="Selected photographs"></div>
+    <div class="quality hidden" id="quality" role="status"></div>
+    <div class="tip" id="photo-tip">Start with a photograph showing the whole object.</div>
+    <input id="file" type="file" accept="image/*" capture="environment" hidden>
+    <div class="buttons">
+      <button class="secondary" id="choose">Take first photo</button>
+      <button class="primary" id="identify" disabled>Identify object</button>
+    </div>
+    <button class="secondary hidden" id="clear" style="width:100%;margin-top:10px">Start again</button>
+    <div id="status" class="hidden">Examining the photograph…</div>
+    <div id="error" class="hidden"></div>
+  </section>
+
+  <section class="card hidden" id="result">
+    <h2>Investigation result</h2>
+    <div class="row"><span class="label">Likely object</span><span class="value" id="object"></span></div>
+    <div class="row"><span class="label">Category</span><span class="value" id="category"></span></div>
+    <div class="row"><span class="label">Purpose</span><span class="value" id="purpose"></span></div>
+    <div class="row"><span class="label">Estimated value</span><span class="value" id="value_estimate"></span></div>
+    <div class="row"><span class="label">Condition</span><span class="value" id="condition"></span></div>
+    <div class="row"><span class="label">Confidence</span><span class="value" id="confidence"></span></div>
+    <p class="explain" id="explanation"></p>
+    <p class="explain" id="compatibility"></p>
+    <div class="warning hidden" id="warning"></div>
+        <div id="shops" class="hidden">
+      <h2>Find one like this</h2>
+      <p>Check the listing matches your item before buying.</p>
+      <div class="buttons">
+        <a id="shop-ebay" href="#">eBay</a>
+        <a id="shop-amazon" href="#">Amazon</a>
+        <a id="shop-etsy" href="#">Etsy</a>
+        <a id="shop-vinted" href="#">Vinted</a>
+        <a id="shop-google" href="#">Google Shopping</a>
+      </div>
+    </div>
+  </section>
+</main>
+<script>
+const FUNCTION_URL='https://gboyflbwcobhzbvpdtat.supabase.co/functions/v1/investigate-object';
+const file=document.getElementById('file');
+const choose=document.getElementById('choose');
+const identify=document.getElementById('identify');
+const preview=document.getElementById('preview');
+const placeholder=document.getElementById('placeholder');
+const statusBox=document.getElementById('status');
+const errorBox=document.getElementById('error');
+const result=document.getElementById('result');
+const photoCount=document.getElementById('photo-count');
+const photoTip=document.getElementById('photo-tip');
+const thumbs=document.getElementById('thumbs');
+const qualityBox=document.getElementById('quality');
+const clear=document.getElementById('clear');
+let selectedFiles=[];
+let photoChecks=[];
+
+choose.onclick=()=>{
+  if(selectedFiles.length>=3)return;
+  file.value='';
+  file.click();
+};
+file.onchange=async()=>{
+  const selectedFile=file.files&&file.files[0];
+  if(!selectedFile||selectedFiles.length>=3)return;
+  choose.disabled=true;
+  const check=await inspectPhoto(selectedFile).catch(()=>({level:'warn',message:'Photo quality could not be checked.'}));
+  selectedFiles.push(selectedFile);
+  photoChecks.push(check);
+  preview.src=URL.createObjectURL(selectedFile);
+  preview.style.display='block';
+  placeholder.classList.add('hidden');
+  identify.disabled=false;
+  result.classList.add('hidden');
+  errorBox.classList.add('hidden');
+  updatePhotoGuide();
+};
+
+clear.onclick=()=>{
+  selectedFiles=[];
+  photoChecks=[];
+  preview.removeAttribute('src');preview.style.display='none';
+  placeholder.classList.remove('hidden');
+  identify.disabled=true;result.classList.add('hidden');errorBox.classList.add('hidden');
+  updatePhotoGuide();
+};
+
+function updatePhotoGuide(){
+  const count=selectedFiles.length;
+  photoCount.textContent=`${count} of 3 photo${count===1?'':'s'}`;
+  choose.textContent=count===0?'Take first photo':count<3?'Add another angle':'3 photos added';
+  choose.disabled=count>=3;
+  clear.classList.toggle('hidden',count===0);
+  thumbs.classList.toggle('hidden',count===0);
+  thumbs.innerHTML='';
+  selectedFiles.forEach((item,index)=>{
+    const wrap=document.createElement('div');wrap.className='thumb-wrap';
+    const image=document.createElement('img');
+    image.className='thumb';image.alt=`Photograph ${index+1}`;image.src=URL.createObjectURL(item);
+    const remove=document.createElement('button');remove.className='thumb-remove';remove.type='button';remove.textContent='×';remove.setAttribute('aria-label',`Remove photograph ${index+1}`);
+    remove.onclick=()=>{selectedFiles.splice(index,1);photoChecks.splice(index,1);if(selectedFiles.length){preview.src=URL.createObjectURL(selectedFiles[selectedFiles.length-1])}else{preview.removeAttribute('src');preview.style.display='none';placeholder.classList.remove('hidden')}result.classList.add('hidden');updatePhotoGuide()};
+    wrap.append(image,remove);thumbs.appendChild(wrap);
+  });
+  const warnings=photoChecks.map((check,index)=>check.level==='warn'?`Photo ${index+1}: ${check.message}`:'').filter(Boolean);
+  qualityBox.classList.toggle('hidden',count===0);
+  qualityBox.classList.toggle('warn',warnings.length>0);
+  qualityBox.textContent=warnings.length?warnings.join(' '):'✓ Photo quality looks good for identification.';
+  identify.disabled=count===0;
+  photoTip.textContent=count===0?'Start with a photograph showing the whole object.':count===1?'For better accuracy, add the label, logo or model number.':count===2?'A final close-up of distinctive details can confirm the exact model.':'Three useful views are ready for investigation.';
+}
+
+identify.onclick=async()=>{
+  if(!selectedFiles.length)return;
+  identify.disabled=true;choose.disabled=true;
+  statusBox.classList.remove('hidden');errorBox.classList.add('hidden');result.classList.add('hidden');
+  try{
+    const image=await buildInvestigationImage(selectedFiles,1800,.86);
+    const response=await fetch(FUNCTION_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({image,photoCount:selectedFiles.length,mode:'multi-angle-accuracy'})});
+    const data=await response.json().catch(()=>({}));
+    if(!response.ok)throw new Error(data?.error?.message||data?.error||`Investigation failed (${response.status})`);
+    render(data);
+  }catch(error){
+    errorBox.textContent=error.message||'The investigation failed. Please try again.';
+    errorBox.classList.remove('hidden');
+  }finally{
+    statusBox.classList.add('hidden');identify.disabled=false;choose.disabled=selectedFiles.length>=3;
+  }
+};
+
+async function inspectPhoto(input){
+  const image=await loadImage(input);
+  const smallest=Math.min(image.naturalWidth||image.width,image.naturalHeight||image.height);
+  if(smallest<600)return{level:'warn',message:'resolution is low—move closer and retake it.'};
+  const canvas=document.createElement('canvas'),size=96;
+  canvas.width=size;canvas.height=size;
+  const context=canvas.getContext('2d',{willReadFrequently:true});
+  context.drawImage(image,0,0,size,size);
+  const pixels=context.getImageData(0,0,size,size).data;
+  let brightness=0,edges=0,samples=0;
+  const grey=new Float32Array(size*size);
+  for(let i=0,p=0;i<pixels.length;i+=4,p++){grey[p]=pixels[i]*.299+pixels[i+1]*.587+pixels[i+2]*.114;brightness+=grey[p]}
+  brightness/=grey.length;
+  for(let y=1;y<size-1;y++)for(let x=1;x<size-1;x++){
+    const p=y*size+x;
+    edges+=Math.abs(4*grey[p]-grey[p-1]-grey[p+1]-grey[p-size]-grey[p+size]);samples++;
+  }
+  const sharpness=edges/samples;
+  if(brightness<38)return{level:'warn',message:'it is too dark—use more light and retake it.'};
+  if(brightness>225)return{level:'warn',message:'it is overexposed—reduce glare and retake it.'};
+  if(sharpness<7)return{level:'warn',message:'it may be blurry—hold steady and retake it.'};
+  return{level:'good',message:'Quality looks good.'};
+}
+
+function loadImage(input){
+  return new Promise((resolve,reject)=>{
+    const reader=new FileReader();
+    reader.onerror=()=>reject(new Error('Could not read the photograph.'));
+    reader.onload=()=>{
+      const image=new Image();
+      image.onerror=()=>reject(new Error('That image format could not be opened.'));
+      image.onload=()=>resolve(image);
+      image.src=reader.result;
+    };
+    reader.readAsDataURL(input);
+  });
+}
+
+async function buildInvestigationImage(inputs,maxSide,quality){
+  const images=await Promise.all(inputs.map(loadImage));
+  if(images.length===1){
+    const image=images[0];
+    const scale=Math.min(1,maxSide/Math.max(image.width,image.height));
+    const canvas=document.createElement('canvas');
+    canvas.width=Math.max(1,Math.round(image.width*scale));canvas.height=Math.max(1,Math.round(image.height*scale));
+    canvas.getContext('2d').drawImage(image,0,0,canvas.width,canvas.height);
+    return canvas.toDataURL('image/jpeg',quality);
+  }
+  const gap=16,columns=2,rows=Math.ceil(images.length/columns),cell=Math.floor((maxSide-gap*(columns+1))/columns);
+  const canvas=document.createElement('canvas');
+  canvas.width=maxSide;canvas.height=rows*cell+gap*(rows+1);
+  const context=canvas.getContext('2d');
+  context.fillStyle='#07101f';context.fillRect(0,0,canvas.width,canvas.height);
+  images.forEach((image,index)=>{
+    const column=index%columns,row=Math.floor(index/columns);
+    const scale=Math.min(cell/image.width,cell/image.height);
+    const width=image.width*scale,height=image.height*scale;
+    const x=gap+column*(cell+gap)+(cell-width)/2,y=gap+row*(cell+gap)+(cell-height)/2;
+    context.drawImage(image,x,y,width,height);
+  });
+  return canvas.toDataURL('image/jpeg',quality);
+}
+
+function render(data){
+  const fields=['object','category','purpose','value_estimate','condition'];
+  for(const id of fields)document.getElementById(id).textContent=data[id]||'Unknown';
+  const rawConfidence=Number(data.confidence);
+  const confidencePercent=rawConfidence>=0&&rawConfidence<=1?rawConfidence*100:rawConfidence;
+  document.getElementById('confidence').textContent=Number.isFinite(confidencePercent)?`${Math.round(confidencePercent)}%`:'Unknown';
+  document.getElementById('explanation').textContent=data.explanation||'';
+  document.getElementById('compatibility').textContent=data.compatibility?`Compatibility: ${data.compatibility}`:'';
+  const warning=document.getElementById('warning');
+  if(data.warning){warning.textContent=data.warning;warning.classList.remove('hidden')}else warning.classList.add('hidden');
+    const query=encodeURIComponent(data.object||'');
+  const shops={
+    ebay:'https://www.ebay.co.uk/sch/i.html?_nkw=',
+    amazon:'https://www.amazon.co.uk/s?k=',
+    etsy:'https://www.etsy.com/uk/search?q=',
+    vinted:'https://www.vinted.co.uk/catalog?search_text=',
+    google:'https://www.google.com/search?tbm=shop&q='
+  };
+  for(const [name,url] of Object.entries(shops))
+    document.getElementById('shop-'+name).href=url+query;
+  document.getElementById('shops').classList.toggle('hidden',!query);
+  result.classList.remove('hidden');result.scrollIntoView({behavior:'smooth',block:'start'});
+}
+</script>
+</body>
+</html>
