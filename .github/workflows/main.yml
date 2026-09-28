@@ -1,4 +1,4 @@
-name: Build Signed Object Detective APK and AAB
+name: Build Object Detective Google Play AAB
 
 on:
   workflow_dispatch:
@@ -35,18 +35,20 @@ jobs:
           mkdir -p app/src/main/res/drawable
           cp ic_launcher.xml app/src/main/res/drawable/ic_launcher.xml
 
-      - name: Build APK and AAB
-        run: gradle --no-daemon assembleDebug bundleRelease
+      - name: Build AAB
+        run: gradle --no-daemon bundleRelease
 
-      - name: Sign APK
+      - name: Sign AAB
         env:
           KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
         run: |
-          BUILD_TOOLS="$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)"
-          "$BUILD_TOOLS/apksigner" sign \
-            --ks signing-key.jks \
-            --ks-key-alias "$KEY_ALIAS" \
-            --ks-pass "pass:$KEYSTORE_PASSWORD" \
-            --key-pass "pass:$KEYSTORE_PASSWORD" \
-            --
+          jarsigner \
+            -keystore signing-key.jks \
+            -storepass "$KEYSTORE_PASSWORD" \
+            -keypass "$KEYSTORE_PASSWORD" \
+            app/build/outputs/bundle/release/app-release.aab \
+            "$KEY_ALIAS"
+
+      - name: Verify AAB signature
+        run: jarsigner -verify -verbose -certs app/build
