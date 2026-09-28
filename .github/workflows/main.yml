@@ -1,4 +1,4 @@
-name: Build Signed Object Detective APK
+name: Build Signed Object Detective APK and AAB
 
 on:
   workflow_dispatch:
@@ -35,8 +35,8 @@ jobs:
           mkdir -p app/src/main/res/drawable
           cp ic_launcher.xml app/src/main/res/drawable/ic_launcher.xml
 
-      - name: Build APK
-        run: gradle --no-daemon assembleDebug
+      - name: Build APK and AAB
+        run: gradle --no-daemon assembleDebug bundleRelease
 
       - name: Sign APK
         env:
@@ -49,13 +49,4 @@ jobs:
             --ks-key-alias "$KEY_ALIAS" \
             --ks-pass "pass:$KEYSTORE_PASSWORD" \
             --key-pass "pass:$KEYSTORE_PASSWORD" \
-            --out Object-Detective-signed.apk \
-            app/build/outputs/apk/debug/app-debug.apk
-          "$BUILD_TOOLS/apksigner" verify --verbose Object-Detective-signed.apk
-
-      - name: Upload signed APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: Object-Detective-SIGNED-APK
-          path: Object-Detective-signed.apk
-          if-no-files-found: error
+            --
