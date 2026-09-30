@@ -68,7 +68,21 @@ class MainActivity : Activity() {
             override fun shouldOverrideUrlLoading(
                 view: WebView,
                 request: WebResourceRequest
-            ): Boolean = false
+            ): Boolean {
+    val uri = request.url
+    val scheme = uri.scheme?.lowercase()
+
+    return if (scheme == "http" || scheme == "https") {
+        try {
+            startActivity(Intent(Intent.ACTION_VIEW, uri))
+            true
+        } catch (_: Exception) {
+            false
+        }
+    } else {
+        false
+    }
+            }
         }
 
         webView.webChromeClient = object : WebChromeClient() {
