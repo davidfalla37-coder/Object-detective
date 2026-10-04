@@ -6,6 +6,7 @@ on:
       - main
     paths:
       - 'app/**'
+      - 'supabase/functions/investigate-object/**'
       - 'build.gradle'
       - 'settings.gradle'
       - '.github/workflows/verify-pr.yml'
@@ -27,3 +28,15 @@ jobs:
           gradle-version: '8.9'
       - name: Build debug APK
         run: gradle --no-daemon assembleDebug
+
+  check-edge-function:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+      - name: Set up Deno
+        uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+      - name: Type-check Supabase Edge Function
+        run: deno check supabase/functions/investigate-object/index.ts
