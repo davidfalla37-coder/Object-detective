@@ -1,0 +1,46 @@
+name: Verify Object Detective Android pull requests
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'app/**'
+      - 'supabase/functions/investigate-object/**'
+      - 'build.gradle'
+      - 'settings.gradle'
+      - '.github/workflows/verify-pr.yml'
+
+jobs:
+  assemble-debug:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Set up Gradle 8.9
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+      - name: Put app icon in Android resources
+        run: |
+          mkdir -p app/src/main/res/drawable
+          cp ic_launcher.xml app/src/main/res/drawable/ic_launcher.xml
+      - name: Build debug APK
+        run: gradle --no-daemon assembleDebug
+
+  check-edge-function:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+      - name: Set up Deno
+        uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+      - name: Type-check Supabase Edge Function
+        run: deno check supabase/functions/investigate-object/index.ts
