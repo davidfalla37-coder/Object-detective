@@ -396,7 +396,7 @@ let chatMessages=[];
 function usefulText(value){return typeof value==="string"&&value.trim()&&value.trim()!=="Unknown"?value.trim():"";}
 function updateSellDraft(data){
   const parts=[data.brand,data.model,data.model_number,data.variant,data.object].map(usefulText).filter((item,index,all)=>all.indexOf(item)===index);
-  const title=(parts.join(" ").replace(/\\s+/g," ").trim()||"Item for sale").slice(0,80);
+  const title=(parts.join(" ").replace(/\s+/g," ").trim()||"Item for sale").slice(0,80);
   const lines=[
     title,
     "",
@@ -409,7 +409,7 @@ function updateSellDraft(data){
     "Please check the photographs and verify functionality, authenticity and completeness yourself. These are not guaranteed by this description."
   ];
   document.getElementById("sell-title").value=title;
-  document.getElementById("sell-description").value=lines.filter((line,index)=>line!==""||lines[index-1]!=="").join("\\n").trim();
+  document.getElementById("sell-description").value=lines.filter((line,index)=>line!==""||lines[index-1]!=="").join("\n").trim();
 }
 async function copyDraft(fieldId,buttonId){
   const field=document.getElementById(fieldId),button=document.getElementById(buttonId);
