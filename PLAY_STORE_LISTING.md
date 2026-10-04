@@ -19,6 +19,8 @@ Take a clear photo and get:
 • Compatibility clues
 • Safety warnings when appropriate
 • Saved investigation history
+• Follow-up chat about an investigation
+• Editable sale-listing drafts with links to marketplaces
 
 Object Detective is designed for garages, workshops, DIY projects, second-hand finds, car parts, tools, hardware, electronics and everyday mystery objects.
 
