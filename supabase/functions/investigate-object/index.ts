@@ -15,6 +15,9 @@ interface RequestBody {
   image?: unknown;
   photoCount?: unknown;
   mode?: unknown;
+  question?: unknown;
+  context?: unknown;
+  messages?: unknown;
 }
 
 interface InvestigationResult {
