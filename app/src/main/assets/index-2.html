@@ -20,7 +20,7 @@
     h2{margin:0 0 8px}.row{display:block;width:100%;padding:13px 0;border-bottom:1px solid var(--line);min-width:0}.label,.value{display:block;width:100%;max-width:none;min-width:0}.label{color:var(--muted)}.value{text-align:left;font-weight:700;margin-top:6px;line-height:1.4;font-size:17px;overflow-wrap:anywhere;word-break:break-word}.explain{color:#d5deeb}.warning{padding:12px;border-radius:12px;background:#332712;color:#f7d794;margin-top:12px;overflow-wrap:anywhere}
     #shops a,#vehicle-shops a{display:grid;place-items:center;min-height:50px;padding:10px;border-radius:14px;background:#1b2a44;border:1px solid #354b6c;color:#fff;font-weight:750;text-align:center;text-decoration:none}
     .vehicle-card{border-color:#806116;background:linear-gradient(145deg,#2c250f,#111c30 48%);overflow:hidden}.vehicle-title{color:#ffd34e}.vehicle-note{font-size:14px;color:#ffe6a0}.safety{padding:12px;border-radius:12px;background:#361d18;color:#ffc7b8;border:1px solid #7b3b2e;margin-top:12px;overflow-wrap:anywhere}.vehicle-card .row{display:block;width:100%}.vehicle-card .label,.vehicle-card .value{display:block;width:100%;max-width:none}.vehicle-card .value{text-align:left;margin-top:6px;line-height:1.4;font-size:17px;overflow-wrap:anywhere;word-break:break-word}
-    .history-head{display:flex;align-items:center;justify-content:space-between;gap:12px}.history-head h2{margin:0}.history-list{display:grid;gap:10px;margin-top:12px}.history-item{display:grid;grid-template-columns:64px minmax(0,1fr) 38px;align-items:center;gap:10px;padding:10px;border:1px solid var(--line);border-radius:14px;background:#0b1628;color:#fff;text-align:left;width:100%}.history-image{width:64px;height:64px;border-radius:10px;object-fit:cover;background:#07101f}.history-info{min-width:0}.history-name{font-weight:800;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.history-meta{font-size:13px;color:var(--muted);margin-top:4px}.history-delete{width:36px;height:36px;min-height:0;padding:0;border-radius:50%;background:#321b22;color:#ffb4b4}.empty-history{color:var(--muted);margin:8px 0 0}
+    .condition-badge{display:inline-flex;align-items:center;width:max-content;margin-top:8px;padding:6px 10px;border-radius:999px;font-size:13px;font-weight:800;border:1px solid #39506d;background:#17263d;color:#d8e7ff}.condition-badge.new-sealed{background:#123629;border-color:#2c8058;color:#a7f3d0}.condition-badge.like-new{background:#153448;border-color:#34769a;color:#b8e9ff}.condition-badge.used{background:#302b18;border-color:#76652b;color:#ffe29a}.condition-badge.worn-damaged{background:#3a211e;border-color:#8c463a;color:#ffc2b5}.condition-badge.cannot-tell{background:#242a35;border-color:#535f73;color:#c9d2df}\n    .history-head{display:flex;align-items:center;justify-content:space-between;gap:12px}.history-head h2{margin:0}.history-list{display:grid;gap:10px;margin-top:12px}.history-item{display:grid;grid-template-columns:64px minmax(0,1fr) 38px;align-items:center;gap:10px;padding:10px;border:1px solid var(--line);border-radius:14px;background:#0b1628;color:#fff;text-align:left;width:100%}.history-image{width:64px;height:64px;border-radius:10px;object-fit:cover;background:#07101f}.history-info{min-width:0}.history-name{font-weight:800;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.history-meta{font-size:13px;color:var(--muted);margin-top:4px}.history-delete{width:36px;height:36px;min-height:0;padding:0;border-radius:50%;background:#321b22;color:#ffb4b4}.empty-history{color:var(--muted);margin:8px 0 0}
     @media(max-width:480px){.buttons{grid-template-columns:1fr}h1{font-size:32px}}
   </style>
 </head>
@@ -57,7 +57,7 @@
     <div class="row"><span class="label">Category</span><span class="value" id="category"></span></div>
     <div class="row"><span class="label">Purpose</span><span class="value" id="purpose"></span></div>
     <div class="row"><span class="label">Estimated second-hand value</span><span class="value" id="value_estimate"></span></div>
-    <div class="row"><span class="label">Condition</span><span class="value" id="condition"></span></div>
+    <div class="row"><span class="label">Condition assessment</span><span class="condition-badge cannot-tell" id="condition_badge">Can't tell</span><span class="value" id="condition"></span></div>
     <div class="row"><span class="label">Confidence</span><span class="value" id="confidence"></span></div>
     <p class="explain" id="explanation"></p>
     <p class="explain" id="compatibility"></p>
@@ -257,6 +257,11 @@ async function buildInvestigationImage(inputs,maxSide,quality){
 function render(data,saveResult=true){
   const fields=['object','category','purpose','value_estimate','condition'];
   for(const id of fields)document.getElementById(id).textContent=data[id]||'Unknown';
+  const conditionGrades={new_sealed:{label:'New/sealed',className:'new-sealed'},like_new:{label:'Like new',className:'like-new'},used:{label:'Used',className:'used'},worn_damaged:{label:'Worn/damaged',className:'worn-damaged'},cannot_tell:{label:"Can't tell",className:'cannot-tell'}};
+  const conditionGrade=conditionGrades[data.condition_grade]||conditionGrades.cannot_tell;
+  const conditionBadge=document.getElementById('condition_badge');
+  conditionBadge.textContent=conditionGrade.label;
+  conditionBadge.className='condition-badge '+conditionGrade.className;
   const rawConfidence=Number(data.confidence);
   const confidencePercent=rawConfidence>=0&&rawConfidence<=1?rawConfidence*100:rawConfidence;
   document.getElementById('confidence').textContent=Number.isFinite(confidencePercent)?`${Math.round(confidencePercent)}%`:'Unknown';
