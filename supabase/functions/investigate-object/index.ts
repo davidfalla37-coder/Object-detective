@@ -7,7 +7,6 @@ const corsHeaders = {
 
 const PRIMARY_MODEL = "gpt-4.1-mini";
 const VERIFICATION_MODEL = "gpt-4.1";
-const VERIFICATION_THRESHOLD = 0.72;
 const MAX_IMAGE_DATA_URL_LENGTH = 20 * 1024 * 1024;
 const MAX_REQUEST_LENGTH = MAX_IMAGE_DATA_URL_LENGTH + 1024;
 
@@ -282,12 +281,6 @@ function normalizeVerification(value: unknown): VerificationResult {
   };
 }
 
-function shouldVerify(result: InvestigationResult): boolean {
-  return result.confidence >= VERIFICATION_THRESHOLD ||
-    result.exact_match_confidence >= 0.60 ||
-    result.exact_match_status !== "not_confirmed";
-}
-
 function rebuiltExplanation(result: InvestigationResult, verification: VerificationResult): string {
   const verifiedPercent = Math.round(result.exact_match_confidence * 100);
   const parts: string[] = [];
@@ -388,15 +381,13 @@ function reconcileVerification(
 
 function conservativeFallback(result: InvestigationResult): InvestigationResult {
   const fallback: InvestigationResult = { ...result };
-  if (shouldVerify(result)) {
-    fallback.confidence = Math.min(fallback.confidence, 0.79);
-    fallback.exact_match_confidence = Math.min(fallback.exact_match_confidence, 0.69);
-    if (fallback.exact_match_status === "exact") fallback.exact_match_status = "likely";
-    fallback.warning = [
-      fallback.warning,
-      "A second verification pass was unavailable, so this high-confidence result has been deliberately capped.",
-    ].filter(Boolean).join(" ");
-  }
+  fallback.confidence = Math.min(fallback.confidence, 0.79);
+  fallback.exact_match_confidence = Math.min(fallback.exact_match_confidence, 0.69);
+  if (fallback.exact_match_status === "exact") fallback.exact_match_status = "likely";
+  fallback.warning = [
+    fallback.warning,
+    "A second verification pass was unavailable, so this result is shown cautiously.",
+  ].filter(Boolean).join(" ");
   return fallback;
 }
 
@@ -802,15 +793,11 @@ Deno.serve(async (request: Request): Promise<Response> => {
     const photoCountRaw = typeof body.photoCount === "number" ? body.photoCount : Number(body.photoCount);
     const photoCount = Number.isFinite(photoCountRaw) ? Math.max(1, Math.min(3, Math.round(photoCountRaw))) : 1;
 
-    if (shouldVerify(primaryResult)) {
-      const verification = await verifyIdentification(image, primaryResult, photoCount);
-      if (verification) {
-        return jsonResponse(reconcileVerification(primaryResult, verification));
-      }
-      return jsonResponse(conservativeFallback(primaryResult));
+    const verification = await verifyIdentification(image, primaryResult, photoCount);
+    if (verification) {
+      return jsonResponse(reconcileVerification(primaryResult, verification));
     }
-
-    return jsonResponse(primaryResult);
+    return jsonResponse(conservativeFallback(primaryResult));
   } catch (error) {
     console.error("Object investigation failed:", error instanceof Error ? error.message : error);
     return errorResponse("Unable to investigate the object right now. Please try again.", 500, "internal_error");
