@@ -75,7 +75,8 @@
     <div class="row"><span class="label">Purpose</span><span class="value" id="purpose"></span></div>
     <div class="row"><span class="label">Estimated second-hand value</span><span class="value" id="value_estimate"></span></div>
     <div class="row"><span class="label">Condition assessment</span><span class="condition-badge cannot-tell" id="condition_badge">Can't tell</span><span class="value" id="condition"></span></div>
-    <div class="row"><span class="label">Confidence</span><span class="value" id="confidence"></span></div>
+    <div class="row"><span class="label">Identification confidence</span><span class="value" id="confidence"></span></div>
+    <p class="explain" id="confidence-note">This score covers visual identification only. It does not verify the value, condition, or marketplace search results.</p>
     <p class="explain" id="explanation"></p>
     <p class="explain" id="compatibility"></p>
     <div class="warning hidden" id="warning"></div>
@@ -103,7 +104,7 @@
     </section>
         <div id="shops" class="hidden">
       <h2>Find one like this</h2>
-      <p>Check the listing matches your item before buying.</p>
+      <p>These are search suggestions, not verified matches. Listings may show accessories or similar products; check the exact model and whether the complete item is included.</p>
       <div class="buttons">
         <a id="shop-ebay" href="#">eBay</a>
         <a id="shop-amazon" href="#">Amazon</a>
@@ -352,7 +353,11 @@ function render(data,saveResult=true){
     document.getElementById('vehicle-gsf').href='https://www.google.com/search?q='+encodeURIComponent('site:gsfcarparts.com '+decodeURIComponent(vehicleQuery));
     document.getElementById('vehicle-motorcycle').href='https://www.google.com/search?q='+encodeURIComponent('UK motorcycle parts '+decodeURIComponent(vehicleQuery));
   }
-    const query=encodeURIComponent(data.object||'');
+    const shopTerms=[data.brand,data.model_number,data.model,data.variant,data.object,data.category]
+    .map(value=>String(value||'').trim())
+    .filter(value=>value&&value.toLowerCase()!=='unknown'&&value.toLowerCase()!=='unknown (gbp)')
+    .filter((value,index,all)=>all.findIndex(other=>other.toLowerCase()===value.toLowerCase())===index);
+  const query=encodeURIComponent(shopTerms.join(' '));
   const shops={
     ebay:'https://www.ebay.co.uk/sch/i.html?_nkw=',
     amazon:'https://www.amazon.co.uk/s?k=',

@@ -107,9 +107,13 @@ function normalizeResult(value: unknown): InvestigationResult {
     text("model_number"),
     text("variant"),
   ].filter((part) => part && part !== "Unknown");
-  const specificObject = supportedIdentityParts.length >= 2
-    ? supportedIdentityParts.filter((part, index, all) => all.indexOf(part) === index).join(" ")
-    : text("object");
+  // Preserve the model's description of the complete photographed item.
+  // Brand/model fields may refer to one visible component (for example, a tank
+  // attached to a vape mod), so do not replace the whole-item description.
+  const describedObject = text("object");
+  const specificObject = describedObject && describedObject !== "Unknown"
+    ? describedObject
+    : supportedIdentityParts.filter((part, index, all) => all.indexOf(part) === index).join(" ") || "Unknown";
 
   const matchLabel = exactMatchStatus === "exact"
     ? "Exact match"
@@ -426,6 +430,8 @@ async function verifyIdentification(
                 "Act as an independent forensic product-identification verifier.",
                 "Do not trust the proposed identification. Inspect the supplied photograph(s) from scratch, then compare your visual conclusion with the proposed candidate.",
                 "Visible evidence has priority over the proposed answer. Never invent text, logos, model numbers, serial numbers, variants, dimensions or provenance.",
+                 "Check whether the proposed name describes the whole photographed item or only one visible component. If a larger device or assembly is shown but the candidate names only one component, use verdict partial, describe the whole photographed item in object, and keep the component model separate.",
+                 "Do not infer a host device's model from a readable label on an attached component. A correct component label does not by itself confirm the complete device's model.",
                 "Use verdict agree only when the proposed identity is well supported by visible evidence.",
                 "Use partial when the general type or brand is supported but the exact model/variant is not fully proven.",
                 "Use disagree when visible evidence points to a materially different identity.",
@@ -643,7 +649,10 @@ Deno.serve(async (request: Request): Promise<Response> => {
             {
               type: "input_text",
               text: [
-                "Identify the primary photographed object as accurately as possible.",
+                "Identify the whole item shown in the photograph as accurately as possible, including how its visible major components fit together.",
+                "Do not name a replaceable part as if it were the complete photographed item. If a larger host device or assembly is visible, describe the whole item in object and identify a component model separately in model or variant.",
+                "For example, if a vape tank is attached to a mod, describe the photographed object as the complete vape device with the identified tank; do not infer the mod's model from the tank's label.",
+                "General confidence is for identifying the complete photographed item. If only a component is identified or the host device remains unknown, lower confidence and explain the uncertainty. Confidence does not validate the value estimate, condition, completeness, or marketplace results.",
                 "Use visible evidence only; do not invent details.",
                 "Estimate the current UK SECOND-HAND resale value for the photographed item AS SHOWN, not the new retail or replacement price. Start from a realistic used-market level for the identified model, then adjust downward for visible wear, damage, missing parts, missing accessories or packaging, age, uncertainty, and unverified working condition. Never assume an item is fully tested or working unless the photographs provide evidence. A Fair-condition or visibly heavily worn item should receive a materially lower range than a clean tested used example; Poor, damaged or incomplete items should be lower again. For a mixed-brand or incomplete bundle, value the photographed bundle as one used private-sale item; do not add the new replacement prices of its components. Do not award a branded-component premium when the exact model is unconfirmed. If there is heavy visible wear or working status is unverified, use the lower end of a realistic used range and describe functionality as untested. Never use a new-retail price range as the second-hand estimate. The value_estimate field must always use British pounds sterling (GBP) with the £ symbol and should be a cautious realistic range. If the exact identity or working status is too uncertain to support a useful resale price, return “Unknown (GBP)” rather than an inflated guess.",
                 "For compatibility, describe relevant standards, sizes, connectors, systems, or say that compatibility cannot be determined from the image.",
