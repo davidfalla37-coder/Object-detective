@@ -21,12 +21,17 @@
     #shops a,#vehicle-shops a{display:grid;place-items:center;min-height:50px;padding:10px;border-radius:14px;background:#1b2a44;border:1px solid #354b6c;color:#fff;font-weight:750;text-align:center;text-decoration:none}
     .vehicle-card{border-color:#806116;background:linear-gradient(145deg,#2c250f,#111c30 48%);overflow:hidden}.vehicle-title{color:#ffd34e}.vehicle-note{font-size:14px;color:#ffe6a0}.safety{padding:12px;border-radius:12px;background:#361d18;color:#ffc7b8;border:1px solid #7b3b2e;margin-top:12px;overflow-wrap:anywhere}.vehicle-card .row{display:block;width:100%}.vehicle-card .label,.vehicle-card .value{display:block;width:100%;max-width:none}.vehicle-card .value{text-align:left;margin-top:6px;line-height:1.4;font-size:17px;overflow-wrap:anywhere;word-break:break-word}
     .condition-badge{display:inline-flex;align-items:center;width:max-content;margin-top:8px;padding:6px 10px;border-radius:999px;font-size:13px;font-weight:800;border:1px solid #39506d;background:#17263d;color:#d8e7ff}.condition-badge.new-sealed{background:#123629;border-color:#2c8058;color:#a7f3d0}.condition-badge.like-new{background:#153448;border-color:#34769a;color:#b8e9ff}.condition-badge.used{background:#302b18;border-color:#76652b;color:#ffe29a}.condition-badge.worn-damaged{background:#3a211e;border-color:#8c463a;color:#ffc2b5}.condition-badge.cannot-tell{background:#242a35;border-color:#535f73;color:#c9d2df}\n    .history-head{display:flex;align-items:center;justify-content:space-between;gap:12px}.history-head h2{margin:0}.history-list{display:grid;gap:10px;margin-top:12px}.history-item{display:grid;grid-template-columns:64px minmax(0,1fr) 38px;align-items:center;gap:10px;padding:10px;border:1px solid var(--line);border-radius:14px;background:#0b1628;color:#fff;text-align:left;width:100%}.history-image{width:64px;height:64px;border-radius:10px;object-fit:cover;background:#07101f}.history-info{min-width:0}.history-name{font-weight:800;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.history-meta{font-size:13px;color:var(--muted);margin-top:4px}.history-delete{width:36px;height:36px;min-height:0;padding:0;border-radius:50%;background:#321b22;color:#ffb4b4}.empty-history{color:var(--muted);margin:8px 0 0}
-    .sell-card textarea,.chat-input{width:100%;border:1px solid #354b6c;border-radius:12px;background:#091426;color:var(--text);padding:12px;font:inherit;line-height:1.45}
-    .sell-card textarea{min-height:84px;resize:vertical}
+    .sell-card textarea,.sell-card input,.sell-card select,.chat-input{width:100%;border:1px solid #354b6c;border-radius:12px;background:#091426;color:var(--text);padding:12px;font:inherit;line-height:1.45}
+    .sell-card textarea{min-height:100px;resize:vertical}
     .sell-card .draft-label{display:block;margin:12px 0 6px;color:var(--muted);font-size:14px}
+    .sell-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+    .sell-grid>div{min-width:0}
     .sell-actions,.market-links{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
     .market-links a{display:grid;place-items:center;min-height:48px;padding:9px;border-radius:12px;background:#1b2a44;border:1px solid #354b6c;color:#fff;font-weight:750;text-align:center;text-decoration:none}
+    .market-links a.recommended{border-color:#56c596;background:#123629;color:#a7f3d0}
+    .sell-recommendation{padding:10px 12px;border-radius:12px;background:#0b2131;border:1px solid #29506b;color:#bcecff;margin-top:12px;font-size:14px}
     .draft-caution{font-size:13px;padding:10px;border-radius:12px;background:#332712;color:#ffe2a3;margin-top:12px}
+    @media(max-width:420px){.sell-grid{grid-template-columns:1fr}}
     .chat-thread{display:grid;gap:8px;max-height:280px;overflow:auto;margin:12px 0;padding:10px;border:1px solid var(--line);border-radius:14px;background:#091426}
     .chat-message{max-width:92%;padding:10px 12px;border-radius:14px;line-height:1.45;white-space:pre-wrap;overflow-wrap:anywhere}
     .chat-message.assistant{justify-self:start;background:#17263d}.chat-message.user{justify-self:end;background:#16455a}
@@ -108,23 +113,47 @@
       </div>
     </div>
     <section class="card sell-card" id="sell-card">
-    <h2>Prepare a listing</h2>
-    <p>Use the identification as a starting point. Review every detail and add your own clear photos before posting.</p>
-    <label class="draft-label" for="sell-title">Suggested title (you can edit it)</label>
-    <textarea id="sell-title" maxlength="80"></textarea>
-    <label class="draft-label" for="sell-description">Suggested description (you can edit it)</label>
+    <h2>Sell this item</h2>
+    <p>Turn the investigation into a draft listing. Check the details, add your own photos and finish the listing on the marketplace you choose.</p>
+    <label class="draft-label" for="sell-title">Suggested title (editable)</label>
+    <textarea id="sell-title" maxlength="80" aria-label="Suggested listing title"></textarea>
+    <div class="sell-grid">
+      <div>
+        <label class="draft-label" for="sell-category">Category (editable)</label>
+        <input id="sell-category" type="text" maxlength="100" placeholder="Choose a category">
+      </div>
+      <div>
+        <label class="draft-label" for="sell-price">Suggested asking price in GBP (editable)</label>
+        <input id="sell-price" type="text" inputmode="decimal" maxlength="20" placeholder="Set your price">
+      </div>
+    </div>
+    <label class="draft-label" for="sell-condition">Condition (check and edit before listing)</label>
+    <select id="sell-condition">
+      <option value="Unknown — please assess">Unknown — please assess</option>
+      <option value="New and sealed">New and sealed</option>
+      <option value="Like new">Like new</option>
+      <option value="Used — good condition">Used — good condition</option>
+      <option value="Used — fair condition">Used — fair condition</option>
+      <option value="For parts or repair">For parts or repair</option>
+    </select>
+    <label class="draft-label" for="sell-description">Suggested description (editable)</label>
     <textarea id="sell-description" rows="7"></textarea>
     <div class="sell-actions">
       <button class="secondary" type="button" id="copy-title">Copy title</button>
       <button class="secondary" type="button" id="copy-description">Copy description</button>
+      <button class="primary" type="button" id="copy-listing" style="grid-column:1/-1">Copy full listing</button>
     </div>
-    <div class="draft-caution">Check condition, authenticity, included parts and safety details yourself. The second-hand estimate is not a guaranteed selling price.</div>
+    <div class="draft-caution">The suggested price is based on Object Detective’s second-hand estimate, not guaranteed sold prices. Verify condition, authenticity, included parts and safety details yourself before publishing.</div>
     <h3>Choose where to list</h3>
-    <div class="market-links">
-      <a href="https://www.ebay.co.uk/sl/sell" target="_blank" rel="noopener">Sell on eBay</a>
-      <a href="https://www.facebook.com/marketplace/" target="_blank" rel="noopener">Facebook Marketplace</a>
-      <a href="https://www.gumtree.com/" target="_blank" rel="noopener">Gumtree</a>
+    <div class="sell-recommendation" id="sell-recommendation" role="status">A marketplace suggestion will appear here.</div>
+    <div class="market-links" id="market-links">
+      <a id="sell-ebay" href="https://www.ebay.co.uk/sl/sell" target="_blank" rel="noopener">Sell on eBay</a>
+      <a id="sell-facebook" href="https://www.facebook.com/marketplace/" target="_blank" rel="noopener">Sell on Facebook Marketplace</a>
+      <a id="sell-gumtree" href="https://www.gumtree.com/" target="_blank" rel="noopener">Sell on Gumtree</a>
+      <a id="sell-vinted" href="https://www.vinted.co.uk/" target="_blank" rel="noopener">Sell on Vinted</a>
+      <a id="sell-etsy" href="https://www.etsy.com/" target="_blank" rel="noopener">Sell on Etsy</a>
     </div>
+    <p class="photo-guide">Your photos stay in Object Detective. Add them directly when completing your marketplace listing.</p>
   </section>
   <section class="card chat-card" id="chat-card">
     <h2>Ask Detective</h2>
@@ -394,22 +423,69 @@ renderHistory();
 let currentChatContext={};
 let chatMessages=[];
 function usefulText(value){return typeof value==="string"&&value.trim()&&value.trim()!=="Unknown"?value.trim():"";}
+function suggestedAskPrice(value){
+  const text=usefulText(value);
+  if(!text)return"";
+  const amounts=[...text.matchAll(/(?:£\\s*)?(\\d[\\d,]*(?:\\.\\d{1,2})?)/g)].map(match=>Number(match[1].replace(/,/g,""))).filter(Number.isFinite);
+  if(!amounts.length)return"";
+  return"£"+Math.floor(Math.min(...amounts));
+}
+function suggestedMarketplace(data){
+  const clues=[data.category,data.object,data.purpose].map(usefulText).join(" ").toLowerCase();
+  if(/clothing|fashion|garment|shoe|sneaker|handbag|bag|coat|dress|vintage wear/.test(clues))
+    return{key:"vinted",name:"Vinted",reason:"a good first place for clothing, shoes and accessories"};
+  if(/handmade|craft|artwork|wall art|vintage|antique|collectible|collectable|jewell?ery|crafts/.test(clues))
+    return{key:"etsy",name:"Etsy",reason:"a good first place for handmade, vintage and collectible items"};
+  if(/furniture|sofa|table|chair|large appliance|mattress/.test(clues))
+    return{key:"gumtree",name:"Gumtree",reason:"a good first place for larger local items"};
+  return{key:"ebay",name:"eBay",reason:"a broad marketplace for most second-hand items"};
+}
 function updateSellDraft(data){
   const parts=[data.brand,data.model,data.model_number,data.variant,data.object].map(usefulText).filter((item,index,all)=>all.indexOf(item)===index);
-  const title=(parts.join(" ").replace(/\s+/g," ").trim()||"Item for sale").slice(0,80);
+  const title=(parts.join(" ").replace(/\\s+/g," ").trim()||"Item for sale").slice(0,80);
+  const category=usefulText(data.category)||"General";
+  const gradeMap={new_sealed:"New and sealed",like_new:"Like new",used:"Used — good condition",worn_damaged:"Used — fair condition"};
+  const rawCondition=usefulText(data.condition);
+  const condition=gradeMap[data.condition_grade]||(rawCondition?rawCondition.slice(0,100):"Unknown — please assess");
+  const price=suggestedAskPrice(data.value_estimate);
   const lines=[
-    title,
+    usefulText(data.object)?"Identified as: "+usefulText(data.object)+".":"",
+    usefulText(data.purpose)?"Purpose: "+usefulText(data.purpose)+".":"",
+    usefulText(data.compatibility)?"Compatibility: "+usefulText(data.compatibility)+".":"",
+    usefulText(data.warning)?"Important note: "+usefulText(data.warning):"",
     "",
-    "Condition: "+(usefulText(data.condition)||"Not confirmed from the photographs."),
-    usefulText(data.condition_grade)?"Condition category: "+data.condition_grade.replace(/_/g," "):"",
-    usefulText(data.value_estimate)?"Object Detective second-hand estimate: "+data.value_estimate+" (estimate only; check comparable completed sales before setting a price).":"",
-    usefulText(data.compatibility)?"Compatibility: "+data.compatibility:"",
-    usefulText(data.warning)?"Important note: "+data.warning:"",
-    "",
-    "Please check the photographs and verify functionality, authenticity and completeness yourself. These are not guaranteed by this description."
+    "Please check the photographs and verify functionality, authenticity and completeness yourself. Add any faults or missing parts before listing."
   ];
   document.getElementById("sell-title").value=title;
-  document.getElementById("sell-description").value=lines.filter((line,index)=>line!==""||lines[index-1]!=="").join("\n").trim();
+  document.getElementById("sell-category").value=category;
+  document.getElementById("sell-price").value=price;
+  const conditionSelect=document.getElementById("sell-condition");
+  const option=[...conditionSelect.options].find(item=>item.value===condition)||conditionSelect.options[0];
+  conditionSelect.value=option.value;
+  document.getElementById("sell-description").value=lines.filter((line,index)=>line!==""||lines[index-1]!=="").join("\\n").trim();
+  const recommendation=suggestedMarketplace(data);
+  document.getElementById("sell-recommendation").textContent="Suggested first choice: "+recommendation.name+" — "+recommendation.reason+". Compare its fees, audience and rules before listing.";
+  document.querySelectorAll("#market-links a").forEach(link=>{
+    link.classList.toggle("recommended",link.id==="sell-"+recommendation.key);
+    const marketplace=link.textContent.replace(/^Sell on /,"").replace(/ · Suggested$/,"");
+    link.textContent=link.id==="sell-"+recommendation.key?"Sell on "+recommendation.name+" · Suggested":"Sell on "+marketplace;
+  });
+}
+function fullListingText(){
+  const title=document.getElementById("sell-title").value.trim();
+  const category=document.getElementById("sell-category").value.trim();
+  const price=document.getElementById("sell-price").value.trim();
+  const condition=document.getElementById("sell-condition").value;
+  const description=document.getElementById("sell-description").value.trim();
+  return[title,"Category: "+(category||"Please choose"),"Condition: "+condition,"Suggested asking price: "+(price||"Set before listing"),description].filter(Boolean).join("\\n\\n");
+}
+document.getElementById("copy-listing").onclick=async()=>{
+  const button=document.getElementById("copy-listing");
+  try{
+    if(navigator.clipboard&&window.isSecureContext)await navigator.clipboard.writeText(fullListingText());
+    else{const area=document.createElement("textarea");area.value=fullListingText();area.style.position="fixed";area.style.opacity="0";document.body.appendChild(area);area.select();if(!document.execCommand("copy"))throw new Error("copy failed");area.remove();}
+    const label=button.textContent;button.textContent="Full listing copied";setTimeout(()=>button.textContent=label,1600);
+  }catch{const area=document.createElement("textarea");area.value=fullListingText();area.style.position="fixed";area.style.opacity="0";document.body.appendChild(area);area.select();document.getElementById("chat-status").textContent="Listing selected. Press and hold, then tap Copy.";setTimeout(()=>area.remove(),1000);}
 }
 async function copyDraft(fieldId,buttonId){
   const field=document.getElementById(fieldId),button=document.getElementById(buttonId);
