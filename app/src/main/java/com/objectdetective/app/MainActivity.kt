@@ -20,7 +20,11 @@ import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.widget.Toast
+import androidx.core.content.FileProvider
+import java.io.File
+import java.io.FileOutputStream
 import java.io.IOException
+import java.util.UUID
 
 class MainActivity : Activity() {
     private lateinit var webView: WebView
@@ -34,6 +38,7 @@ class MainActivity : Activity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
+        convertedPhotosDirectory().deleteRecursively()
         webView = WebView(this)
         setContentView(webView)
 
@@ -175,39 +180,35 @@ class MainActivity : Activity() {
         }
     }
 
+    private fun convertedPhotosDirectory(): File =
+        File(cacheDir, "converted-photos")
+
     private fun convertToJpeg(sourceUri: Uri): Uri {
         val bitmap = decodeBitmap(sourceUri)
-        val values = ContentValues().apply {
-            put(
-                MediaStore.Images.Media.DISPLAY_NAME,
-                "ObjectDetective_${System.currentTimeMillis()}.jpg"
-            )
-            put(MediaStore.Images.Media.MIME_TYPE, "image/jpeg")
-            put(
-                MediaStore.Images.Media.RELATIVE_PATH,
-                Environment.DIRECTORY_PICTURES + "/ObjectDetective"
-            )
-            put(MediaStore.Images.Media.IS_PENDING, 1)
+        val outputDirectory = convertedPhotosDirectory()
+        if (!outputDirectory.exists() && !outputDirectory.mkdirs()) {
+            bitmap.recycle()
+            throw IOException("Temporary photo storage could not be created.")
         }
 
-        val outputUri = contentResolver.insert(
-            MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
-            values
-        ) ?: throw IOException("A JPEG copy could not be created.")
+        val outputFile = File(
+            outputDirectory,
+            "ObjectDetective_${UUID.randomUUID()}.jpg"
+        )
 
         try {
-            contentResolver.openOutputStream(outputUri)?.use { output ->
+            FileOutputStream(outputFile).use { output ->
                 if (!bitmap.compress(Bitmap.CompressFormat.JPEG, 92, output)) {
                     throw IOException("The JPEG conversion failed.")
                 }
-            } ?: throw IOException("The JPEG copy could not be opened.")
-
-            values.clear()
-            values.put(MediaStore.Images.Media.IS_PENDING, 0)
-            contentResolver.update(outputUri, values, null, null)
-            return outputUri
+            }
+            return FileProvider.getUriForFile(
+                this,
+                "$packageName.fileprovider",
+                outputFile
+            )
         } catch (error: Exception) {
-            contentResolver.delete(outputUri, null, null)
+            outputFile.delete()
             throw error
         } finally {
             bitmap.recycle()
@@ -272,6 +273,13 @@ class MainActivity : Activity() {
                 Toast.LENGTH_LONG
             ).show()
         }
+    }
+
+    override fun onDestroy() {
+        fileCallback?.onReceiveValue(null)
+        fileCallback = null
+        super.onDestroy()
+        convertedPhotosDirectory().deleteRecursively()
     }
 
     @Deprecated("Uses the compatibility back callback")
