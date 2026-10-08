@@ -103,6 +103,7 @@ class MainActivity : Activity() {
                 val galleryIntent = Intent(Intent.ACTION_GET_CONTENT).apply {
                     addCategory(Intent.CATEGORY_OPENABLE)
                     type = "image/*"
+                    putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true)
                 }
                 val cameraIntent = try {
                     val outputUri = createCameraImageUri()
@@ -235,18 +236,32 @@ class MainActivity : Activity() {
 
         try {
             val cameraUri = cameraImageUri
-            val selectedUri = data?.data
-            val sourceUri = selectedUri ?: cameraUri
-                ?: throw IOException("No photograph was selected.")
-            val selectedFromCamera = cameraUri != null &&
-                (selectedUri == null || selectedUri == cameraUri)
+            val selectedUris = mutableListOf<Uri>()
+            val clipData = data?.clipData
+            if (clipData != null) {
+                for (index in 0 until clipData.itemCount) {
+                    selectedUris.add(clipData.getItemAt(index).uri)
+                }
+            } else {
+                data?.data?.let { selectedUris.add(it) }
+            }
 
+            val selectedFromCamera = cameraUri != null &&
+                (selectedUris.isEmpty() || selectedUris.size == 1 && selectedUris[0] == cameraUri)
+            val sourceUris = selectedUris.ifEmpty {
+                listOf(cameraUri ?: throw IOException("No photograph was selected."))
+            }
             if (!selectedFromCamera) {
                 cameraUri?.let { contentResolver.delete(it, null, null) }
             }
-            val jpegUri = if (selectedFromCamera) sourceUri else convertToJpeg(sourceUri)
+            if (sourceUris.size > 3) {
+                Toast.makeText(this, "Only the first three photos will be used.", Toast.LENGTH_SHORT).show()
+            }
+            val jpegUris = sourceUris.take(3).map { sourceUri ->
+                if (selectedFromCamera && sourceUri == cameraUri) sourceUri else convertToJpeg(sourceUri)
+            }
             cameraImageUri = null
-            callback?.onReceiveValue(arrayOf(jpegUri))
+            callback?.onReceiveValue(jpegUris.toTypedArray())
         } catch (_: Exception) {
             cameraImageUri?.let { contentResolver.delete(it, null, null) }
             cameraImageUri = null
