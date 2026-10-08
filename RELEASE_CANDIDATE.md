@@ -20,7 +20,7 @@
 
 A source review and CI build cannot establish that any app is “100% safe.” They can reduce known risks; real-device testing, accurate privacy disclosures, and protection of the live service are still required.
 
-- [x] Android debug build passed in CI run [#57](https://github.com/davidfalla37-coder/Object-detective/actions/runs/37827775678). Latest Edge Function tests and type-check passed in CI run [#64](https://github.com/davidfalla37-coder/Object-detective/actions/runs/37828312841); its repeat Android job is still running.
+- [x] Latest candidate CI run [#64](https://github.com/davidfalla37-coder/Object-detective/actions/runs/37828312841) passed the Android debug build, Edge Function tests, and Edge Function type-check.
 - [x] WebView code no longer loads the packaged app through `file://`; local files and unapproved network origins are blocked in the candidate.
 - [x] Android manifest disables app backup and cleartext traffic; WebView media-permission requests are denied.
 - [x] Candidate code now validates Supabase user JWTs against the Auth service, checks per-account daily quotas before calling OpenAI (30 investigations and 120 chat messages), and includes an in-app anonymous-session deletion flow. A SQL migration creates the quota table and RPC.
@@ -48,7 +48,7 @@ A source review and CI build cannot establish that any app is “100% safe.” T
 
 ## Still pending
 
-- The latest Android debug build and latest Edge Function tests/type-check have passed on the current relevant source. Hands-on device testing remains outstanding.
+- CI run #64 passed the Android debug build and Edge Function tests/type-check. Hands-on device testing remains outstanding.
 - Auth, quota, and deletion changes are code-only at this stage; the live function, database, and tester app have not been changed.
 - CAPTCHA/bot protection is not implemented yet. Supabase Auth settings and the quota migration also remain to be configured before rollout.
 - Hands-on Android testing of sign-up, token refresh, quotas, and account deletion has not run yet.
