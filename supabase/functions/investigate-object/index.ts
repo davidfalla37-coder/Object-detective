@@ -723,7 +723,7 @@ export async function handleRequest(request: Request): Promise<Response> {
       return errorResponse("The request limit could not be checked. Please try again shortly.", 503, "quota_unavailable");
     }
     if (!chatAllowed) {
-      return errorResponse("You have reached today’s follow-up limit. Please try again tomorrow.", 429, "daily_quota_exceeded");
+      return errorResponse("You have reached today’s follow-up limit. Please try again after the daily limit resets.", 429, "daily_quota_exceeded");
     }
 
     try {
@@ -782,7 +782,7 @@ export async function handleRequest(request: Request): Promise<Response> {
     return errorResponse("The request limit could not be checked. Please try again shortly.", 503, "quota_unavailable");
   }
   if (!analysisAllowed) {
-    return errorResponse("You have reached today’s investigation limit. Please try again tomorrow.", 429, "daily_quota_exceeded");
+    return errorResponse("You have reached today’s investigation limit. Please try again after the daily limit resets.", 429, "daily_quota_exceeded");
   }
 
   try {
