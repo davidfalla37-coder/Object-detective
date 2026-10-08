@@ -45,7 +45,7 @@ No name, email, password, contacts, precise location, SMS, phone logs, health da
 
 1. Recheck the final merged Android manifest and all included SDKs for data collection or sharing not visible in source dependencies.
 2. Apply and verify the quota migration; enable anonymous sign-ins and configure suitable anti-automation protection in Supabase Auth.
-3. Confirm the deployed function requires JWT verification and rejects over-quota requests before calling OpenAI.
+3. Confirm the deployed function performs server-side Supabase Auth validation and rejects over-quota requests before calling OpenAI.
 4. Confirm the account-deletion page is publicly reachable and the in-app deletion flow works.
 5. Confirm OpenAI project/organization data controls. Do not claim Zero Data Retention or Modified Abuse Monitoring without verifying the active setting.
 6. Recheck Supabase plan and log availability if the plan or usage state changes.
