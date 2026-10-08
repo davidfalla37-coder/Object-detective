@@ -87,7 +87,7 @@ class MainActivity : Activity() {
 
         webView.webChromeClient = object : WebChromeClient() {
             override fun onPermissionRequest(request: PermissionRequest) {
-                runOnUiThread { request.grant(request.resources) }
+                runOnUiThread { request.deny() }
             }
 
             override fun onShowFileChooser(
