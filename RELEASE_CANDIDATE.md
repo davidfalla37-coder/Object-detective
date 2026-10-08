@@ -14,6 +14,7 @@
 | Privacy access | In-app link to the public privacy policy. | [#9](https://github.com/davidfalla37-coder/Object-detective/pull/9) |
 | Privacy and retention | Named provider data flows, Supabase invocation-log disclosure, OpenAI default-retention disclosure, and `store:false` on all three Responses API requests. | [#10](https://github.com/davidfalla37-coder/Object-detective/pull/10) |
 | Android WebView safety | Serve bundled app files through AndroidX WebViewAssetLoader; deny file-URL access, block unapproved network requests, restrict navigation, deny web media permissions, and disable Android backup. | Security review |
+| API abuse protection | Anonymous Supabase Auth sessions, JWT-required function configuration, per-account daily quotas, and account deletion controls. Requires migration and Supabase dashboard setup before deployment. | Security review |
 
 ## Security review — release blockers
 
@@ -22,8 +23,10 @@ A source review and CI build cannot establish that any app is “100% safe.” T
 - [x] Latest candidate CI run [#34](https://github.com/davidfalla37-coder/Object-detective/actions/runs/37826155415) passed the Android debug build, Edge Function tests, and Edge Function type-check.
 - [x] WebView code no longer loads the packaged app through `file://`; local files and unapproved network origins are blocked in the candidate.
 - [x] Android manifest disables app backup and cleartext traffic; WebView media-permission requests are denied.
-- [ ] **Before production rollout, add and test server-side abuse controls for the OpenAI-backed Edge Function.** The currently deployed function has JWT verification disabled and no request identity or durable rate limit. A public caller can invoke analysis and incur provider costs. CORS is not authentication.
-- [ ] Choose controls compatible with the Android app, implement them in the candidate, and test rejection of unauthenticated/excessive requests. Do not enable a control on the live function until the matching client is ready, because that could break the current tester build.
+- [x] Candidate code now requires a Supabase user JWT, checks per-account daily quotas before calling OpenAI (30 investigations and 120 chat messages), and includes an in-app anonymous-session deletion flow. A SQL migration creates the quota table and RPC.
+- [ ] **Before rollout, apply the quota migration, enable Supabase anonymous sign-ins, and deploy the function with JWT verification enabled.** The currently deployed function remains public and unchanged, so this draft code does not protect the live service yet.
+- [ ] Add suitable bot protection for anonymous sign-up. Supabase recommends CAPTCHA because anonymous accounts can otherwise be created automatically; the candidate does not include a CAPTCHA challenge yet. Test quotas, rejected requests, token refresh, and account deletion before rollout.
+- [ ] Confirm the Edge Function's Supabase service-role secret is available for deletion, and verify the public account-deletion page and privacy policy after they are published.
 - [ ] On the owner's Android phone, verify camera capture, gallery selection, multiple photos up to three, cancellation, permission denial, oversized selections, external HTTPS links, blocked HTTP links, and investigation retry/error states.
 - [ ] Confirm gallery photo conversion creates no copies in the public Pictures folder, and temporary converted files are cleared when the app closes.
 - [ ] Run the accuracy plan on representative ordinary objects, branded/model-labelled objects, incomplete items, vehicle parts, and unclear photos; record the results.
@@ -38,15 +41,17 @@ A source review and CI build cannot establish that any app is “100% safe.” T
 
 ## Release ordering
 
-1. Resolve the Edge Function abuse-control blocker and finish the checks above; confirm OpenAI retention settings.
-2. Deploy the matching Edge Function and publish the matching privacy policy together.
+1. Add and test anti-automation protection; configure anonymous Auth; apply the quota migration; confirm OpenAI retention settings.
+2. Deploy the function with JWT verification enabled and publish the matching privacy policy and account-deletion page together.
 3. Build the signed AAB from the reviewed candidate and install it on the owner's device first.
 4. Roll the same approved AAB out to the existing test group when ready; do not change Play Console listing or track settings until the release review.
 
 ## Still pending
 
-- Android debug build, Edge Function tests, and type-check passed in CI run #34; hands-on Android testing has not run yet.
-- The deployed Edge Function still needs request authentication/abuse protection before the next rollout.
+- CI run #34 passed before the new authentication, quota, and deletion changes. A new CI run must pass before the candidate is considered build-verified.
+- Auth, quota, and deletion changes are code-only at this stage; the live function, database, and tester app have not been changed.
+- CAPTCHA/bot protection is not implemented yet. Supabase Auth settings and the quota migration also remain to be configured before rollout.
+- Hands-on Android testing of sign-up, token refresh, quotas, and account deletion has not run yet.
 - Store screenshots are a plan only; the feature graphic and icon remain candidates for visual review.
 - The OpenAI data-retention control is account-level and was not available through repository/Supabase access.
 - The candidate does not include a new version number or signed AAB yet.
