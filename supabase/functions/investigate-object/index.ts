@@ -251,10 +251,11 @@ async function consumeUsageQuota(request: Request, kind: "analysis" | "chat"): P
 async function getVerifiedSupabaseUser(
   request: Request,
 ): Promise<{ id: string; is_anonymous: boolean } | null> {
-  const supabaseUrl = Deno.env.get("SUPABASE_URL");
   const apiKey = request.headers.get("apikey");
   const authorization = request.headers.get("authorization");
-  if (!supabaseUrl || !apiKey || !/^Bearer\s+\S+$/i.test(authorization ?? "")) return null;
+  if (!apiKey || !/^Bearer\s+\S+$/i.test(authorization ?? "")) return null;
+  const supabaseUrl = Deno.env.get("SUPABASE_URL");
+  if (!supabaseUrl) return null;
 
   try {
     const response = await fetch(`${supabaseUrl}/auth/v1/user`, {
