@@ -16,29 +16,50 @@ import android.webkit.PermissionRequest
 import android.webkit.ValueCallback
 import android.webkit.WebChromeClient
 import android.webkit.WebResourceRequest
+import android.webkit.WebResourceResponse
 import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.widget.Toast
 import androidx.core.content.FileProvider
+import androidx.webkit.WebViewAssetLoader
 import java.io.File
 import java.io.FileOutputStream
+import java.io.ByteArrayInputStream
 import java.io.IOException
 import java.util.UUID
 
 class MainActivity : Activity() {
     private lateinit var webView: WebView
+    private lateinit var webViewAssetLoader: WebViewAssetLoader
     private var fileCallback: ValueCallback<Array<Uri>>? = null
     private var cameraImageUri: Uri? = null
 
     companion object {
         private const val FILE_REQUEST_CODE = 1001
+        private const val APP_ASSET_HOST = "appassets.androidplatform.net"
+        private const val SUPABASE_HOST = "gboyflbwcobhzbvpdtat.supabase.co"
+        private const val SUPABASE_FUNCTION_PATH = "/functions/v1/investigate-object"
     }
+
+    private fun blockedWebResponse(): WebResourceResponse =
+        WebResourceResponse(
+            "text/plain",
+            "UTF-8",
+            403,
+            "Blocked",
+            emptyMap(),
+            ByteArrayInputStream(ByteArray(0))
+        )
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
         convertedPhotosDirectory().deleteRecursively()
+        webViewAssetLoader = WebViewAssetLoader.Builder()
+            .addPathHandler("/assets/", WebViewAssetLoader.AssetsPathHandler(this))
+            .build()
+
         webView = WebView(this)
         setContentView(webView)
 
@@ -62,31 +83,65 @@ class MainActivity : Activity() {
         webView.settings.apply {
             javaScriptEnabled = true
             domStorageEnabled = true
-            allowFileAccess = true
+            allowFileAccess = false
             allowContentAccess = true
+            allowFileAccessFromFileURLs = false
+            allowUniversalAccessFromFileURLs = false
             mediaPlaybackRequiresUserGesture = false
             cacheMode = WebSettings.LOAD_DEFAULT
             textZoom = 100
         }
 
         webView.webViewClient = object : WebViewClient() {
+            override fun shouldInterceptRequest(
+                view: WebView,
+                request: WebResourceRequest
+            ): WebResourceResponse? {
+                val uri = request.url
+                val scheme = uri.scheme?.lowercase()
+                val host = uri.host?.lowercase()
+
+                if (scheme == "https" && host == APP_ASSET_HOST) {
+                    return webViewAssetLoader.shouldInterceptRequest(uri)
+                        ?: blockedWebResponse()
+                }
+                if (
+                    scheme == "https" &&
+                    host == SUPABASE_HOST &&
+                    uri.path == SUPABASE_FUNCTION_PATH
+                ) {
+                    return null
+                }
+                return blockedWebResponse()
+            }
+
             override fun shouldOverrideUrlLoading(
                 view: WebView,
                 request: WebResourceRequest
             ): Boolean {
-    val uri = request.url
-    val scheme = uri.scheme?.lowercase()
+                val uri = request.url
+                val scheme = uri.scheme?.lowercase()
 
-    return if (scheme == "http" || scheme == "https") {
-        try {
-            startActivity(Intent(Intent.ACTION_VIEW, uri))
-            true
-        } catch (_: Exception) {
-            false
-        }
-    } else {
-        false
-    }
+                if (
+                    scheme == "https" &&
+                    uri.host?.lowercase() == APP_ASSET_HOST &&
+                    uri.path?.startsWith("/assets/") == true
+                ) {
+                    return false
+                }
+
+                if (scheme == "https") {
+                    try {
+                        startActivity(Intent(Intent.ACTION_VIEW, uri))
+                    } catch (_: Exception) {
+                        Toast.makeText(
+                            this@MainActivity,
+                            "No browser can open this link.",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    }
+                }
+                return true
             }
         }
 
@@ -144,7 +199,7 @@ class MainActivity : Activity() {
             }
         }
 
-        webView.loadUrl("file:///android_asset/index-2.html")
+        webView.loadUrl("https://appassets.androidplatform.net/assets/index-2.html")
     }
 
     private fun createCameraImageUri(): Uri {
