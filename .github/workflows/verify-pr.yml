@@ -7,6 +7,12 @@ on:
     paths:
       - 'app/**'
       - 'supabase/functions/investigate-object/**'
+      - 'supabase/migrations/**'
+      - 'supabase/config.toml'
+      - 'privacy-policy.html'
+      - 'account-deletion.html'
+      - 'DATA_SAFETY_DRAFT.md'
+      - 'RELEASE_CANDIDATE.md'
       - 'build.gradle'
       - 'settings.gradle'
       - 'ic_launcher.xml'
