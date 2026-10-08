@@ -278,8 +278,12 @@ class MainActivity : Activity() {
     override fun onDestroy() {
         fileCallback?.onReceiveValue(null)
         fileCallback = null
-        super.onDestroy()
+        if (::webView.isInitialized) {
+            webView.stopLoading()
+            webView.destroy()
+        }
         convertedPhotosDirectory().deleteRecursively()
+        super.onDestroy()
     }
 
     @Deprecated("Uses the compatibility back callback")
