@@ -1,6 +1,7 @@
 import {
   conservativeFallback,
   handleRequest,
+  getVerifiedSupabaseUser,
   isValidImageDataUrl,
   normalizeResult,
   normalizeVerification,
@@ -125,6 +126,35 @@ Deno.test("valid analysis and chat requests require a Supabase user session", as
     body: JSON.stringify({ mode: "chat", question: "What is this?" }),
   }));
   await assertErrorCode(chat, 401, "authentication_required");
+});
+
+Deno.test("session verification accepts only a user returned by Supabase Auth", async () => {
+  const request = new Request("https://edge.test/", {
+    method: "POST",
+    headers: {
+      "apikey": "test-publishable-key",
+      "authorization": "Bearer test-user-token",
+    },
+    body: "{}",
+  });
+  let authRequestSeen = false;
+  const user = await getVerifiedSupabaseUser(request, {
+    supabaseUrl: "https://project.supabase.co",
+    fetcher: async (input, init) => {
+      authRequestSeen = String(input) === "https://project.supabase.co/auth/v1/user";
+      assertEquals((init?.headers as Record<string, string>).Authorization, "Bearer test-user-token", "bearer token forwarded for Auth validation");
+      return Response.json({ id: "123e4567-e89b-12d3-a456-426614174000", is_anonymous: true });
+    },
+  });
+  assert(authRequestSeen, "Auth service is queried");
+  assertEquals(user?.id, "123e4567-e89b-12d3-a456-426614174000", "verified user id");
+  assertEquals(user?.is_anonymous, true, "anonymous account type");
+
+  const rejected = await getVerifiedSupabaseUser(request, {
+    supabaseUrl: "https://project.supabase.co",
+    fetcher: async () => new Response("{}", { status: 401 }),
+  });
+  assertEquals(rejected, null, "invalid session is rejected");
 });
 
 Deno.test("request JSON parsing enforces a streaming size limit", async () => {
