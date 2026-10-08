@@ -9,6 +9,7 @@ const PRIMARY_MODEL = "gpt-4.1-mini";
 const VERIFICATION_MODEL = "gpt-4.1";
 const MAX_IMAGE_DATA_URL_LENGTH = 20 * 1024 * 1024;
 const MAX_REQUEST_LENGTH = MAX_IMAGE_DATA_URL_LENGTH + 1024;
+export const OPENAI_NO_STORE = { store: false } as const;
 
 interface RequestBody {
   image?: unknown;
@@ -418,7 +419,7 @@ async function verifyIdentification(
       },
       body: JSON.stringify({
         model: VERIFICATION_MODEL,
-        store: false,
+        ...OPENAI_NO_STORE,
         input: [{
           role: "user",
           content: [
@@ -594,7 +595,7 @@ export async function handleRequest(request: Request): Promise<Response> {
         },
         body: JSON.stringify({
           model: PRIMARY_MODEL,
-          store: false,
+          ...OPENAI_NO_STORE,
           instructions: developerInstructions,
           input: [{ role: "user", content: [{ type: "input_text", text: userPrompt }] }],
           max_output_tokens: 350,
@@ -642,7 +643,7 @@ export async function handleRequest(request: Request): Promise<Response> {
       },
       body: JSON.stringify({
         model: PRIMARY_MODEL,
-        store: false,
+        ...OPENAI_NO_STORE,
         input: [{
           role: "user",
           content: [
