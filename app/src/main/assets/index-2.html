@@ -87,6 +87,7 @@
         <label id="match-model-label" for="match-model">Brand and model<input id="match-model" maxlength="100" placeholder="e.g. brand and model"></label>
         <label id="match-id-label" for="match-id">Model, part number or barcode text<input id="match-id" maxlength="100" placeholder="Type or paste the printed code"></label>
         <label id="match-size-label" for="match-size">Key measurement (mm)<input id="match-size" inputmode="decimal" maxlength="12" placeholder="If known"></label>
+        <label id="match-fit-label" class="hidden" for="match-fit">Connector or end style<input id="match-fit" maxlength="100" placeholder="e.g. standard spring bar"></label>
       </div>
       <button class="secondary" id="update-match-search" type="button">Update shopping searches</button>
       <p class="match-note" id="match-note">These are search suggestions, not verified compatible products. Check the product details before buying.</p>
@@ -392,12 +393,13 @@ function configureMatchHelper(data){
   helper.classList.toggle("strap-mode",strap);
   document.getElementById("match-helper-title").textContent=strap?"Watch strap fit details":"Improve matching";
   document.getElementById("match-helper-copy").textContent=strap
-    ?"A photo can suggest the strap type, but it cannot confirm the connector or fit. Add the watch model and strap width if you know them."
+    ?"A photo can suggest the strap type, but it cannot confirm the connector or fit. Add the watch model, strap width and connector/end style if you know them."
     :"Add the brand/model, printed code or a measurement to make shopping searches more useful.";
   document.getElementById("match-model-label").firstChild.textContent=strap?"Watch brand and model":"Brand and model";
   document.getElementById("match-model").placeholder=strap?"e.g. Galaxy Watch 6 40 mm":"e.g. brand and model";
   document.getElementById("match-id-label").firstChild.textContent=strap?"Model number from watch back":"Model, part number or barcode text";
   document.getElementById("match-size-label").firstChild.textContent=strap?"Strap width between lugs (mm)":"Key measurement (mm)";
+  document.getElementById("match-fit-label").classList.toggle("hidden",!strap);
   document.getElementById("match-size").placeholder=strap?"e.g. 20":"If known";
   document.getElementById("match-note").textContent=strap
     ?"Search links will look for watch straps/bands using your details. Check connector style, width and the exact watch model with the seller before buying."
@@ -405,13 +407,15 @@ function configureMatchHelper(data){
   document.getElementById("match-model").value="";
   document.getElementById("match-id").value="";
   document.getElementById("match-size").value="";
+  document.getElementById("match-fit").value="";
   document.getElementById("update-match-search").onclick=()=>updateShoppingSearches(data);
 }
 function buildShopSearchTerms(data){
   const manual=[
     document.getElementById("match-model").value.trim(),
     document.getElementById("match-id").value.trim(),
-    document.getElementById("match-size").value.trim()
+    document.getElementById("match-size").value.trim(),
+    document.getElementById("match-fit").value.trim()
   ].filter(Boolean);
   if(isWatchStrap(data)){
     const known=[data.brand,data.model,data.model_number].map(usefulText).filter(Boolean);
