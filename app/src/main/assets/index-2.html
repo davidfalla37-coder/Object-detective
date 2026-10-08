@@ -47,7 +47,7 @@
 <main>
   <h1>🔎 Object Detective</h1>
   <p>Take or choose a clear photo and discover what the object is, what it does, and what it may be worth.</p>
-  <p class="privacy-link"><a href="https://davidfalla37-coder.github.io/Object-detective/privacy-policy.html">Privacy policy</a> · <button class="privacy-delete" id="delete-secure-session" type="button">Delete app data and secure session</button></p>
+  <p class="privacy-link"><a href="https://davidfalla37-coder.github.io/Object-detective/privacy-policy.html">Privacy policy</a> · <a href="https://davidfalla37-coder.github.io/Object-detective/account-deletion.html">Account deletion help</a> · <button class="privacy-delete" id="copy-session-id" type="button">Copy session ID</button> · <button class="privacy-delete" id="delete-secure-session" type="button">Delete app data and secure session</button></p>
 
   <section class="card">
     <div class="photo"><div id="placeholder"><span class="emoji">📷</span>Take a clear photograph</div><img id="preview" alt="Selected object"></div>
@@ -202,6 +202,7 @@ function saveAuthSession(value){
   const session={
     access_token:value.access_token,
     refresh_token:value.refresh_token,
+    user_id:typeof value.user?.id==='string'?value.user.id:null,
     expires_at:Number(value.expires_at)||Math.floor(Date.now()/1000)+Number(value.expires_in||3600)
   };
   localStorage.setItem(AUTH_SESSION_KEY,JSON.stringify(session));
@@ -260,6 +261,7 @@ const historyList=document.getElementById('history-list');
 const emptyHistory=document.getElementById('empty-history');
 const clearHistory=document.getElementById('clear-history');
 const deleteSecureSession=document.getElementById('delete-secure-session');
+const copySessionId=document.getElementById('copy-session-id');
 const HISTORY_KEY='object-detective-history-v1';
 let selectedFiles=[];
 let photoChecks=[];
@@ -568,6 +570,14 @@ function renderHistory(){
 }
 
 clearHistory.onclick=()=>{if(confirm('Delete all saved investigations?')){writeHistory([]);renderHistory()}};
+copySessionId.onclick=async()=>{
+  const session=readAuthSession();
+  if(!session?.user_id){alert('Use the app once first so it can create a secure session ID.');return;}
+  try{
+    await navigator.clipboard.writeText(session.user_id);
+    alert('Session ID copied. Include it if you email a deletion request.');
+  }catch(_){prompt('Copy this session ID into your deletion request:',session.user_id);}
+};
 deleteSecureSession.onclick=async()=>{
   if(!confirm('Delete your secure app session and clear saved investigations on this device? You can use the app again later; it will create a new anonymous session.'))return;
   deleteSecureSession.disabled=true;
