@@ -3,6 +3,10 @@ plugins {
     id 'org.jetbrains.kotlin.android'
 }
 
+dependencies {
+    implementation 'androidx.core:core:1.16.0'
+}
+
 android {
     namespace 'com.objectdetective.app'
     compileSdk 36
