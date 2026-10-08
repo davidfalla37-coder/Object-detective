@@ -16,7 +16,7 @@
 
 ## Checks to finish before producing the release AAB
 
-- [ ] Pass the consolidated Android debug build, Edge Function tests, and Edge Function type-check.
+- [x] Consolidated Android debug build, Edge Function tests, and Edge Function type-check passed in CI run [#25](https://github.com/davidfalla37-coder/Object-detective/actions/runs/37823894430).
 - [ ] Run the accuracy plan on representative ordinary objects, branded/model-labelled objects, incomplete items, vehicle parts, and unclear photos; record the results.
 - [ ] On an Android phone, verify camera capture, gallery selection, multiple photos up to three, cancellation, permission denial, oversized selections, and investigation retry/error states.
 - [ ] Verify that sold-item searches open with useful terms, and that the user can still manually improve the shopping query.
@@ -37,7 +37,7 @@
 
 ## Still pending
 
-- CI for this combined branch and hands-on Android testing have not run yet.
+- Combined CI passed in run #25; hands-on Android testing has not run yet.
 - Store screenshots are a plan only; the feature graphic and icon remain candidates for visual review.
 - The OpenAI data-retention control is account-level and was not available through repository/Supabase access.
 - The candidate does not include a new version number or signed AAB yet.
