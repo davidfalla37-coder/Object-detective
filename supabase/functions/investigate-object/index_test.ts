@@ -164,7 +164,7 @@ Deno.test("an exact status requires a strong identifier and uses the lower confi
 
   const unconfirmed = reconcileVerification(
     primaryResult({ brand: "Unknown", model_number: "Unknown" }),
-    verification({ exact_match_confidence: 0.75 }),
+    verification({ brand: "Unknown", model: "Unknown", model_number: "Unknown", exact_match_confidence: 0.75 }),
   );
   assertEquals(unconfirmed.exact_match_status, "likely", "exact status downgrades without a strong identifier");
 });
