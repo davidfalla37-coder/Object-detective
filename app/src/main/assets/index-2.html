@@ -186,6 +186,63 @@
 </main>
 <script>
 const FUNCTION_URL='https://gboyflbwcobhzbvpdtat.supabase.co/functions/v1/investigate-object';
+const AUTH_URL='https://gboyflbwcobhzbvpdtat.supabase.co/auth/v1';
+const SUPABASE_PUBLISHABLE_KEY='sb_publishable_2rD7LcbTjtisAk17cWHc_w_7LbBi5zX';
+const AUTH_SESSION_KEY='objectDetective.authSession.v1';
+let authSessionPromise=null;
+
+function readAuthSession(){
+  try{
+    const value=localStorage.getItem(AUTH_SESSION_KEY);
+    return value?JSON.parse(value):null;
+  }catch(_){return null;}
+}
+function saveAuthSession(value){
+  if(!value||typeof value.access_token!=='string'||typeof value.refresh_token!=='string')throw new Error('Secure session could not be saved.');
+  const session={
+    access_token:value.access_token,
+    refresh_token:value.refresh_token,
+    expires_at:Number(value.expires_at)||Math.floor(Date.now()/1000)+Number(value.expires_in||3600)
+  };
+  localStorage.setItem(AUTH_SESSION_KEY,JSON.stringify(session));
+  return session;
+}
+async function authRequest(path,payload){
+  return fetch(AUTH_URL+path,{
+    method:'POST',
+    headers:{'Content-Type':'application/json','apikey':SUPABASE_PUBLISHABLE_KEY},
+    body:JSON.stringify(payload)
+  });
+}
+async function getFunctionHeaders(){
+  if(!authSessionPromise){
+    authSessionPromise=(async()=>{
+      let session=readAuthSession();
+      const now=Math.floor(Date.now()/1000);
+      if(session&&typeof session.access_token==='string'&&session.expires_at>now+60){
+        return {'Content-Type':'application/json','apikey':SUPABASE_PUBLISHABLE_KEY,'Authorization':'Bearer '+session.access_token};
+      }
+      if(session&&typeof session.refresh_token==='string'){
+        const refresh=await authRequest('/token?grant_type=refresh_token',{refresh_token:session.refresh_token});
+        if(refresh.ok){
+          session=saveAuthSession(await refresh.json());
+          return {'Content-Type':'application/json','apikey':SUPABASE_PUBLISHABLE_KEY,'Authorization':'Bearer '+session.access_token};
+        }
+        if(refresh.status>=500)throw new Error('Secure session service is temporarily unavailable. Please try again.');
+        localStorage.removeItem(AUTH_SESSION_KEY);
+      }
+      const signIn=await authRequest('/signup',{});
+      if(!signIn.ok)throw new Error('Could not start a secure app session. Please try again later.');
+      session=saveAuthSession(await signIn.json());
+      return {'Content-Type':'application/json','apikey':SUPABASE_PUBLISHABLE_KEY,'Authorization':'Bearer '+session.access_token};
+    })();
+  }
+  try{return await authSessionPromise;}finally{authSessionPromise=null;}
+}
+async function callInvestigationFunction(payload){
+  const headers=await getFunctionHeaders();
+  return fetch(FUNCTION_URL,{method:'POST',headers,body:JSON.stringify(payload)});
+}
 const file=document.getElementById('file');
 const choose=document.getElementById('choose');
 const identify=document.getElementById('identify');
@@ -275,7 +332,7 @@ identify.onclick=async()=>{
   statusBox.classList.remove('hidden');errorBox.classList.add('hidden');result.classList.add('hidden');
   try{
     const image=await buildInvestigationImage(selectedFiles,1800,.86);
-    const response=await fetch(FUNCTION_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({image,photoCount:selectedFiles.length,mode:'multi-angle-accuracy'})});
+    const response=await callInvestigationFunction({image,photoCount:selectedFiles.length,mode:'multi-angle-accuracy'});
     const data=await response.json().catch(()=>({}));
     if(!response.ok)throw new Error(data?.error?.message||data?.error||`Investigation failed (${response.status})`);
     render(data);
@@ -606,7 +663,7 @@ document.getElementById("chat-form").onsubmit=async(event)=>{
   input.value="";appendChatMessage("user",question);chatMessages.push({role:"user",content:question});chatMessages=chatMessages.slice(-8);
   button.disabled=true;input.disabled=true;status.textContent="Detective is thinking…";
   try{
-    const response=await fetch(FUNCTION_URL,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({mode:"chat",question,context:currentChatContext,messages:chatMessages})});
+    const response=await callInvestigationFunction({mode:"chat",question,context:currentChatContext,messages:chatMessages});
     const data=await response.json().catch(()=>({}));
     if(!response.ok||typeof data.answer!=="string")throw new Error(data?.error?.message||"The follow-up assistant is unavailable right now.");
     appendChatMessage("assistant",data.answer);chatMessages.push({role:"assistant",content:data.answer});chatMessages=chatMessages.slice(-8);status.textContent="";
