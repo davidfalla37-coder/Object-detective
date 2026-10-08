@@ -110,6 +110,22 @@ Deno.test("request handler returns predictable validation errors without calling
   );
 });
 
+Deno.test("valid analysis and chat requests require a Supabase user session", async () => {
+  const analysis = await handleRequest(new Request("https://edge.test/", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ image: "data:image/jpeg;base64,Zm9v" }),
+  }));
+  await assertErrorCode(analysis, 401, "authentication_required");
+
+  const chat = await handleRequest(new Request("https://edge.test/", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ mode: "chat", question: "What is this?" }),
+  }));
+  await assertErrorCode(chat, 401, "authentication_required");
+});
+
 Deno.test("result normalization clamps confidence and rejects unsupported labels", () => {
   const result = primaryResult({
     confidence: 1.7,
