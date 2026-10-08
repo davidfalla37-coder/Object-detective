@@ -42,7 +42,7 @@ A source review and CI build cannot establish that any app is “100% safe.” T
 ## Release ordering
 
 1. Add and test anti-automation protection; configure anonymous Auth; apply the quota migration; confirm OpenAI retention settings.
-2. Deploy the function with JWT verification enabled and publish the matching privacy policy and account-deletion page together.
+2. Deploy with `verify_jwt=false` exactly as reviewed; the handler validates each request with Supabase Auth `/user`. Publish the matching privacy policy and account-deletion page together.
 3. Build the signed AAB from the reviewed candidate and install it on the owner's device first.
 4. Roll the same approved AAB out to the existing test group when ready; do not change Play Console listing or track settings until the release review.
 
