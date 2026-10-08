@@ -564,6 +564,53 @@ export async function handleRequest(request: Request): Promise<Response> {
   }
 
 
+  if (body.mode === "delete-anonymous-account") {
+    if (!hasClientCredentials(request)) {
+      return errorResponse("A valid app session is required.", 401, "authentication_required");
+    }
+    const supabaseUrl = Deno.env.get("SUPABASE_URL");
+    const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    if (!supabaseUrl || !serviceRoleKey) {
+      return errorResponse("Secure account deletion is temporarily unavailable.", 503, "deletion_unavailable");
+    }
+
+    try {
+      const userResponse = await fetch(`${supabaseUrl}/auth/v1/user`, {
+        headers: {
+          "apikey": request.headers.get("apikey")!,
+          "Authorization": request.headers.get("authorization")!,
+        },
+      });
+      if (!userResponse.ok) {
+        return errorResponse("The app session has expired. Restart the app and try again.", 401, "authentication_required");
+      }
+      const user = await userResponse.json() as { id?: string; is_anonymous?: boolean };
+      if (user.is_anonymous !== true || typeof user.id !== "string" ||
+          !/^[0-9a-f-]{36}$/i.test(user.id)) {
+        return errorResponse("Only an anonymous app session can be deleted here.", 403, "account_type_not_supported");
+      }
+
+      const deleteResponse = await fetch(
+        `${supabaseUrl}/auth/v1/admin/users/${user.id}`,
+        {
+          method: "DELETE",
+          headers: {
+            "apikey": serviceRoleKey,
+            "Authorization": `Bearer ${serviceRoleKey}`,
+          },
+        },
+      );
+      if (!deleteResponse.ok) {
+        console.error("Anonymous account deletion failed with status:", deleteResponse.status);
+        return errorResponse("The secure app session could not be deleted. Please contact support.", 502, "deletion_failed");
+      }
+      return new Response(null, { status: 204, headers: corsHeaders });
+    } catch (error) {
+      console.error("Anonymous account deletion failed:", error instanceof Error ? error.message : error);
+      return errorResponse("The secure app session could not be deleted. Please try again.", 502, "deletion_failed");
+    }
+  }
+
   if (body.mode === "chat") {
     const question = typeof body.question === "string" ? body.question.trim().slice(0, 700) : "";
     if (!question) return errorResponse("Enter a question about this investigation.", 400, "missing_question");
