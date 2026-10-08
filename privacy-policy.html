@@ -34,7 +34,7 @@ body {
 
 <p>To protect the analysis service, the app creates an anonymous Supabase Auth account when you first request an investigation or use chat. It does not ask for your name, email address, or password. Supabase issues a random user ID and session tokens; the app stores the tokens in its local WebView storage. The service uses the ID to authenticate requests and apply daily limits of 30 investigations and 120 follow-up messages per anonymous account. These limits may change to protect the service.</p>
 
-<p>Usage counters are kept by Supabase and removed after three days. Anonymous Auth accounts remain with Supabase until you delete the session in the app or request deletion. We do not use these IDs for advertising or link them to an identity ourselves.</p>
+<p>Supabase stores usage counters by anonymous account and day. Old counter rows are pruned the next time the service processes a request after their three-day retention window; if an account becomes inactive, cleanup may be delayed until another request or account deletion. Anonymous Auth accounts remain with Supabase until you delete the session in the app or request deletion. We do not use these IDs for advertising or link them to an identity ourselves.</p>
 
 <h2>Service providers and processing</h2>
 
