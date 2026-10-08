@@ -21,6 +21,7 @@
     h2{margin:0 0 8px}.row{display:block;width:100%;padding:13px 0;border-bottom:1px solid var(--line);min-width:0}.label,.value{display:block;width:100%;max-width:none;min-width:0}.label{color:var(--muted)}.value{text-align:left;font-weight:700;margin-top:6px;line-height:1.4;font-size:17px;overflow-wrap:anywhere;word-break:break-word}.explain{color:#d5deeb}.warning{padding:12px;border-radius:12px;background:#332712;color:#f7d794;margin-top:12px;overflow-wrap:anywhere}
     #shops a,#vehicle-shops a{display:grid;place-items:center;min-height:50px;padding:10px;border-radius:14px;background:#1b2a44;border:1px solid #354b6c;color:#fff;font-weight:750;text-align:center;text-decoration:none}
     .vehicle-card{border-color:#806116;background:linear-gradient(145deg,#2c250f,#111c30 48%);overflow:hidden}.vehicle-title{color:#ffd34e}.vehicle-note{font-size:14px;color:#ffe6a0}.safety{padding:12px;border-radius:12px;background:#361d18;color:#ffc7b8;border:1px solid #7b3b2e;margin-top:12px;overflow-wrap:anywhere}.vehicle-card .row{display:block;width:100%}.vehicle-card .label,.vehicle-card .value{display:block;width:100%;max-width:none}.vehicle-card .value{text-align:left;margin-top:6px;line-height:1.4;font-size:17px;overflow-wrap:anywhere;word-break:break-word}
+    .exact-match-card{border-color:#39708a}.match-status{margin:8px 0 12px;padding:12px;border-radius:12px;background:#0b2131;color:#bcecff;font-weight:800}.match-status.unconfirmed{background:#302712;color:#ffe2a3;border:1px solid #745a25}.match-status.likely{background:#17263d;color:#d8e7ff;border:1px solid #39506d}.case-file-card summary{cursor:pointer;font-size:18px;font-weight:800;color:var(--accent);padding:2px}.case-file-content{margin-top:12px}.case-file-content .row:first-child{border-top:1px solid var(--line)}
     .condition-badge{display:inline-flex;align-items:center;width:max-content;margin-top:8px;padding:6px 10px;border-radius:999px;font-size:13px;font-weight:800;border:1px solid #39506d;background:#17263d;color:#d8e7ff}.condition-badge.new-sealed{background:#123629;border-color:#2c8058;color:#a7f3d0}.condition-badge.like-new{background:#153448;border-color:#34769a;color:#b8e9ff}.condition-badge.used{background:#302b18;border-color:#76652b;color:#ffe29a}.condition-badge.worn-damaged{background:#3a211e;border-color:#8c463a;color:#ffc2b5}.condition-badge.cannot-tell{background:#242a35;border-color:#535f73;color:#c9d2df}\n    .history-head{display:flex;align-items:center;justify-content:space-between;gap:12px}.history-head h2{margin:0}.history-list{display:grid;gap:10px;margin-top:12px}.history-item{display:grid;grid-template-columns:64px minmax(0,1fr) 38px;align-items:center;gap:10px;padding:10px;border:1px solid var(--line);border-radius:14px;background:#0b1628;color:#fff;text-align:left;width:100%}.history-image{width:64px;height:64px;border-radius:10px;object-fit:cover;background:#07101f}.history-info{min-width:0}.history-name{font-weight:800;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.history-meta{font-size:13px;color:var(--muted);margin-top:4px}.history-delete{width:36px;height:36px;min-height:0;padding:0;border-radius:50%;background:#321b22;color:#ffb4b4}.empty-history{color:var(--muted);margin:8px 0 0}
     .sell-card textarea,.sell-card input,.sell-card select,.chat-input{width:100%;border:1px solid #354b6c;border-radius:12px;background:#091426;color:var(--text);padding:12px;font:inherit;line-height:1.45}
     .sell-card textarea{min-height:100px;resize:vertical}
@@ -83,6 +84,31 @@
     <p class="explain" id="confidence-note">This score covers visual identification only. It does not verify the value, condition, or marketplace search results.</p>
     <p class="explain" id="explanation"></p>
     <p class="explain" id="compatibility"></p>
+    <section class="card exact-match-card" id="exact-match-card" aria-labelledby="exact-match-heading">
+      <h2 id="exact-match-heading">Exact match check</h2>
+      <p class="match-status" id="exact-match-status" role="status"></p>
+      <div class="row"><span class="label">Brand</span><span class="value" id="result-brand"></span></div>
+      <div class="row"><span class="label">Model</span><span class="value" id="result-model"></span></div>
+      <div class="row"><span class="label">Model / part number</span><span class="value" id="result-model-number"></span></div>
+      <div class="row"><span class="label">Variant</span><span class="value" id="result-variant"></span></div>
+      <div class="row"><span class="label">Exact-match confidence</span><span class="value" id="result-exact-confidence"></span></div>
+      <p class="explain" id="result-exact-evidence"></p>
+      <div class="tip" id="result-next-photo"></div>
+      <p class="match-note">A visual match is a lead to check. Confirm model numbers and fit with the manufacturer or seller before buying.</p>
+    </section>
+    <details class="card case-file-card" id="case-file-card">
+      <summary>Full case file: clues, condition and value</summary>
+      <div class="case-file-content">
+        <div class="row"><span class="label">Investigation summary</span><span class="value" id="case-file-summary"></span></div>
+        <div class="row"><span class="label">Visible condition evidence</span><span class="value" id="case-condition-evidence"></span></div>
+        <div class="row"><span class="label">Estimated age or era</span><span class="value" id="case-age-era"></span></div>
+        <div class="row"><span class="label">Value reasoning</span><span class="value" id="case-value-reasoning"></span></div>
+        <div class="row"><span class="label">Identifying clues</span><span class="value" id="case-identifying-clues"></span></div>
+        <div class="row"><span class="label">What to check next</span><span class="value" id="case-buyer-seller-check"></span></div>
+        <div class="row"><span class="label">Completeness</span><span class="value" id="case-completeness"></span></div>
+        <div class="row"><span class="label">Best way to improve confidence</span><span class="value" id="case-confidence-booster"></span></div>
+      </div>
+    </details>
     <div class="warning hidden" id="warning"></div>
     <section class="card match-helper hidden" id="match-helper">
       <h2 id="match-helper-title">Improve matching</h2>
@@ -410,6 +436,40 @@ async function buildInvestigationImage(inputs,maxSide,quality){
   return canvas.toDataURL('image/jpeg',quality);
 }
 
+function renderCaseFile(data){
+  const statusText={
+    exact:"Strong match evidence reported; check the visible model details below.",
+    likely:"Likely match; confirm the model details before relying on it.",
+    not_confirmed:"Exact model not confirmed from these photos."
+  };
+  const status=data.exact_match_status in statusText?data.exact_match_status:"not_confirmed";
+  const statusBox=document.getElementById("exact-match-status");
+  statusBox.textContent=statusText[status];
+  statusBox.className="match-status "+(status==="not_confirmed"?"unconfirmed":status);
+  const fields={
+    "result-brand":data.brand,
+    "result-model":data.model,
+    "result-model-number":data.model_number,
+    "result-variant":data.variant,
+    "result-exact-evidence":data.exact_match_evidence,
+    "result-next-photo":data.next_photo,
+    "case-file-summary":data.case_file_summary,
+    "case-condition-evidence":data.condition_evidence,
+    "case-age-era":data.age_era_estimate,
+    "case-value-reasoning":data.value_reasoning,
+    "case-identifying-clues":data.identifying_clues,
+    "case-buyer-seller-check":data.buyer_seller_check,
+    "case-completeness":data.completeness_check,
+    "case-confidence-booster":data.confidence_booster
+  };
+  for(const [id,value] of Object.entries(fields)){
+    const element=document.getElementById(id);
+    element.textContent=(typeof value==="string"&&value.trim())?value:"Not established from the supplied photos."; 
+  }
+  const raw=Number(data.exact_match_confidence);
+  const percent=raw>=0&&raw<=1?raw*100:raw;
+  document.getElementById("result-exact-confidence").textContent=Number.isFinite(percent)?Math.round(percent)+"%":"Unknown";
+}
 function render(data,saveResult=true){
   const fields=['object','category','purpose','value_estimate','condition'];
   for(const id of fields)document.getElementById(id).textContent=data[id]||'Unknown';
@@ -423,6 +483,7 @@ function render(data,saveResult=true){
   document.getElementById('confidence').textContent=Number.isFinite(confidencePercent)?`${Math.round(confidencePercent)}%`:'Unknown';
   document.getElementById('explanation').textContent=data.explanation||'';
   document.getElementById('compatibility').textContent=data.compatibility?`Compatibility: ${data.compatibility}`:'';
+  renderCaseFile(data);
   const warning=document.getElementById('warning');
   if(data.warning){warning.textContent=data.warning;warning.classList.remove('hidden')}else warning.classList.add('hidden');
   configureMatchHelper(data);
