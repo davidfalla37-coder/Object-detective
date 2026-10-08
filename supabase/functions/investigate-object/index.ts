@@ -248,9 +248,26 @@ async function consumeUsageQuota(request: Request, kind: "analysis" | "chat"): P
   }
 }
 
-function hasClientCredentials(request: Request): boolean {
-  return /^Bearer\s+\S+$/i.test(request.headers.get("authorization") ?? "") &&
-    Boolean(request.headers.get("apikey"));
+async function getVerifiedSupabaseUser(
+  request: Request,
+): Promise<{ id: string; is_anonymous: boolean } | null> {
+  const supabaseUrl = Deno.env.get("SUPABASE_URL");
+  const apiKey = request.headers.get("apikey");
+  const authorization = request.headers.get("authorization");
+  if (!supabaseUrl || !apiKey || !/^Bearer\\s+\\S+$/i.test(authorization ?? "")) return null;
+
+  try {
+    const response = await fetch(`${supabaseUrl}/auth/v1/user`, {
+      headers: { "apikey": apiKey, "Authorization": authorization! },
+    });
+    if (!response.ok) return null;
+    const user = await response.json() as { id?: string; is_anonymous?: boolean };
+    if (typeof user.id !== "string" || !/^[0-9a-f-]{36}$/i.test(user.id)) return null;
+    return { id: user.id, is_anonymous: user.is_anonymous === true };
+  } catch (error) {
+    console.error("Supabase session validation failed:", error instanceof Error ? error.message : error);
+    return null;
+  }
 }
 
 let OPENAI_API_KEY = "";
@@ -565,7 +582,8 @@ export async function handleRequest(request: Request): Promise<Response> {
 
 
   if (body.mode === "delete-anonymous-account") {
-    if (!hasClientCredentials(request)) {
+    const authenticatedUser = await getVerifiedSupabaseUser(request);
+    if (!authenticatedUser) {
       return errorResponse("A valid app session is required.", 401, "authentication_required");
     }
     const supabaseUrl = Deno.env.get("SUPABASE_URL");
@@ -575,18 +593,8 @@ export async function handleRequest(request: Request): Promise<Response> {
     }
 
     try {
-      const userResponse = await fetch(`${supabaseUrl}/auth/v1/user`, {
-        headers: {
-          "apikey": request.headers.get("apikey")!,
-          "Authorization": request.headers.get("authorization")!,
-        },
-      });
-      if (!userResponse.ok) {
-        return errorResponse("The app session has expired. Restart the app and try again.", 401, "authentication_required");
-      }
-      const user = await userResponse.json() as { id?: string; is_anonymous?: boolean };
-      if (user.is_anonymous !== true || typeof user.id !== "string" ||
-          !/^[0-9a-f-]{36}$/i.test(user.id)) {
+      const user = authenticatedUser;
+      if (user.is_anonymous !== true) {
         return errorResponse("Only an anonymous app session can be deleted here.", 403, "account_type_not_supported");
       }
 
@@ -665,7 +673,7 @@ export async function handleRequest(request: Request): Promise<Response> {
       "Do not provide medical, legal, or financial advice. Keep the reply brief and useful, usually under 120 words.",
     ].join("\n\n");
 
-    if (!hasClientCredentials(request)) {
+    if (!await getVerifiedSupabaseUser(request)) {
       return errorResponse("A valid app session is required. Please restart the app and try again.", 401, "authentication_required");
     }
     const chatAllowed = await consumeUsageQuota(request, "chat");
@@ -724,7 +732,7 @@ export async function handleRequest(request: Request): Promise<Response> {
     );
   }
 
-  if (!hasClientCredentials(request)) {
+  if (!await getVerifiedSupabaseUser(request)) {
     return errorResponse("A valid app session is required. Please restart the app and try again.", 401, "authentication_required");
   }
   const analysisAllowed = await consumeUsageQuota(request, "analysis");
