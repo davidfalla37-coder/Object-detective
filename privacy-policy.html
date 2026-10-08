@@ -1,5 +1,5 @@
 <!doctype html>
-<html>
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -18,57 +18,63 @@ body {
 
 <h1>Object Detective Privacy Policy</h1>
 
-<p><strong>Last updated: 4 October 2026</strong></p>
+<p><strong>Last updated: 8 October 2026</strong></p>
 
-<p>Object Detective allows users to photograph or select images of objects and request an AI-assisted investigation to help identify them and provide related information.</p>
+<p>Object Detective lets you photograph or select an object image and request an AI-assisted identification and investigation.</p>
 
 <h2>Information we process</h2>
 
-<p>Images that you choose to submit are processed to provide the requested investigation. If you use the follow-up chat, your question and the investigation details needed to answer it are also processed. Investigation history is stored locally on your device; chat transcripts are kept only for the current screen session and are not currently saved to an account or cloud history.</p>
+<p>When you submit an investigation, the image you selected is sent for processing. If you use follow-up chat, your question and the investigation details needed to answer it are sent too. Please avoid submitting sensitive personal information, confidential documents, passwords, payment details, or identity documents.</p>
 
 <h2>Camera and photos</h2>
 
-<p>Object Detective may request access to your device camera so that you can photograph an object. The app may also allow you to select an existing image from your device. These permissions are used only to provide features that you choose to use.</p>
+<p>The app uses the camera or photo you choose to provide an investigation. For some gallery images, it makes a temporary converted copy in private app storage rather than the public Pictures folder. These temporary copies are cleared when the app closes or starts again. The app does not upload photos in the background or access your photo library for unrelated purposes.</p>
 
-  <h2>AI processing</h2>
+<h2>Secure anonymous session and usage limits</h2>
 
-<p>Images and related information may be sent to third-party service providers, including configured AI processing services, when necessary to analyse an object and return an investigation result.</p>
+<p>To protect the analysis service, the app creates an anonymous Supabase Auth account when you first request an investigation or use chat. It does not ask for your name, email address, or password. Supabase issues a random user ID and session tokens; the app stores the tokens in its local WebView storage. The service uses the ID to authenticate requests and apply daily limits of 30 investigations and 120 follow-up messages per anonymous account. These limits may change to protect the service.</p>
 
-<p>Do not submit sensitive personal information, confidential documents, financial information, passwords, identification documents, or other material that you do not want processed.</p>
+<p>Supabase stores usage counters by anonymous account and day. Old counter rows are pruned the next time the service processes a request after their three-day retention window; if an account becomes inactive, cleanup may be delayed until another request or account deletion. Anonymous Auth accounts remain with Supabase until you delete the session in the app or request deletion. We do not use these IDs for advertising or link them to an identity ourselves.</p>
 
-<h2>How information is used</h2>
+<h2>Service providers and processing</h2>
 
-<p>Information submitted through Object Detective is used to operate the app, process object investigations, return results, maintain functionality, improve reliability, and protect the service from misuse.</p>
+<p>Object Detective uses Supabase to authenticate the anonymous session, receive and route investigation requests through an Edge Function, and apply usage limits. The request includes the submitted image or follow-up text and relevant investigation context. Supabase's invocation records can include request and response bodies. The project's current Free plan normally makes logs available for one day; Supabase may shorten log availability to one hour if its log-query allowance is exceeded. These logs support service operation, troubleshooting, and security. We do not use them to build advertising profiles.</p>
 
-<h2>Sharing</h2>
+<p>Supabase routes the request to OpenAI's Responses API to produce and verify investigation results and answer follow-up questions. The API requests are configured not to retain Responses API application state. OpenAI's default abuse-monitoring logs may still contain prompts, responses, or related content and are retained for up to 30 days, subject to approved account-level retention controls and legal or security exceptions.</p>
 
-<p>We do not sell your personal information. Information may be processed by service providers where necessary to operate Object Detective, provide AI processing, hosting, storage, security, or other technical functionality.</p>
+<p>We do not sell your information. Supabase and OpenAI process information to provide the app's requested features and operate their services.</p>
 
-<h2>Retention and deletion</h2>
+<h2>Information stored on your device</h2>
 
-<p>Information is retained only as necessary for the operation of the service and the features being used. Where investigation history or cloud storage is provided, users may be given controls to remove stored information. Information stored locally may also be removed by clearing the app's data or uninstalling the app.</p>
+<p>Investigation history, including result details and a preview image, is saved locally on your device so you can revisit it. You can remove individual investigations or clear your history in the app. Chat messages are kept in memory for the current screen session and are not saved to an Object Detective cloud history. Clearing app data or uninstalling the app also removes locally stored history and session tokens.</p>
 
-  <h2>Children</h2>
+<h2 id="delete-account">Retention and deletion</h2>
 
-<p>Object Detective is not intended to knowingly collect sensitive personal information from children. Users should not submit photographs containing personal or sensitive information about children.</p>
+<p>Tap <strong>Delete app data and secure session</strong> in the app to delete the anonymous Supabase account and its usage counters and clear saved investigations on that device. You can also request deletion from outside the app using the instructions at <a href="account-deletion.html">Object Detective account deletion</a>. If you email us, include the session ID copied from the app so we can find the anonymous account. Supabase invocation logs and OpenAI abuse-monitoring logs are provider operational logs; an in-app deletion cannot remove an individual request from those logs. Provider retention controls and legal or security exceptions apply.</p>
+
+<p>For a privacy question or deletion request, contact <a href="mailto:objectdetectiveapp@gmail.com">objectdetectiveapp@gmail.com</a>.</p>
+
+<h2>Children</h2>
+
+<p>Object Detective is not intended to collect personal information from children. Please do not submit photographs containing sensitive information about children.</p>
 
 <h2>Security</h2>
 
-<p>Reasonable measures are used to protect information processed through the service. However, no internet-based service or electronic storage method can be guaranteed to be completely secure.</p>
+<p>We use reasonable measures to protect information handled by the app and its service providers. No internet service can guarantee complete security.</p>
 
-<h2>Safety</h2>
+<h2>Accuracy and safety</h2>
 
-<p>Object Detective uses AI-assisted analysis and its results may be inaccurate. Results are estimates and should not be treated as professional advice or proof of identity, authenticity, compatibility, condition, or value.</p>
+<p>AI-assisted results can be inaccurate and are estimates, not proof of identity, authenticity, compatibility, condition, or value. Verify important details independently.</p>
 
-<p>Vehicle, motorcycle, electrical, structural, medical, gas, pressure, safety-critical, or other potentially hazardous items should be verified with an appropriately qualified source before purchase, installation, repair, or use.</p>
+<p>For vehicle, electrical, structural, medical, gas, pressure, safety-critical, or other potentially hazardous items, consult an appropriately qualified source before purchase, installation, repair, or use.</p>
 
 <h2>Changes to this policy</h2>
 
-<p>This Privacy Policy may be updated when Object Detective's features or data practices change. The latest version will be published on this page with an updated date.</p>
+<p>We may update this policy when the app or its data practices change. The latest version and update date will appear on this page.</p>
 
 <h2>Contact</h2>
 
-<p>If you have questions about this Privacy Policy, privacy requests, or deletion requests, please contact the developer using the contact details provided on the Object Detective Google Play listing.</p>
+<p>For questions about this policy, privacy requests, or deletion requests, email <a href="mailto:objectdetectiveapp@gmail.com">objectdetectiveapp@gmail.com</a>.</p>
 
 </body>
 </html>

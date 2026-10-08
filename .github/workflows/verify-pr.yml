@@ -7,8 +7,15 @@ on:
     paths:
       - 'app/**'
       - 'supabase/functions/investigate-object/**'
+      - 'supabase/migrations/**'
+      - 'supabase/config.toml'
+      - 'privacy-policy.html'
+      - 'account-deletion.html'
+      - 'DATA_SAFETY_DRAFT.md'
+      - 'RELEASE_CANDIDATE.md'
       - 'build.gradle'
       - 'settings.gradle'
+      - 'ic_launcher.xml'
       - '.github/workflows/verify-pr.yml'
 
 jobs:
@@ -42,5 +49,7 @@ jobs:
         uses: denoland/setup-deno@v2
         with:
           deno-version: v2.x
+      - name: Test Edge Function validation and safety handling
+        run: deno test --allow-read=supabase/functions/investigate-object/index.ts supabase/functions/investigate-object/index_test.ts
       - name: Type-check Supabase Edge Function
         run: deno check supabase/functions/investigate-object/index.ts

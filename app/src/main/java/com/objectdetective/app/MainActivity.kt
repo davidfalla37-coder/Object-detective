@@ -16,23 +16,49 @@ import android.webkit.PermissionRequest
 import android.webkit.ValueCallback
 import android.webkit.WebChromeClient
 import android.webkit.WebResourceRequest
+import android.webkit.WebResourceResponse
 import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.widget.Toast
+import androidx.core.content.FileProvider
+import androidx.webkit.WebViewAssetLoader
+import java.io.File
+import java.io.FileOutputStream
+import java.io.ByteArrayInputStream
 import java.io.IOException
+import java.util.UUID
 
 class MainActivity : Activity() {
     private lateinit var webView: WebView
+    private lateinit var webViewAssetLoader: WebViewAssetLoader
     private var fileCallback: ValueCallback<Array<Uri>>? = null
     private var cameraImageUri: Uri? = null
 
     companion object {
         private const val FILE_REQUEST_CODE = 1001
+        private const val APP_ASSET_HOST = "appassets.androidplatform.net"
+        private const val SUPABASE_HOST = "gboyflbwcobhzbvpdtat.supabase.co"
+        private const val SUPABASE_FUNCTION_PATH = "/functions/v1/investigate-object"
     }
+
+    private fun blockedWebResponse(): WebResourceResponse =
+        WebResourceResponse(
+            "text/plain",
+            "UTF-8",
+            403,
+            "Blocked",
+            emptyMap(),
+            ByteArrayInputStream(ByteArray(0))
+        )
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        convertedPhotosDirectory().deleteRecursively()
+        webViewAssetLoader = WebViewAssetLoader.Builder()
+            .addPathHandler("/assets/", WebViewAssetLoader.AssetsPathHandler(this))
+            .build()
 
         webView = WebView(this)
         setContentView(webView)
@@ -57,37 +83,73 @@ class MainActivity : Activity() {
         webView.settings.apply {
             javaScriptEnabled = true
             domStorageEnabled = true
-            allowFileAccess = true
+            allowFileAccess = false
             allowContentAccess = true
+            allowFileAccessFromFileURLs = false
+            allowUniversalAccessFromFileURLs = false
             mediaPlaybackRequiresUserGesture = false
             cacheMode = WebSettings.LOAD_DEFAULT
             textZoom = 100
         }
 
         webView.webViewClient = object : WebViewClient() {
+            override fun shouldInterceptRequest(
+                view: WebView,
+                request: WebResourceRequest
+            ): WebResourceResponse? {
+                val uri = request.url
+                val scheme = uri.scheme?.lowercase()
+                val host = uri.host?.lowercase()
+
+                if (scheme == "https" && host == APP_ASSET_HOST) {
+                    return webViewAssetLoader.shouldInterceptRequest(uri)
+                        ?: blockedWebResponse()
+                }
+                if (
+                    scheme == "https" &&
+                    host == SUPABASE_HOST &&
+                    (uri.path == SUPABASE_FUNCTION_PATH ||
+                        uri.path == "/auth/v1/signup" ||
+                        uri.path == "/auth/v1/token")
+                ) {
+                    return null
+                }
+                return blockedWebResponse()
+            }
+
             override fun shouldOverrideUrlLoading(
                 view: WebView,
                 request: WebResourceRequest
             ): Boolean {
-    val uri = request.url
-    val scheme = uri.scheme?.lowercase()
+                val uri = request.url
+                val scheme = uri.scheme?.lowercase()
 
-    return if (scheme == "http" || scheme == "https") {
-        try {
-            startActivity(Intent(Intent.ACTION_VIEW, uri))
-            true
-        } catch (_: Exception) {
-            false
-        }
-    } else {
-        false
-    }
+                if (
+                    scheme == "https" &&
+                    uri.host?.lowercase() == APP_ASSET_HOST &&
+                    uri.path?.startsWith("/assets/") == true
+                ) {
+                    return false
+                }
+
+                if (scheme == "https") {
+                    try {
+                        startActivity(Intent(Intent.ACTION_VIEW, uri))
+                    } catch (_: Exception) {
+                        Toast.makeText(
+                            this@MainActivity,
+                            "No browser can open this link.",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    }
+                }
+                return true
             }
         }
 
         webView.webChromeClient = object : WebChromeClient() {
             override fun onPermissionRequest(request: PermissionRequest) {
-                runOnUiThread { request.grant(request.resources) }
+                runOnUiThread { request.deny() }
             }
 
             override fun onShowFileChooser(
@@ -97,17 +159,32 @@ class MainActivity : Activity() {
             ): Boolean {
                 fileCallback?.onReceiveValue(null)
                 fileCallback = callback
+                cameraImageUri?.let { contentResolver.delete(it, null, null) }
+                cameraImageUri = null
 
-                val cameraUri = createCameraImageUri()
-                cameraImageUri = cameraUri
-                val cameraIntent = Intent(MediaStore.ACTION_IMAGE_CAPTURE).apply {
-                    putExtra(MediaStore.EXTRA_OUTPUT, cameraUri)
-                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                    addFlags(Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
+                val galleryIntent = Intent(Intent.ACTION_GET_CONTENT).apply {
+                    addCategory(Intent.CATEGORY_OPENABLE)
+                    type = "image/*"
+                    putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true)
+                }
+                val cameraIntent = try {
+                    val outputUri = createCameraImageUri()
+                    cameraImageUri = outputUri
+                    Intent(MediaStore.ACTION_IMAGE_CAPTURE).apply {
+                        putExtra(MediaStore.EXTRA_OUTPUT, outputUri)
+                        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                        addFlags(Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
+                    }
+                } catch (_: Exception) {
+                    null
                 }
 
                 return try {
-                    startActivityForResult(cameraIntent, FILE_REQUEST_CODE)
+                    val chooser = Intent.createChooser(galleryIntent, "Choose a photo")
+                    cameraIntent?.let {
+                        chooser.putExtra(Intent.EXTRA_INITIAL_INTENTS, arrayOf(it))
+                    }
+                    startActivityForResult(chooser, FILE_REQUEST_CODE)
                     true
                 } catch (_: Exception) {
                     cameraImageUri?.let { contentResolver.delete(it, null, null) }
@@ -116,7 +193,7 @@ class MainActivity : Activity() {
                     fileCallback = null
                     Toast.makeText(
                         this@MainActivity,
-                        "Unable to open the camera.",
+                        "Unable to open photos or camera.",
                         Toast.LENGTH_SHORT
                     ).show()
                     false
@@ -124,7 +201,7 @@ class MainActivity : Activity() {
             }
         }
 
-        webView.loadUrl("file:///android_asset/index-2.html")
+        webView.loadUrl("https://appassets.androidplatform.net/assets/index-2.html")
     }
 
     private fun createCameraImageUri(): Uri {
@@ -160,39 +237,35 @@ class MainActivity : Activity() {
         }
     }
 
+    private fun convertedPhotosDirectory(): File =
+        File(cacheDir, "converted-photos")
+
     private fun convertToJpeg(sourceUri: Uri): Uri {
         val bitmap = decodeBitmap(sourceUri)
-        val values = ContentValues().apply {
-            put(
-                MediaStore.Images.Media.DISPLAY_NAME,
-                "ObjectDetective_${System.currentTimeMillis()}.jpg"
-            )
-            put(MediaStore.Images.Media.MIME_TYPE, "image/jpeg")
-            put(
-                MediaStore.Images.Media.RELATIVE_PATH,
-                Environment.DIRECTORY_PICTURES + "/ObjectDetective"
-            )
-            put(MediaStore.Images.Media.IS_PENDING, 1)
+        val outputDirectory = convertedPhotosDirectory()
+        if (!outputDirectory.exists() && !outputDirectory.mkdirs()) {
+            bitmap.recycle()
+            throw IOException("Temporary photo storage could not be created.")
         }
 
-        val outputUri = contentResolver.insert(
-            MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
-            values
-        ) ?: throw IOException("A JPEG copy could not be created.")
+        val outputFile = File(
+            outputDirectory,
+            "ObjectDetective_${UUID.randomUUID()}.jpg"
+        )
 
         try {
-            contentResolver.openOutputStream(outputUri)?.use { output ->
+            FileOutputStream(outputFile).use { output ->
                 if (!bitmap.compress(Bitmap.CompressFormat.JPEG, 92, output)) {
                     throw IOException("The JPEG conversion failed.")
                 }
-            } ?: throw IOException("The JPEG copy could not be opened.")
-
-            values.clear()
-            values.put(MediaStore.Images.Media.IS_PENDING, 0)
-            contentResolver.update(outputUri, values, null, null)
-            return outputUri
+            }
+            return FileProvider.getUriForFile(
+                this,
+                "$packageName.fileprovider",
+                outputFile
+            )
         } catch (error: Exception) {
-            contentResolver.delete(outputUri, null, null)
+            outputFile.delete()
             throw error
         } finally {
             bitmap.recycle()
@@ -220,15 +293,33 @@ class MainActivity : Activity() {
         }
 
         try {
-            val selectedUri = data?.data
-            val jpegUri = if (selectedUri != null) {
-                cameraImageUri?.let { contentResolver.delete(it, null, null) }
-                convertToJpeg(selectedUri)
+            val cameraUri = cameraImageUri
+            val selectedUris = mutableListOf<Uri>()
+            val clipData = data?.clipData
+            if (clipData != null) {
+                for (index in 0 until clipData.itemCount) {
+                    selectedUris.add(clipData.getItemAt(index).uri)
+                }
             } else {
-                cameraImageUri ?: throw IOException("The camera did not return an image.")
+                data?.data?.let { selectedUris.add(it) }
+            }
+
+            val selectedFromCamera = cameraUri != null &&
+                (selectedUris.isEmpty() || selectedUris.size == 1 && selectedUris[0] == cameraUri)
+            val sourceUris = selectedUris.ifEmpty {
+                listOf(cameraUri ?: throw IOException("No photograph was selected."))
+            }
+            if (!selectedFromCamera) {
+                cameraUri?.let { contentResolver.delete(it, null, null) }
+            }
+            if (sourceUris.size > 3) {
+                Toast.makeText(this, "Only the first three photos will be used.", Toast.LENGTH_SHORT).show()
+            }
+            val jpegUris = sourceUris.take(3).map { sourceUri ->
+                if (selectedFromCamera && sourceUri == cameraUri) sourceUri else convertToJpeg(sourceUri)
             }
             cameraImageUri = null
-            callback?.onReceiveValue(arrayOf(jpegUri))
+            callback?.onReceiveValue(jpegUris.toTypedArray())
         } catch (_: Exception) {
             cameraImageUri?.let { contentResolver.delete(it, null, null) }
             cameraImageUri = null
@@ -239,6 +330,17 @@ class MainActivity : Activity() {
                 Toast.LENGTH_LONG
             ).show()
         }
+    }
+
+    override fun onDestroy() {
+        fileCallback?.onReceiveValue(null)
+        fileCallback = null
+        if (::webView.isInitialized) {
+            webView.stopLoading()
+            webView.destroy()
+        }
+        convertedPhotosDirectory().deleteRecursively()
+        super.onDestroy()
     }
 
     @Deprecated("Uses the compatibility back callback")
