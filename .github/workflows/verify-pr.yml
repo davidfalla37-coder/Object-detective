@@ -9,6 +9,7 @@ on:
       - 'supabase/functions/investigate-object/**'
       - 'build.gradle'
       - 'settings.gradle'
+      - 'ic_launcher.xml'
       - '.github/workflows/verify-pr.yml'
 
 jobs:
