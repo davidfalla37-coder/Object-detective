@@ -40,14 +40,14 @@
     .chat-input{min-height:50px}.chat-send{min-height:50px;padding:10px 14px}
     .chat-status{min-height:22px;color:var(--muted);font-size:13px;margin-top:7px}
     @media(max-width:480px){.buttons{grid-template-columns:1fr}h1{font-size:32px}}
-      .privacy-link{margin:0 0 8px;text-align:center;font-size:14px}.privacy-link a{color:var(--accent);text-decoration:underline;text-underline-offset:3px}
+      .privacy-link{margin:0 0 8px;text-align:center;font-size:14px}.privacy-link a{color:var(--accent);text-decoration:underline;text-underline-offset:3px} .privacy-delete{background:none;border:0;padding:0;min-height:0;color:var(--accent);text-decoration:underline;text-underline-offset:3px;font:inherit;cursor:pointer}
   </style>
 </head>
 <body>
 <main>
   <h1>🔎 Object Detective</h1>
   <p>Take or choose a clear photo and discover what the object is, what it does, and what it may be worth.</p>
-  <p class="privacy-link"><a href="https://davidfalla37-coder.github.io/Object-detective/privacy-policy.html">Privacy policy</a></p>
+  <p class="privacy-link"><a href="https://davidfalla37-coder.github.io/Object-detective/privacy-policy.html">Privacy policy</a> · <button class="privacy-delete" id="delete-secure-session" type="button">Delete app data and secure session</button></p>
 
   <section class="card">
     <div class="photo"><div id="placeholder"><span class="emoji">📷</span>Take a clear photograph</div><img id="preview" alt="Selected object"></div>
@@ -259,6 +259,7 @@ const clear=document.getElementById('clear');
 const historyList=document.getElementById('history-list');
 const emptyHistory=document.getElementById('empty-history');
 const clearHistory=document.getElementById('clear-history');
+const deleteSecureSession=document.getElementById('delete-secure-session');
 const HISTORY_KEY='object-detective-history-v1';
 let selectedFiles=[];
 let photoChecks=[];
@@ -567,6 +568,24 @@ function renderHistory(){
 }
 
 clearHistory.onclick=()=>{if(confirm('Delete all saved investigations?')){writeHistory([]);renderHistory()}};
+deleteSecureSession.onclick=async()=>{
+  if(!confirm('Delete your secure app session and clear saved investigations on this device? You can use the app again later; it will create a new anonymous session.'))return;
+  deleteSecureSession.disabled=true;
+  try{
+    const response=await callInvestigationFunction({mode:'delete-anonymous-account'});
+    if(!response.ok){
+      const data=await response.json().catch(()=>({}));
+      throw new Error(data?.error?.message||'The secure session could not be deleted.');
+    }
+    localStorage.removeItem(AUTH_SESSION_KEY);
+    writeHistory([]);
+    renderHistory();
+    chatMessages=[];
+    alert('Your secure app session was deleted and saved investigations were cleared from this device.');
+  }catch(error){
+    alert(error.message||'Please try again later.');
+  }finally{deleteSecureSession.disabled=false;}
+};
 renderHistory();
 
 let currentChatContext={};
