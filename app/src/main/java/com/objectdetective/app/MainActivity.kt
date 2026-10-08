@@ -97,17 +97,32 @@ class MainActivity : Activity() {
             ): Boolean {
                 fileCallback?.onReceiveValue(null)
                 fileCallback = callback
+                cameraImageUri?.let { contentResolver.delete(it, null, null) }
+                cameraImageUri = null
 
-                val cameraUri = createCameraImageUri()
-                cameraImageUri = cameraUri
-                val cameraIntent = Intent(MediaStore.ACTION_IMAGE_CAPTURE).apply {
-                    putExtra(MediaStore.EXTRA_OUTPUT, cameraUri)
-                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                    addFlags(Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
+                val galleryIntent = Intent(Intent.ACTION_GET_CONTENT).apply {
+                    addCategory(Intent.CATEGORY_OPENABLE)
+                    type = "image/*"
+                    putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true)
+                }
+                val cameraIntent = try {
+                    val outputUri = createCameraImageUri()
+                    cameraImageUri = outputUri
+                    Intent(MediaStore.ACTION_IMAGE_CAPTURE).apply {
+                        putExtra(MediaStore.EXTRA_OUTPUT, outputUri)
+                        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                        addFlags(Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
+                    }
+                } catch (_: Exception) {
+                    null
                 }
 
                 return try {
-                    startActivityForResult(cameraIntent, FILE_REQUEST_CODE)
+                    val chooser = Intent.createChooser(galleryIntent, "Choose a photo")
+                    cameraIntent?.let {
+                        chooser.putExtra(Intent.EXTRA_INITIAL_INTENTS, arrayOf(it))
+                    }
+                    startActivityForResult(chooser, FILE_REQUEST_CODE)
                     true
                 } catch (_: Exception) {
                     cameraImageUri?.let { contentResolver.delete(it, null, null) }
@@ -116,7 +131,7 @@ class MainActivity : Activity() {
                     fileCallback = null
                     Toast.makeText(
                         this@MainActivity,
-                        "Unable to open the camera.",
+                        "Unable to open photos or camera.",
                         Toast.LENGTH_SHORT
                     ).show()
                     false
@@ -220,15 +235,33 @@ class MainActivity : Activity() {
         }
 
         try {
-            val selectedUri = data?.data
-            val jpegUri = if (selectedUri != null) {
-                cameraImageUri?.let { contentResolver.delete(it, null, null) }
-                convertToJpeg(selectedUri)
+            val cameraUri = cameraImageUri
+            val selectedUris = mutableListOf<Uri>()
+            val clipData = data?.clipData
+            if (clipData != null) {
+                for (index in 0 until clipData.itemCount) {
+                    selectedUris.add(clipData.getItemAt(index).uri)
+                }
             } else {
-                cameraImageUri ?: throw IOException("The camera did not return an image.")
+                data?.data?.let { selectedUris.add(it) }
+            }
+
+            val selectedFromCamera = cameraUri != null &&
+                (selectedUris.isEmpty() || selectedUris.size == 1 && selectedUris[0] == cameraUri)
+            val sourceUris = selectedUris.ifEmpty {
+                listOf(cameraUri ?: throw IOException("No photograph was selected."))
+            }
+            if (!selectedFromCamera) {
+                cameraUri?.let { contentResolver.delete(it, null, null) }
+            }
+            if (sourceUris.size > 3) {
+                Toast.makeText(this, "Only the first three photos will be used.", Toast.LENGTH_SHORT).show()
+            }
+            val jpegUris = sourceUris.take(3).map { sourceUri ->
+                if (selectedFromCamera && sourceUri == cameraUri) sourceUri else convertToJpeg(sourceUri)
             }
             cameraImageUri = null
-            callback?.onReceiveValue(arrayOf(jpegUri))
+            callback?.onReceiveValue(jpegUris.toTypedArray())
         } catch (_: Exception) {
             cameraImageUri?.let { contentResolver.delete(it, null, null) }
             cameraImageUri = null
