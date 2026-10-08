@@ -68,11 +68,11 @@ function errorResponse(message: string, status: number, code: string): Response 
   return jsonResponse({ error: { code, message } }, status);
 }
 
-function isValidImageDataUrl(value: string): boolean {
+export function isValidImageDataUrl(value: string): boolean {
   return /^data:image\/(jpeg|jpg|png|webp|gif);base64,[A-Za-z0-9+/]+={0,2}$/i.test(value);
 }
 
-function normalizeResult(value: unknown): InvestigationResult {
+export function normalizeResult(value: unknown): InvestigationResult {
   const record = value && typeof value === "object"
     ? value as Record<string, unknown>
     : {};
@@ -220,10 +220,7 @@ async function readOpenAIError(response: Response): Promise<string> {
   }
 }
 
-const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
-if (!OPENAI_API_KEY) {
-  throw new Error("OPENAI_API_KEY is required");
-}
+let OPENAI_API_KEY = "";
 
 
 interface VerificationResult {
@@ -250,7 +247,7 @@ function clamp01(value: number): number {
   return Math.max(0, Math.min(1, value));
 }
 
-function normalizeVerification(value: unknown): VerificationResult {
+export function normalizeVerification(value: unknown): VerificationResult {
   const record = value && typeof value === "object" ? value as Record<string, unknown> : {};
   const textValue = (key: string): string => typeof record[key] === "string" ? String(record[key]).trim() : "Unknown";
   const numberValue = (key: string): number => {
@@ -310,7 +307,7 @@ function rebuiltExplanation(result: InvestigationResult, verification: Verificat
   return parts.join(" ");
 }
 
-function reconcileVerification(
+export function reconcileVerification(
   primary: InvestigationResult,
   verification: VerificationResult,
 ): InvestigationResult {
@@ -383,7 +380,7 @@ function reconcileVerification(
   return result;
 }
 
-function conservativeFallback(result: InvestigationResult): InvestigationResult {
+export function conservativeFallback(result: InvestigationResult): InvestigationResult {
   const fallback: InvestigationResult = { ...result };
   fallback.confidence = Math.min(fallback.confidence, 0.79);
   fallback.exact_match_confidence = Math.min(fallback.exact_match_confidence, 0.69);
@@ -511,7 +508,7 @@ async function verifyIdentification(
   }
 }
 
-Deno.serve(async (request: Request): Promise<Response> => {
+export async function handleRequest(request: Request): Promise<Response> {
   if (request.method === "OPTIONS") {
     return new Response(null, { status: 204, headers: corsHeaders });
   }
@@ -811,4 +808,12 @@ Deno.serve(async (request: Request): Promise<Response> => {
     console.error("Object investigation failed:", error instanceof Error ? error.message : error);
     return errorResponse("Unable to investigate the object right now. Please try again.", 500, "internal_error");
   }
-});
+}
+
+if (import.meta.main) {
+  OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY") ?? "";
+  if (!OPENAI_API_KEY) {
+    throw new Error("OPENAI_API_KEY is required");
+  }
+  Deno.serve(handleRequest);
+}
