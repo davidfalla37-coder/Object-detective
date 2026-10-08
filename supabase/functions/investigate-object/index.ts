@@ -254,7 +254,7 @@ async function getVerifiedSupabaseUser(
   const supabaseUrl = Deno.env.get("SUPABASE_URL");
   const apiKey = request.headers.get("apikey");
   const authorization = request.headers.get("authorization");
-  if (!supabaseUrl || !apiKey || !/^Bearer\\s+\\S+$/i.test(authorization ?? "")) return null;
+  if (!supabaseUrl || !apiKey || !/^Bearer\s+\S+$/i.test(authorization ?? "")) return null;
 
   try {
     const response = await fetch(`${supabaseUrl}/auth/v1/user`, {
