@@ -4,6 +4,7 @@ import {
   isValidImageDataUrl,
   normalizeResult,
   normalizeVerification,
+  OPENAI_NO_STORE,
   reconcileVerification,
 } from "./index.ts";
 
@@ -58,6 +59,16 @@ function verification(overrides: Record<string, unknown> = {}) {
     ...overrides,
   });
 }
+
+Deno.test("all Responses API calls disable stored response state", async () => {
+  assertEquals(OPENAI_NO_STORE.store, false, "shared Responses API storage setting");
+  const source = await Deno.readTextFile(new URL("./index.ts", import.meta.url));
+  assertEquals(
+    (source.match(/\.\.\.OPENAI_NO_STORE/g) ?? []).length,
+    3,
+    "every Responses API request must include the no-store setting",
+  );
+});
 
 Deno.test("image data URL validation accepts supported image types and rejects malformed URLs", () => {
   assert(isValidImageDataUrl("data:image/jpeg;base64,Zm9v"), "JPEG should be accepted");
