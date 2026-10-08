@@ -221,6 +221,38 @@ async function readOpenAIError(response: Response): Promise<string> {
   }
 }
 
+async function consumeUsageQuota(request: Request, kind: "analysis" | "chat"): Promise<boolean | null> {
+  const supabaseUrl = Deno.env.get("SUPABASE_URL");
+  const apiKey = request.headers.get("apikey");
+  const authorization = request.headers.get("authorization");
+  if (!supabaseUrl || !apiKey || !authorization) return null;
+
+  try {
+    const response = await fetch(`${supabaseUrl}/rest/v1/rpc/consume_object_detective_quota`, {
+      method: "POST",
+      headers: {
+        "apikey": apiKey,
+        "Authorization": authorization,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ p_kind: kind }),
+    });
+    if (!response.ok) {
+      console.error("Usage quota check failed with status:", response.status);
+      return null;
+    }
+    return await response.json() === true;
+  } catch (error) {
+    console.error("Usage quota check unavailable:", error instanceof Error ? error.message : error);
+    return null;
+  }
+}
+
+function hasClientCredentials(request: Request): boolean {
+  return /^Bearer\s+\S+$/i.test(request.headers.get("authorization") ?? "") &&
+    Boolean(request.headers.get("apikey"));
+}
+
 let OPENAI_API_KEY = "";
 
 
@@ -586,6 +618,17 @@ export async function handleRequest(request: Request): Promise<Response> {
       "Do not provide medical, legal, or financial advice. Keep the reply brief and useful, usually under 120 words.",
     ].join("\n\n");
 
+    if (!hasClientCredentials(request)) {
+      return errorResponse("A valid app session is required. Please restart the app and try again.", 401, "authentication_required");
+    }
+    const chatAllowed = await consumeUsageQuota(request, "chat");
+    if (chatAllowed === null) {
+      return errorResponse("The request limit could not be checked. Please try again shortly.", 503, "quota_unavailable");
+    }
+    if (!chatAllowed) {
+      return errorResponse("You have reached today’s follow-up limit. Please try again tomorrow.", 429, "daily_quota_exceeded");
+    }
+
     try {
       const response = await fetch("https://api.openai.com/v1/responses", {
         method: "POST",
@@ -632,6 +675,17 @@ export async function handleRequest(request: Request): Promise<Response> {
       400,
       "invalid_image",
     );
+  }
+
+  if (!hasClientCredentials(request)) {
+    return errorResponse("A valid app session is required. Please restart the app and try again.", 401, "authentication_required");
+  }
+  const analysisAllowed = await consumeUsageQuota(request, "analysis");
+  if (analysisAllowed === null) {
+    return errorResponse("The request limit could not be checked. Please try again shortly.", 503, "quota_unavailable");
+  }
+  if (!analysisAllowed) {
+    return errorResponse("You have reached today’s investigation limit. Please try again tomorrow.", 429, "daily_quota_exceeded");
   }
 
   try {
