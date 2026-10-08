@@ -23,6 +23,7 @@ as $$
 declare
   v_user_id uuid := auth.uid();
   v_today date := (now() at time zone 'utc')::date;
+  v_allowed boolean;
 begin
   if v_user_id is null or p_kind not in ('analysis', 'chat') then
     return false;
@@ -46,10 +47,12 @@ begin
        and chat_messages < 120;
   end if;
 
+  v_allowed := found;
+
   delete from public.object_detective_usage
    where usage_date < v_today - 2;
 
-  return found;
+  return v_allowed;
 end;
 $$;
 
