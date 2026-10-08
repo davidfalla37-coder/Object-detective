@@ -30,9 +30,15 @@ body {
 
 <p>The app uses the camera or photo you choose to provide an investigation. For some gallery images, it makes a temporary converted copy in private app storage rather than the public Pictures folder. These temporary copies are cleared when the app closes or starts again. The app does not upload photos in the background or access your photo library for unrelated purposes.</p>
 
+<h2>Secure anonymous session and usage limits</h2>
+
+<p>To protect the analysis service, the app creates an anonymous Supabase Auth account when you first request an investigation or use chat. It does not ask for your name, email address, or password. Supabase issues a random user ID and session tokens; the app stores the tokens in its local WebView storage. The service uses the ID to authenticate requests and apply daily limits of 30 investigations and 120 follow-up messages per anonymous account. These limits may change to protect the service.</p>
+
+<p>Usage counters are kept by Supabase and removed after three days. Anonymous Auth accounts remain with Supabase until you delete the session in the app or request deletion. We do not use these IDs for advertising or link them to an identity ourselves.</p>
+
 <h2>Service providers and processing</h2>
 
-<p>Object Detective uses Supabase to receive and route investigation requests through an Edge Function. The request includes the submitted image or follow-up text and relevant investigation context. Supabase's invocation records can include request and response bodies. The project's current Free plan normally makes logs available for one day; Supabase may shorten log availability to one hour if its log-query allowance is exceeded. These logs support service operation, troubleshooting, and security. We do not use them to build advertising profiles.</p>
+<p>Object Detective uses Supabase to authenticate the anonymous session, receive and route investigation requests through an Edge Function, and apply usage limits. The request includes the submitted image or follow-up text and relevant investigation context. Supabase's invocation records can include request and response bodies. The project's current Free plan normally makes logs available for one day; Supabase may shorten log availability to one hour if its log-query allowance is exceeded. These logs support service operation, troubleshooting, and security. We do not use them to build advertising profiles.</p>
 
 <p>Supabase routes the request to OpenAI's Responses API to produce and verify investigation results and answer follow-up questions. The API requests are configured not to retain Responses API application state. OpenAI's default abuse-monitoring logs may still contain prompts, responses, or related content and are retained for up to 30 days, subject to approved account-level retention controls and legal or security exceptions.</p>
 
@@ -40,13 +46,13 @@ body {
 
 <h2>Information stored on your device</h2>
 
-<p>Investigation history, including result details and a preview image, is saved locally on your device so you can revisit it. You can remove individual investigations or clear your history in the app. Chat messages are kept in memory for the current screen session and are not saved to an Object Detective account or cloud history. Clearing app data or uninstalling the app also removes locally stored history.</p>
+<p>Investigation history, including result details and a preview image, is saved locally on your device so you can revisit it. You can remove individual investigations or clear your history in the app. Chat messages are kept in memory for the current screen session and are not saved to an Object Detective cloud history. Clearing app data or uninstalling the app also removes locally stored history and session tokens.</p>
 
-<h2>Retention and deletion</h2>
+<h2 id="delete-account">Retention and deletion</h2>
 
-<p>Object Detective does not maintain an account-based investigation history or store submitted images in its own cloud database or file storage. Supabase invocation logs may include request and response bodies and are retained according to the project's plan and current service limits. OpenAI may retain content in abuse-monitoring logs for up to 30 days under its default controls. We cannot delete an individual request from those providers' operational logs; provider retention controls and legal or security exceptions apply.</p>
+<p>Tap <strong>Delete app data and secure session</strong> in the app to delete the anonymous Supabase account and its usage counters and clear saved investigations on that device. You can also request deletion from outside the app using the instructions at <a href="account-deletion.html">Object Detective account deletion</a>. If you email us, include the session ID copied from the app so we can find the anonymous account. Supabase invocation logs and OpenAI abuse-monitoring logs are provider operational logs; an in-app deletion cannot remove an individual request from those logs. Provider retention controls and legal or security exceptions apply.</p>
 
-<p>For a privacy question or request, contact <a href="mailto:objectdetectiveapp@gmail.com">objectdetectiveapp@gmail.com</a>.</p>
+<p>For a privacy question or deletion request, contact <a href="mailto:objectdetectiveapp@gmail.com">objectdetectiveapp@gmail.com</a>.</p>
 
 <h2>Children</h2>
 
