@@ -421,6 +421,7 @@ async function verifyIdentification(
       },
       body: JSON.stringify({
         model: VERIFICATION_MODEL,
+        store: false,
         input: [{
           role: "user",
           content: [
@@ -596,6 +597,7 @@ Deno.serve(async (request: Request): Promise<Response> => {
         },
         body: JSON.stringify({
           model: PRIMARY_MODEL,
+          store: false,
           instructions: developerInstructions,
           input: [{ role: "user", content: [{ type: "input_text", text: userPrompt }] }],
           max_output_tokens: 350,
@@ -643,6 +645,7 @@ Deno.serve(async (request: Request): Promise<Response> => {
       },
       body: JSON.stringify({
         model: PRIMARY_MODEL,
+          store: false,
         input: [{
           role: "user",
           content: [
