@@ -9,7 +9,7 @@ This is an internal worksheet for the next release, not a submitted Play Console
 - Follow-up chat sends the user's typed question, current chat messages, and investigation context to Supabase, then OpenAI.
 - The candidate creates an anonymous Supabase Auth user on first use. Its random user ID and session tokens authenticate requests. The app stores session tokens locally and provides an in-app control to delete the anonymous user and local investigation history.
 - A proposed Postgres migration applies per-user daily limits of 30 investigations and 120 chat messages. Usage counters are deleted after three days. The migration must be applied before the candidate function is deployed.
-- The candidate Edge Function rejects requests without a user session and checks quota before calling OpenAI. The deployment must have JWT verification enabled.
+- The candidate Edge Function validates each bearer token with Supabase Auth `/user` and fails closed if validation is unavailable. Gateway JWT verification is intentionally disabled so the handler can apply that validation and return consistent CORS responses. It checks per-account daily quotas before calling OpenAI.
 - The backend sets `store: false` on all three OpenAI Responses API requests. The app manually provides conversation context and does not rely on stored API response state.
 - The app saves investigation results and a preview image in local WebView storage. It provides per-item deletion and a Clear button. No advertising or analytics SDKs were found in the app Gradle dependencies reviewed. Confirm against the final merged manifest/AAB before submission.
 
