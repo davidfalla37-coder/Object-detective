@@ -560,6 +560,44 @@ async function verifyIdentification(
   }
 }
 
+export async function readLimitedJson(
+  request: Request,
+  maxBytes: number,
+): Promise<{ ok: true; value: unknown } | { ok: false; tooLarge: boolean }> {
+  const reader = request.body?.getReader();
+  if (!reader) return { ok: false, tooLarge: false };
+  const chunks: Uint8Array[] = [];
+  let totalBytes = 0;
+
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      totalBytes += value.byteLength;
+      if (totalBytes > maxBytes) {
+        await reader.cancel();
+        return { ok: false, tooLarge: true };
+      }
+      chunks.push(value);
+    }
+  } catch {
+    return { ok: false, tooLarge: false };
+  }
+
+  const bytes = new Uint8Array(totalBytes);
+  let offset = 0;
+  for (const chunk of chunks) {
+    bytes.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+
+  try {
+    return { ok: true, value: JSON.parse(new TextDecoder().decode(bytes)) };
+  } catch {
+    return { ok: false, tooLarge: false };
+  }
+}
+
 export async function handleRequest(request: Request): Promise<Response> {
   if (request.method === "OPTIONS") {
     return new Response(null, { status: 204, headers: corsHeaders });
@@ -569,17 +607,20 @@ export async function handleRequest(request: Request): Promise<Response> {
     return errorResponse("Only POST requests are supported.", 405, "method_not_allowed");
   }
 
-  const contentLength = Number(request.headers.get("content-length") || 0);
-  if (contentLength > MAX_REQUEST_LENGTH) {
+  const contentLengthHeader = request.headers.get("content-length");
+  const contentLength = contentLengthHeader === null ? 0 : Number(contentLengthHeader);
+  if (Number.isFinite(contentLength) && contentLength > MAX_REQUEST_LENGTH) {
     return errorResponse("The request is too large. Please send an image under 20 MB.", 413, "request_too_large");
   }
 
-  let body: RequestBody;
-  try {
-    body = await request.json() as RequestBody;
-  } catch {
+  const parsedBody = await readLimitedJson(request, MAX_REQUEST_LENGTH);
+  if (!parsedBody.ok) {
+    if (parsedBody.tooLarge) {
+      return errorResponse("The request is too large. Please send an image under 20 MB.", 413, "request_too_large");
+    }
     return errorResponse("Request body must be valid JSON.", 400, "invalid_json");
   }
+  const body = parsedBody.value as RequestBody;
 
 
   if (body.mode === "delete-anonymous-account") {
