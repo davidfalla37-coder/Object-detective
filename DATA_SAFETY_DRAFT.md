@@ -6,7 +6,7 @@ Verified against the current Android app and deployed Supabase function on 8 Oct
 
 - Photos and videos: user-selected images are sent from the app to the Supabase Edge Function over HTTPS and forwarded to OpenAI's Responses API over HTTPS for analysis.
 - User-generated content: follow-up questions and relevant investigation details are sent through the same path.
-- Saved investigation history: stored only in the app's local device storage. Users can delete one item with its × button or all items with **Delete all**. This does not remove original photos from the device's Gallery.
+- Saved investigation history: stored only in the app's local device storage. Users can delete one item with its × button or all items with **Delete all**. This does not remove original photos from the device's Gallery. App data is excluded from Android cloud backup and device-to-device restore.
 - No user account, cloud history, or Supabase database/storage persistence is implemented.
 - The Responses API requests set `store: false`. OpenAI's standard API abuse-monitoring logs may contain customer content and are retained for up to 30 days by default, subject to legal or safety exceptions. This is within Google's 90-day limit for the deletion request mechanism badge.
 
