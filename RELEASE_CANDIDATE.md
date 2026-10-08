@@ -7,7 +7,7 @@
 | Area | Prepared change | Original draft |
 | --- | --- | --- |
 | Identification quality | Compare the cautious estimate with recent completed eBay listings using the object's known/manual search terms; clearly explain that searches are not verified sales evidence. | [#4](https://github.com/davidfalla37-coder/Object-detective/pull/4) |
-| Photo capture | Choose from gallery or camera and submit up to three angles in one investigation. | [#5](https://github.com/davidfalla37-coder/Object-detective/pull/5) |
+| Photo capture and storage | Choose from gallery or camera and submit up to three angles; gallery conversions stay in temporary app-private cache instead of public Pictures. | [#5](https://github.com/davidfalla37-coder/Object-detective/pull/5) |
 | Accuracy process | Repeatable manual test plan for identification, confidence, value, safety, and photo selection. | [#6](https://github.com/davidfalla37-coder/Object-detective/pull/6) |
 | Play store materials | Listing text, screenshot capture plan, candidate launcher icon, and 1024 × 500 feature graphic. Screenshots still need to come from the finished app. | [#7](https://github.com/davidfalla37-coder/Object-detective/pull/7) |
 | Backend reliability | Automated Edge Function validation/safety regression tests and CI execution. | [#8](https://github.com/davidfalla37-coder/Object-detective/pull/8) |
@@ -16,7 +16,7 @@
 
 ## Checks to finish before producing the release AAB
 
-- [x] Consolidated Android debug build, Edge Function tests, and Edge Function type-check passed in CI run [#25](https://github.com/davidfalla37-coder/Object-detective/actions/runs/37823894430).
+- [x] Consolidated Android debug build, Edge Function tests, and Edge Function type-check passed in CI run [#32](https://github.com/davidfalla37-coder/Object-detective/actions/runs/37825009301).
 - [ ] Run the accuracy plan on representative ordinary objects, branded/model-labelled objects, incomplete items, vehicle parts, and unclear photos; record the results.
 - [ ] On an Android phone, verify camera capture, gallery selection, multiple photos up to three, cancellation, permission denial, oversized selections, and investigation retry/error states.
 - [ ] Confirm gallery photo conversion creates no copies in the public Pictures folder, and temporary converted files are cleared when the app closes.
@@ -38,7 +38,7 @@
 
 ## Still pending
 
-- Combined CI passed in run #25; hands-on Android testing has not run yet.
+- Combined CI passed in run #32; hands-on Android testing has not run yet.
 - Store screenshots are a plan only; the feature graphic and icon remain candidates for visual review.
 - The OpenAI data-retention control is account-level and was not available through repository/Supabase access.
 - The candidate does not include a new version number or signed AAB yet.
