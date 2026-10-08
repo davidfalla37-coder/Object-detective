@@ -25,7 +25,7 @@ declare
   v_today date := (now() at time zone 'utc')::date;
   v_allowed boolean;
 begin
-  if v_user_id is null or p_kind not in ('analysis', 'chat') then
+  if v_user_id is null or p_kind is null or p_kind not in ('analysis', 'chat') then
     return false;
   end if;
 
