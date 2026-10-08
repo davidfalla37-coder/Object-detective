@@ -9,6 +9,7 @@ on:
       - 'supabase/functions/investigate-object/**'
       - 'build.gradle'
       - 'settings.gradle'
+      - 'ic_launcher.xml'
       - '.github/workflows/verify-pr.yml'
 
 jobs:
@@ -42,5 +43,7 @@ jobs:
         uses: denoland/setup-deno@v2
         with:
           deno-version: v2.x
+      - name: Test Edge Function validation and safety handling
+        run: deno test supabase/functions/investigate-object/index_test.ts
       - name: Type-check Supabase Edge Function
         run: deno check supabase/functions/investigate-object/index.ts
