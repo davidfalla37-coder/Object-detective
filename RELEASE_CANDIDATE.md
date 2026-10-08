@@ -19,6 +19,7 @@
 - [x] Consolidated Android debug build, Edge Function tests, and Edge Function type-check passed in CI run [#25](https://github.com/davidfalla37-coder/Object-detective/actions/runs/37823894430).
 - [ ] Run the accuracy plan on representative ordinary objects, branded/model-labelled objects, incomplete items, vehicle parts, and unclear photos; record the results.
 - [ ] On an Android phone, verify camera capture, gallery selection, multiple photos up to three, cancellation, permission denial, oversized selections, and investigation retry/error states.
+- [ ] Confirm gallery photo conversion creates no copies in the public Pictures folder, and temporary converted files are cleared when the app closes.
 - [ ] Verify that sold-item searches open with useful terms, and that the user can still manually improve the shopping query.
 - [ ] Verify the privacy link opens the correct public HTTPS policy and that the contact address is correct.
 - [ ] Review the merged Android manifest and packaged SDKs against the Play Data Safety draft.
