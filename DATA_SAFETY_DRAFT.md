@@ -1,11 +1,20 @@
-# Google Play Data safety draft
+# Google Play Data safety review
 
-Review against the exact production services before submission.
+Verified against the current Android app and deployed Supabase function on 8 October 2026. Recheck if services or SDKs change.
 
-Potential data processed:
-- Photos/images: collected when a user submits an image; sent through the Supabase Edge Function to the configured AI processor for analysis.
-- User-generated content: typed follow-up questions and the investigation fields needed to answer them are sent through the Supabase Edge Function to the configured AI processor. The app keeps the chat transcript only for the current screen session; it does not currently save chat transcripts to an account or cloud history.
-- Investigation history: saved locally on the device. No cloud history or account feature is currently enabled.
-- Diagnostics: only if analytics/crash reporting is added.
+## Current data flow
 
-The first release should avoid precise location, contacts, SMS, phone logs, health data and advertising identifiers. Final Play Console answers must match the actual production services, retention settings and third-party SDKs.
+- Photos and videos: user-selected images are sent from the app to the Supabase Edge Function over HTTPS and forwarded to OpenAI's Responses API over HTTPS for analysis.
+- User-generated content: follow-up questions and relevant investigation details are sent through the same path.
+- Saved investigation history: stored only in the app's local device storage. Users can delete one item with its × button or all items with **Delete all**. This does not remove original photos from the device's Gallery.
+- No user account, cloud history, or Supabase database/storage persistence is implemented.
+- The Responses API requests set `store: false`. OpenAI's standard API abuse-monitoring logs may contain customer content and are retained for up to 30 days by default, subject to legal or safety exceptions. This is within Google's 90-day limit for the deletion request mechanism badge.
+
+## Form answers to verify in Play Console
+
+- **Encryption in transit:** Yes. Both app-to-Supabase and Supabase-to-OpenAI requests use HTTPS.
+- **Deletion request mechanism:** Yes, if Play Console's current question accepts automatic deletion within 90 days. In-app controls delete local history; provider abuse-monitoring logs are automatically retained for up to 30 days by default. Make sure the form's declaration matches its current wording.
+- **Collected data types:** Declare photos/videos and user-generated content if required by the form. Requests are processed off-device and are not ephemeral while the provider's standard abuse-monitoring retention applies.
+- **Data shared:** Review the current Play definition for service providers processing data on the developer's behalf. Do not claim “no data shared with third parties” unless the processor relationship and form rules support it.
+- **Account deletion:** Not applicable; the app has no account creation or sign-in.
+
