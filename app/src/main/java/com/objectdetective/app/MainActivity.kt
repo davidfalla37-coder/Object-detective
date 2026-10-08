@@ -108,7 +108,9 @@ class MainActivity : Activity() {
                 if (
                     scheme == "https" &&
                     host == SUPABASE_HOST &&
-                    uri.path == SUPABASE_FUNCTION_PATH
+                    (uri.path == SUPABASE_FUNCTION_PATH ||
+                        uri.path == "/auth/v1/signup" ||
+                        uri.path == "/auth/v1/token")
                 ) {
                     return null
                 }
