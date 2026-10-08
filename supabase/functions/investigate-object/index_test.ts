@@ -4,6 +4,7 @@ import {
   isValidImageDataUrl,
   normalizeResult,
   normalizeVerification,
+  readLimitedJson,
   OPENAI_NO_STORE,
   reconcileVerification,
 } from "./index.ts";
@@ -124,6 +125,22 @@ Deno.test("valid analysis and chat requests require a Supabase user session", as
     body: JSON.stringify({ mode: "chat", question: "What is this?" }),
   }));
   await assertErrorCode(chat, 401, "authentication_required");
+});
+
+Deno.test("request JSON parsing enforces a streaming size limit", async () => {
+  const oversized = await readLimitedJson(
+    new Request("https://edge.test/", { method: "POST", body: '{"value":"123456"}' }),
+    8,
+  );
+  assertEquals(oversized.ok, false, "oversized body is rejected");
+  if (!oversized.ok) assertEquals(oversized.tooLarge, true, "oversized body has size error");
+
+  const valid = await readLimitedJson(
+    new Request("https://edge.test/", { method: "POST", body: '{"ok":true}' }),
+    32,
+  );
+  assertEquals(valid.ok, true, "small JSON body is parsed");
+  if (valid.ok) assertEquals((valid.value as { ok: boolean }).ok, true, "parsed JSON value");
 });
 
 Deno.test("result normalization clamps confidence and rejects unsupported labels", () => {
