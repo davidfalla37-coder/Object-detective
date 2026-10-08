@@ -1,0 +1,2 @@
+[functions.investigate-object]
+verify_jwt = true
