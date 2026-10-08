@@ -36,6 +36,8 @@ Tools
 
 Use the candidate launcher icon in `ic_launcher.xml` as the visual direction. Export and check the final 512 × 512 Play Store icon before upload.
 
+Candidate feature graphic: `store-assets/object-detective-feature.jpg` (1024 × 500 JPEG). Preview it before use.
+
 Capture screenshots from the finished app on a real Android device using genuine investigation results. See [PLAY_STORE_SCREENSHOT_PLAN.md](PLAY_STORE_SCREENSHOT_PLAN.md). Avoid invented results, claims of exact matches, rankings or unsupported accuracy claims.
 
 ## Privacy policy
