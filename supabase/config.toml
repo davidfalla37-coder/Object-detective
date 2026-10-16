@@ -1,0 +1,5 @@
+# The handler validates the bearer token with Supabase Auth /user before processing
+# requests. Keep this false to let the handler return consistent CORS/error responses;
+# the handler must fail closed if Auth validation is unavailable.
+[functions.investigate-object]
+verify_jwt = false

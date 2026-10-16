@@ -9,6 +9,7 @@ const PRIMARY_MODEL = "gpt-4.1-mini";
 const VERIFICATION_MODEL = "gpt-4.1";
 const MAX_IMAGE_DATA_URL_LENGTH = 20 * 1024 * 1024;
 const MAX_REQUEST_LENGTH = MAX_IMAGE_DATA_URL_LENGTH + 1024;
+export const OPENAI_NO_STORE = { store: false } as const;
 
 interface RequestBody {
   image?: unknown;
@@ -68,11 +69,11 @@ function errorResponse(message: string, status: number, code: string): Response 
   return jsonResponse({ error: { code, message } }, status);
 }
 
-function isValidImageDataUrl(value: string): boolean {
+export function isValidImageDataUrl(value: string): boolean {
   return /^data:image\/(jpeg|jpg|png|webp|gif);base64,[A-Za-z0-9+/]+={0,2}$/i.test(value);
 }
 
-function normalizeResult(value: unknown): InvestigationResult {
+export function normalizeResult(value: unknown): InvestigationResult {
   const record = value && typeof value === "object"
     ? value as Record<string, unknown>
     : {};
@@ -220,10 +221,59 @@ async function readOpenAIError(response: Response): Promise<string> {
   }
 }
 
-const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
-if (!OPENAI_API_KEY) {
-  throw new Error("OPENAI_API_KEY is required");
+async function consumeUsageQuota(request: Request, kind: "analysis" | "chat"): Promise<boolean | null> {
+  const supabaseUrl = Deno.env.get("SUPABASE_URL");
+  const apiKey = request.headers.get("apikey");
+  const authorization = request.headers.get("authorization");
+  if (!supabaseUrl || !apiKey || !authorization) return null;
+
+  try {
+    const response = await fetch(`${supabaseUrl}/rest/v1/rpc/consume_object_detective_quota`, {
+      method: "POST",
+      headers: {
+        "apikey": apiKey,
+        "Authorization": authorization,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ p_kind: kind }),
+    });
+    if (!response.ok) {
+      console.error("Usage quota check failed with status:", response.status);
+      return null;
+    }
+    return await response.json() === true;
+  } catch (error) {
+    console.error("Usage quota check unavailable:", error instanceof Error ? error.message : error);
+    return null;
+  }
 }
+
+export async function getVerifiedSupabaseUser(
+  request: Request,
+  options: { supabaseUrl?: string; fetcher?: typeof fetch } = {},
+): Promise<{ id: string; is_anonymous: boolean } | null> {
+  const apiKey = request.headers.get("apikey");
+  const authorization = request.headers.get("authorization");
+  if (!apiKey || !/^Bearer\s+\S+$/i.test(authorization ?? "")) return null;
+  const supabaseUrl = options.supabaseUrl ?? Deno.env.get("SUPABASE_URL");
+  if (!supabaseUrl) return null;
+  const fetcher = options.fetcher ?? fetch;
+
+  try {
+    const response = await fetcher(`${supabaseUrl}/auth/v1/user`, {
+      headers: { "apikey": apiKey, "Authorization": authorization! },
+    });
+    if (!response.ok) return null;
+    const user = await response.json() as { id?: string; is_anonymous?: boolean };
+    if (typeof user.id !== "string" || !/^[0-9a-f-]{36}$/i.test(user.id)) return null;
+    return { id: user.id, is_anonymous: user.is_anonymous === true };
+  } catch (error) {
+    console.error("Supabase session validation failed:", error instanceof Error ? error.message : error);
+    return null;
+  }
+}
+
+let OPENAI_API_KEY = "";
 
 
 interface VerificationResult {
@@ -250,7 +300,7 @@ function clamp01(value: number): number {
   return Math.max(0, Math.min(1, value));
 }
 
-function normalizeVerification(value: unknown): VerificationResult {
+export function normalizeVerification(value: unknown): VerificationResult {
   const record = value && typeof value === "object" ? value as Record<string, unknown> : {};
   const textValue = (key: string): string => typeof record[key] === "string" ? String(record[key]).trim() : "Unknown";
   const numberValue = (key: string): number => {
@@ -310,7 +360,7 @@ function rebuiltExplanation(result: InvestigationResult, verification: Verificat
   return parts.join(" ");
 }
 
-function reconcileVerification(
+export function reconcileVerification(
   primary: InvestigationResult,
   verification: VerificationResult,
 ): InvestigationResult {
@@ -383,7 +433,7 @@ function reconcileVerification(
   return result;
 }
 
-function conservativeFallback(result: InvestigationResult): InvestigationResult {
+export function conservativeFallback(result: InvestigationResult): InvestigationResult {
   const fallback: InvestigationResult = { ...result };
   fallback.confidence = Math.min(fallback.confidence, 0.79);
   fallback.exact_match_confidence = Math.min(fallback.exact_match_confidence, 0.69);
@@ -421,6 +471,7 @@ async function verifyIdentification(
       },
       body: JSON.stringify({
         model: VERIFICATION_MODEL,
+        ...OPENAI_NO_STORE,
         input: [{
           role: "user",
           content: [
@@ -511,7 +562,45 @@ async function verifyIdentification(
   }
 }
 
-Deno.serve(async (request: Request): Promise<Response> => {
+export async function readLimitedJson(
+  request: Request,
+  maxBytes: number,
+): Promise<{ ok: true; value: unknown } | { ok: false; tooLarge: boolean }> {
+  const reader = request.body?.getReader();
+  if (!reader) return { ok: false, tooLarge: false };
+  const chunks: Uint8Array[] = [];
+  let totalBytes = 0;
+
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      totalBytes += value.byteLength;
+      if (totalBytes > maxBytes) {
+        await reader.cancel();
+        return { ok: false, tooLarge: true };
+      }
+      chunks.push(value);
+    }
+  } catch {
+    return { ok: false, tooLarge: false };
+  }
+
+  const bytes = new Uint8Array(totalBytes);
+  let offset = 0;
+  for (const chunk of chunks) {
+    bytes.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+
+  try {
+    return { ok: true, value: JSON.parse(new TextDecoder().decode(bytes)) };
+  } catch {
+    return { ok: false, tooLarge: false };
+  }
+}
+
+export async function handleRequest(request: Request): Promise<Response> {
   if (request.method === "OPTIONS") {
     return new Response(null, { status: 204, headers: corsHeaders });
   }
@@ -520,18 +609,59 @@ Deno.serve(async (request: Request): Promise<Response> => {
     return errorResponse("Only POST requests are supported.", 405, "method_not_allowed");
   }
 
-  const contentLength = Number(request.headers.get("content-length") || 0);
-  if (contentLength > MAX_REQUEST_LENGTH) {
+  const contentLengthHeader = request.headers.get("content-length");
+  const contentLength = contentLengthHeader === null ? 0 : Number(contentLengthHeader);
+  if (Number.isFinite(contentLength) && contentLength > MAX_REQUEST_LENGTH) {
     return errorResponse("The request is too large. Please send an image under 20 MB.", 413, "request_too_large");
   }
 
-  let body: RequestBody;
-  try {
-    body = await request.json() as RequestBody;
-  } catch {
+  const parsedBody = await readLimitedJson(request, MAX_REQUEST_LENGTH);
+  if (!parsedBody.ok) {
+    if (parsedBody.tooLarge) {
+      return errorResponse("The request is too large. Please send an image under 20 MB.", 413, "request_too_large");
+    }
     return errorResponse("Request body must be valid JSON.", 400, "invalid_json");
   }
+  const body = parsedBody.value as RequestBody;
 
+
+  if (body.mode === "delete-anonymous-account") {
+    const authenticatedUser = await getVerifiedSupabaseUser(request);
+    if (!authenticatedUser) {
+      return errorResponse("A valid app session is required.", 401, "authentication_required");
+    }
+    const supabaseUrl = Deno.env.get("SUPABASE_URL");
+    const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    if (!supabaseUrl || !serviceRoleKey) {
+      return errorResponse("Secure account deletion is temporarily unavailable.", 503, "deletion_unavailable");
+    }
+
+    try {
+      const user = authenticatedUser;
+      if (user.is_anonymous !== true) {
+        return errorResponse("Only an anonymous app session can be deleted here.", 403, "account_type_not_supported");
+      }
+
+      const deleteResponse = await fetch(
+        `${supabaseUrl}/auth/v1/admin/users/${user.id}`,
+        {
+          method: "DELETE",
+          headers: {
+            "apikey": serviceRoleKey,
+            "Authorization": `Bearer ${serviceRoleKey}`,
+          },
+        },
+      );
+      if (!deleteResponse.ok) {
+        console.error("Anonymous account deletion failed with status:", deleteResponse.status);
+        return errorResponse("The secure app session could not be deleted. Please contact support.", 502, "deletion_failed");
+      }
+      return new Response(null, { status: 204, headers: corsHeaders });
+    } catch (error) {
+      console.error("Anonymous account deletion failed:", error instanceof Error ? error.message : error);
+      return errorResponse("The secure app session could not be deleted. Please try again.", 502, "deletion_failed");
+    }
+  }
 
   if (body.mode === "chat") {
     const question = typeof body.question === "string" ? body.question.trim().slice(0, 700) : "";
@@ -587,6 +717,17 @@ Deno.serve(async (request: Request): Promise<Response> => {
       "Do not provide medical, legal, or financial advice. Keep the reply brief and useful, usually under 120 words.",
     ].join("\n\n");
 
+    if (!await getVerifiedSupabaseUser(request)) {
+      return errorResponse("A valid app session is required. Please restart the app and try again.", 401, "authentication_required");
+    }
+    const chatAllowed = await consumeUsageQuota(request, "chat");
+    if (chatAllowed === null) {
+      return errorResponse("The request limit could not be checked. Please try again shortly.", 503, "quota_unavailable");
+    }
+    if (!chatAllowed) {
+      return errorResponse("You have reached today’s follow-up limit. Please try again after the daily limit resets.", 429, "daily_quota_exceeded");
+    }
+
     try {
       const response = await fetch("https://api.openai.com/v1/responses", {
         method: "POST",
@@ -596,6 +737,7 @@ Deno.serve(async (request: Request): Promise<Response> => {
         },
         body: JSON.stringify({
           model: PRIMARY_MODEL,
+          ...OPENAI_NO_STORE,
           instructions: developerInstructions,
           input: [{ role: "user", content: [{ type: "input_text", text: userPrompt }] }],
           max_output_tokens: 350,
@@ -634,6 +776,17 @@ Deno.serve(async (request: Request): Promise<Response> => {
     );
   }
 
+  if (!await getVerifiedSupabaseUser(request)) {
+    return errorResponse("A valid app session is required. Please restart the app and try again.", 401, "authentication_required");
+  }
+  const analysisAllowed = await consumeUsageQuota(request, "analysis");
+  if (analysisAllowed === null) {
+    return errorResponse("The request limit could not be checked. Please try again shortly.", 503, "quota_unavailable");
+  }
+  if (!analysisAllowed) {
+    return errorResponse("You have reached today’s investigation limit. Please try again after the daily limit resets.", 429, "daily_quota_exceeded");
+  }
+
   try {
     const openAIResponse = await fetch("https://api.openai.com/v1/responses", {
       method: "POST",
@@ -643,6 +796,7 @@ Deno.serve(async (request: Request): Promise<Response> => {
       },
       body: JSON.stringify({
         model: PRIMARY_MODEL,
+        ...OPENAI_NO_STORE,
         input: [{
           role: "user",
           content: [
@@ -811,4 +965,12 @@ Deno.serve(async (request: Request): Promise<Response> => {
     console.error("Object investigation failed:", error instanceof Error ? error.message : error);
     return errorResponse("Unable to investigate the object right now. Please try again.", 500, "internal_error");
   }
-});
+}
+
+if (import.meta.main) {
+  OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY") ?? "";
+  if (!OPENAI_API_KEY) {
+    throw new Error("OPENAI_API_KEY is required");
+  }
+  Deno.serve(handleRequest);
+}

@@ -1,36 +1,45 @@
-# Google Play listing — Object Detective
+# Google Play listing draft — Object Detective
+
+**Status:** Draft for the next release. Review the copy and capture the screenshots from the finished app before changing the live Play listing.
 
 ## App name
+
 Object Detective
 
 ## Short description
-Photograph mystery objects and investigate what they are, what they fit and what they may be worth.
+
+Identify mystery objects, explore their uses and estimate second-hand value.
+
+(71 characters; Google Play allows up to 80.)
 
 ## Full description
-Ever found a mystery part, tool, bracket, component or random object and wondered what it is?
 
-Object Detective turns your phone camera into an AI-assisted investigation tool.
+Found a mystery object, part or tool? Photograph it to get a useful starting point for your investigation.
 
-Take a clear photo and get:
-• A likely identification
-• What the object is used for
-• A confidence score
-• A cautious value estimate
-• Compatibility clues
-• Safety warnings when appropriate
-• Saved investigation history
-• Follow-up chat about an investigation
-• Editable sale-listing drafts with links to marketplaces
+Object Detective can help you:
+- Explore what an object may be and what it is used for
+- See a visual identification confidence score
+- Review a condition assessment and cautious second-hand value estimate
+- Add extra angles and use visible model details to improve searches
+- Explore car and motorcycle part clues when the photo supports them
+- Save recent investigations, ask follow-up questions and prepare a marketplace listing
 
-Object Detective is designed for garages, workshops, DIY projects, second-hand finds, car parts, tools, hardware, electronics and everyday mystery objects.
+Use the shopping searches to explore possible matches. Search results do not confirm an exact identity or fit.
 
-Important: results are estimates, not proof. Always verify expensive or safety-critical items with a qualified source.
+Photo-based identifications, condition assessments and values can be wrong. Check model numbers, compatibility, condition and comparable sold prices independently. Do not rely on the app alone for safety-critical decisions.
 
 ## Suggested category
+
 Tools
 
-## Feature graphic
-assets/object-detective-feature.png
+## Store graphics
+
+Use the candidate launcher icon in `ic_launcher.xml` as the visual direction. Export and check the final 512 × 512 Play Store icon before upload.
+
+Candidate feature graphic: `store-assets/object-detective-feature.jpg` (1024 × 500 JPEG). Preview it before use.
+
+Capture screenshots from the finished app on a real Android device using genuine investigation results. See [PLAY_STORE_SCREENSHOT_PLAN.md](PLAY_STORE_SCREENSHOT_PLAN.md). Avoid invented results, claims of exact matches, rankings or unsupported accuracy claims.
 
 ## Privacy policy
-Host privacy-policy.html at a public HTTPS URL and enter that URL in Play Console.
+
+Host `privacy-policy.html` at a public HTTPS URL and enter that URL in Play Console.
