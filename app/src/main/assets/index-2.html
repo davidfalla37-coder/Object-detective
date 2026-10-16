@@ -5,7 +5,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: content:; connect-src https://gboyflbwcobhzbvpdtat.supabase.co; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: content:; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'">
   <title>Object Detective</title>
   <style>
     :root{color-scheme:dark;--bg:#07101f;--panel:#111c30;--line:#293b59;--text:#f8fafc;--muted:#a7b4c7;--accent:#64d6ff;--danger:#ffb4b4}
@@ -42,14 +42,15 @@
     .chat-status{min-height:22px;color:var(--muted);font-size:13px;margin-top:7px}
     @media(max-width:480px){.buttons{grid-template-columns:1fr}h1{font-size:32px}}
       .privacy-link{margin:0 0 8px;text-align:center;font-size:14px}.privacy-link a{color:var(--accent);text-decoration:underline;text-underline-offset:3px} .privacy-delete{background:none;border:0;padding:0;min-height:0;color:var(--accent);text-decoration:underline;text-underline-offset:3px;font:inherit;cursor:pointer}
-    .scanner-card{border-color:#35627a}.scanner-output{margin-top:12px;padding:12px;border-radius:12px;background:#091426;border:1px solid #354b6c;overflow-wrap:anywhere;white-space:pre-wrap}.scanner-output a{color:var(--accent);word-break:break-all}.scanner-help{font-size:13px;margin-bottom:0}
+    .scanner-card{border-color:#35627a}.scanner-output{margin-top:12px;padding:12px;border-radius:12px;background:#091426;border:1px solid #354b6c;overflow-wrap:anywhere;white-space:pre-wrap}.scanner-output a{color:var(--accent);word-break:break-all}.no-cost-banner{border-color:#6f5a24;background:#2b2413;color:#ffe6a0}.no-cost-banner strong{color:#ffd34e}.scanner-help{font-size:13px;margin-bottom:0}
   </style>
 </head>
 <body>
 <main>
   <h1>🔎 Object Detective</h1>
   <p>Take or choose a clear photo and discover what the object is, what it does, and what it may be worth.</p>
-  <p class="privacy-link"><a href="https://davidfalla37-coder.github.io/Object-detective/privacy-policy.html">Privacy policy</a> · <a href="https://davidfalla37-coder.github.io/Object-detective/account-deletion.html">Account deletion help</a> · <button class="privacy-delete" id="copy-session-id" type="button">Copy session ID</button> · <button class="privacy-delete" id="delete-secure-session" type="button">Delete app data and secure session</button></p>
+  <div class="card no-cost-banner" role="status"><strong>No-cost test mode:</strong> Photos are not analysed by AI. Identify and chat show clearly marked sample responses so you can test the app screens without paid AI calls. Barcode scanning and local app features remain available.</div>
+  <p class="privacy-link"><a href="https://davidfalla37-coder.github.io/Object-detective/privacy-policy.html">Privacy policy</a> · <button class="privacy-delete" id="delete-secure-session" type="button">Clear local test data</button></p>
 
   <section class="card scanner-card" aria-labelledby="scanner-heading">
     <h2 id="scanner-heading">QR and barcode reader</h2>
@@ -220,65 +221,7 @@
 </section>
 </main>
 <script>
-const FUNCTION_URL='https://gboyflbwcobhzbvpdtat.supabase.co/functions/v1/investigate-object';
-const AUTH_URL='https://gboyflbwcobhzbvpdtat.supabase.co/auth/v1';
-const SUPABASE_PUBLISHABLE_KEY='sb_publishable_2rD7LcbTjtisAk17cWHc_w_7LbBi5zX';
-const AUTH_SESSION_KEY='objectDetective.authSession.v1';
-let authSessionPromise=null;
-
-function readAuthSession(){
-  try{
-    const value=localStorage.getItem(AUTH_SESSION_KEY);
-    return value?JSON.parse(value):null;
-  }catch(_){return null;}
-}
-function saveAuthSession(value){
-  if(!value||typeof value.access_token!=='string'||typeof value.refresh_token!=='string')throw new Error('Secure session could not be saved.');
-  const session={
-    access_token:value.access_token,
-    refresh_token:value.refresh_token,
-    user_id:typeof value.user?.id==='string'?value.user.id:null,
-    expires_at:Number(value.expires_at)||Math.floor(Date.now()/1000)+Number(value.expires_in||3600)
-  };
-  localStorage.setItem(AUTH_SESSION_KEY,JSON.stringify(session));
-  return session;
-}
-async function authRequest(path,payload){
-  return fetch(AUTH_URL+path,{
-    method:'POST',
-    headers:{'Content-Type':'application/json','apikey':SUPABASE_PUBLISHABLE_KEY},
-    body:JSON.stringify(payload)
-  });
-}
-async function getFunctionHeaders(){
-  if(!authSessionPromise){
-    authSessionPromise=(async()=>{
-      let session=readAuthSession();
-      const now=Math.floor(Date.now()/1000);
-      if(session&&typeof session.access_token==='string'&&session.expires_at>now+60){
-        return {'Content-Type':'application/json','apikey':SUPABASE_PUBLISHABLE_KEY,'Authorization':'Bearer '+session.access_token};
-      }
-      if(session&&typeof session.refresh_token==='string'){
-        const refresh=await authRequest('/token?grant_type=refresh_token',{refresh_token:session.refresh_token});
-        if(refresh.ok){
-          session=saveAuthSession(await refresh.json());
-          return {'Content-Type':'application/json','apikey':SUPABASE_PUBLISHABLE_KEY,'Authorization':'Bearer '+session.access_token};
-        }
-        if(refresh.status>=500)throw new Error('Secure session service is temporarily unavailable. Please try again.');
-        localStorage.removeItem(AUTH_SESSION_KEY);
-      }
-      const signIn=await authRequest('/signup',{});
-      if(!signIn.ok)throw new Error('Could not start a secure app session. Please try again later.');
-      session=saveAuthSession(await signIn.json());
-      return {'Content-Type':'application/json','apikey':SUPABASE_PUBLISHABLE_KEY,'Authorization':'Bearer '+session.access_token};
-    })();
-  }
-  try{return await authSessionPromise;}finally{authSessionPromise=null;}
-}
-async function callInvestigationFunction(payload){
-  const headers=await getFunctionHeaders();
-  return fetch(FUNCTION_URL,{method:'POST',headers,body:JSON.stringify(payload)});
-}
+// No-cost tester build: no auth or paid AI requests are made.
 const scanCodeButton=document.getElementById('scan-code');
 const scannerOutput=document.getElementById('scanner-output');
 scanCodeButton.addEventListener('click',()=>{
@@ -334,7 +277,6 @@ const historyList=document.getElementById('history-list');
 const emptyHistory=document.getElementById('empty-history');
 const clearHistory=document.getElementById('clear-history');
 const deleteSecureSession=document.getElementById('delete-secure-session');
-const copySessionId=document.getElementById('copy-session-id');
 const HISTORY_KEY='object-detective-history-v1';
 let selectedFiles=[];
 let photoChecks=[];
@@ -407,13 +349,37 @@ identify.onclick=async()=>{
   identify.disabled=true;choose.disabled=true;
   statusBox.classList.remove('hidden');errorBox.classList.add('hidden');result.classList.add('hidden');
   try{
-    const image=await buildInvestigationImage(selectedFiles,1800,.86);
-    const response=await callInvestigationFunction({image,photoCount:selectedFiles.length,mode:'multi-angle-accuracy'});
-    const data=await response.json().catch(()=>({}));
-    if(!response.ok)throw new Error(data?.error?.message||data?.error||`Investigation failed (${response.status})`);
-    render(data);
+    await new Promise(resolve=>setTimeout(resolve,250));
+    render({
+      object:"SAMPLE ONLY — photo not identified",
+      category:"No-cost test mode",
+      purpose:"Placeholder to test the results screen.",
+      value_estimate:"Not generated in this test build",
+      condition:"Not assessed",
+      condition_grade:"cannot_tell",
+      confidence:0,
+      explanation:"This sample did not come from your photo. Real AI identification is switched off in this build.",
+      compatibility:"Unknown",
+      warning:"DEMO ONLY: do not rely on this sample for identification, value, buying or selling.",
+      exact_match_status:"not_confirmed",
+      brand:"Unknown",model:"Unknown",model_number:"Unknown",variant:"Unknown",
+      exact_match_confidence:0,
+      exact_match_evidence:"No AI analysis was run.",
+      case_file_summary:"Sample text for checking the case-file layout.",
+      next_photo:"No AI photo suggestions are available in this test build.",
+      condition_evidence:"Not assessed.",
+      age_era_estimate:"Not assessed.",
+      value_reasoning:"No valuation was generated.",
+      identifying_clues:"No photo analysis was run.",
+      buyer_seller_check:"Check the real item independently.",
+      completeness_check:"Not assessed.",
+      confidence_booster:"Real AI identification is disabled in this no-cost build.",
+      is_vehicle_part:false,vehicle_type:"Unknown",part_number:"Unknown",
+      manufacturer:"Unknown",compatible_vehicles:"Unknown",fitment_notes:"Unknown",
+      common_failures:"Unknown",fitting_difficulty:"Unknown",vehicle_safety:"Unknown"
+    });
   }catch(error){
-    errorBox.textContent=error.message||'The investigation failed. Please try again.';
+    errorBox.textContent=error.message||'The demo result could not be shown.';
     errorBox.classList.remove('hidden');
   }finally{
     statusBox.classList.add('hidden');identify.disabled=false;choose.disabled=selectedFiles.length>=3;
@@ -678,31 +644,13 @@ function renderHistory(){
 }
 
 clearHistory.onclick=()=>{if(confirm('Delete all saved investigations?')){writeHistory([]);renderHistory()}};
-copySessionId.onclick=async()=>{
-  const session=readAuthSession();
-  if(!session?.user_id){alert('Use the app once first so it can create a secure session ID.');return;}
-  try{
-    await navigator.clipboard.writeText(session.user_id);
-    alert('Session ID copied. Include it if you email a deletion request.');
-  }catch(_){prompt('Copy this session ID into your deletion request:',session.user_id);}
-};
-deleteSecureSession.onclick=async()=>{
-  if(!confirm('Delete your secure app session and clear saved investigations on this device? You can use the app again later; it will create a new anonymous session.'))return;
-  deleteSecureSession.disabled=true;
-  try{
-    const response=await callInvestigationFunction({mode:'delete-anonymous-account'});
-    if(!response.ok){
-      const data=await response.json().catch(()=>({}));
-      throw new Error(data?.error?.message||'The secure session could not be deleted.');
-    }
-    localStorage.removeItem(AUTH_SESSION_KEY);
-    writeHistory([]);
-    renderHistory();
-    chatMessages=[];
-    alert('Your secure app session was deleted and saved investigations were cleared from this device.');
-  }catch(error){
-    alert(error.message||'Please try again later.');
-  }finally{deleteSecureSession.disabled=false;}
+deleteSecureSession.onclick=()=>{
+  if(!confirm('Clear saved investigations and test data from this device?'))return;
+  localStorage.removeItem('object-detective-history-v1');
+  localStorage.removeItem('objectDetective.authSession.v1');
+  chatMessages=[];
+  renderHistory();
+  alert('Local test data was cleared from this device.');
 };
 renderHistory();
 
@@ -798,14 +746,12 @@ document.getElementById("chat-form").onsubmit=async(event)=>{
   const input=document.getElementById("chat-question"),button=document.getElementById("chat-send"),status=document.getElementById("chat-status");
   const question=input.value.trim();if(!question)return;
   input.value="";appendChatMessage("user",question);chatMessages.push({role:"user",content:question});chatMessages=chatMessages.slice(-8);
-  button.disabled=true;input.disabled=true;status.textContent="Detective is thinking…";
+  button.disabled=true;input.disabled=true;status.textContent="Showing local demo reply…";
   try{
-    const response=await callInvestigationFunction({mode:"chat",question,context:currentChatContext,messages:chatMessages});
-    const data=await response.json().catch(()=>({}));
-    if(!response.ok||typeof data.answer!=="string")throw new Error(data?.error?.message||"The follow-up assistant is unavailable right now.");
-    appendChatMessage("assistant",data.answer);chatMessages.push({role:"assistant",content:data.answer});chatMessages=chatMessages.slice(-8);status.textContent="";
-  }catch(error){status.textContent=error.message||"Please try again in a moment.";}
-  finally{button.disabled=false;input.disabled=false;input.focus();}
+    const answer="This is a sample reply from the no-cost test build. It does not analyse the photo or use AI. Use this screen to test the chat layout only.";
+    appendChatMessage("assistant",answer);chatMessages.push({role:"assistant",content:answer});chatMessages=chatMessages.slice(-8);
+    status.textContent="Local sample reply — no paid AI service was contacted.";
+  }finally{button.disabled=false;input.disabled=false;input.focus();}
 };
 </script>
 </body>
