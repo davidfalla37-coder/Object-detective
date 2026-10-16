@@ -42,6 +42,7 @@
     .chat-status{min-height:22px;color:var(--muted);font-size:13px;margin-top:7px}
     @media(max-width:480px){.buttons{grid-template-columns:1fr}h1{font-size:32px}}
       .privacy-link{margin:0 0 8px;text-align:center;font-size:14px}.privacy-link a{color:var(--accent);text-decoration:underline;text-underline-offset:3px} .privacy-delete{background:none;border:0;padding:0;min-height:0;color:var(--accent);text-decoration:underline;text-underline-offset:3px;font:inherit;cursor:pointer}
+    .scanner-card{border-color:#35627a}.scanner-output{margin-top:12px;padding:12px;border-radius:12px;background:#091426;border:1px solid #354b6c;overflow-wrap:anywhere;white-space:pre-wrap}.scanner-output a{color:var(--accent);word-break:break-all}.scanner-help{font-size:13px;margin-bottom:0}
   </style>
 </head>
 <body>
@@ -49,6 +50,14 @@
   <h1>🔎 Object Detective</h1>
   <p>Take or choose a clear photo and discover what the object is, what it does, and what it may be worth.</p>
   <p class="privacy-link"><a href="https://davidfalla37-coder.github.io/Object-detective/privacy-policy.html">Privacy policy</a> · <a href="https://davidfalla37-coder.github.io/Object-detective/account-deletion.html">Account deletion help</a> · <button class="privacy-delete" id="copy-session-id" type="button">Copy session ID</button> · <button class="privacy-delete" id="delete-secure-session" type="button">Delete app data and secure session</button></p>
+
+  <section class="card scanner-card" aria-labelledby="scanner-heading">
+    <h2 id="scanner-heading">QR and barcode reader</h2>
+    <p>Scan a QR code or product barcode to read its contents. Code matches are clues; check them against the item or manufacturer.</p>
+    <button class="secondary" id="scan-code" type="button">Scan a code</button>
+    <p class="scanner-help">QR links are shown first and only open if you tap them. Scanning needs Google Play services; the scanner model may download the first time.</p>
+    <div class="scanner-output hidden" id="scanner-output" role="status" aria-live="polite"></div>
+  </section>
 
   <section class="card">
     <div class="photo"><div id="placeholder"><span class="emoji">📷</span>Take a clear photograph</div><img id="preview" alt="Selected object"></div>
@@ -270,6 +279,44 @@ async function callInvestigationFunction(payload){
   const headers=await getFunctionHeaders();
   return fetch(FUNCTION_URL,{method:'POST',headers,body:JSON.stringify(payload)});
 }
+const scanCodeButton=document.getElementById('scan-code');
+const scannerOutput=document.getElementById('scanner-output');
+scanCodeButton.addEventListener('click',()=>{
+  scannerOutput.classList.remove('hidden');
+  scannerOutput.textContent='Opening the code scanner…';
+  scanCodeButton.disabled=true;
+  if(window.ObjectDetectiveNative&&typeof window.ObjectDetectiveNative.scanCode==='function'){
+    window.ObjectDetectiveNative.scanCode();
+  }else{
+    scannerOutput.textContent='The native scanner is unavailable in this version of the app.';
+    scanCodeButton.disabled=false;
+  }
+});
+window.onNativeCodeScan=(rawValue,format,error)=>{
+  scanCodeButton.disabled=false;
+  scannerOutput.replaceChildren();
+  if(error){scannerOutput.textContent=error;return;}
+  if(!rawValue){scannerOutput.textContent='No code was detected. Try holding the camera steady and filling the frame.';return;}
+  const title=document.createElement('strong');title.textContent=format||'Scanned code';
+  const value=document.createElement('div');value.textContent=rawValue;
+  scannerOutput.append(title,value);
+  try{
+    const candidate=new URL(rawValue);
+    if(candidate.protocol==='https:'&&!candidate.username&&!candidate.password){
+      const preview=document.createElement('div');preview.textContent='Link preview: '+candidate.host;
+      const link=document.createElement('a');link.href=candidate.href;link.textContent='Open this HTTPS link';link.rel='noopener noreferrer';
+      scannerOutput.append(preview,link);
+    }else if(/^https?:/i.test(rawValue)){
+      const note=document.createElement('div');note.textContent='This link is not HTTPS, so it was not made clickable.';
+      scannerOutput.append(note);
+    }
+  }catch{}
+  if(format!=='QR code'&&/^\\d{8,14}$/.test(rawValue)){
+    const note=document.createElement('div');note.textContent='Search this product code online; confirm any match with the packaging or manufacturer.';
+    const search=document.createElement('a');search.href='https://www.google.com/search?q='+encodeURIComponent(rawValue);search.textContent='Search this code';search.rel='noopener noreferrer';
+    scannerOutput.append(note,search);
+  }
+};
 const file=document.getElementById('file');
 const choose=document.getElementById('choose');
 const identify=document.getElementById('identify');
