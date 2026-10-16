@@ -57,6 +57,9 @@ A source review and CI build cannot establish that any app is “100% safe.” T
 - Assigned version code 11 and version name 1.10. The 1.9/code 10 tester build remains untouched.
 - CI and on-device testing are still required; no AAB has been built or uploaded from this candidate yet.
 
+- [ ] On the S25, scan a QR code containing plain text, an HTTPS link and an HTTP link; confirm nothing opens automatically, HTTPS requires a tap, and HTTP stays non-clickable.
+- [ ] Scan EAN/UPC product barcodes; confirm the exact digits are displayed and the search is labelled as an unverified clue. Test cancel, scanner failure and first-use model download; after the model is available, test scanning without network.
+
 ## Still pending
 
 - CI run #64 passed the Android debug build and Edge Function tests/type-check. Hands-on device testing remains outstanding.
