@@ -48,6 +48,15 @@ A source review and CI build cannot establish that any app is “100% safe.” T
 3. Build the signed AAB from the reviewed candidate and install it on the owner's device first.
 4. Roll the same approved AAB out to the existing test group when ready; do not change Play Console listing or track settings until the release review.
 
+## Added for version 1.10 candidate
+
+- Added an Android Google Code Scanner flow for QR and common product barcode formats (EAN/UPC, Code 39/93/128, ITF, Codabar, Aztec, Data Matrix and PDF417).
+- Scanned values are shown in the app. QR HTTPS links are previewed and require a deliberate tap; non-HTTPS links are never made clickable.
+- Numeric product barcodes can launch a web search for the code, clearly labelled as an unverified clue that must be checked against packaging or the manufacturer.
+- Google Play services may download the scanner module on first use; scanning itself does not require the app to request camera permission.
+- Assigned version code 11 and version name 1.10. The 1.9/code 10 tester build remains untouched.
+- CI and on-device testing are still required; no AAB has been built or uploaded from this candidate yet.
+
 ## Still pending
 
 - CI run #64 passed the Android debug build and Edge Function tests/type-check. Hands-on device testing remains outstanding.
