@@ -12,6 +12,7 @@ import android.os.Bundle
 import android.os.Environment
 import android.provider.MediaStore
 import android.view.WindowInsets
+import android.webkit.JavascriptInterface
 import android.webkit.PermissionRequest
 import android.webkit.ValueCallback
 import android.webkit.WebChromeClient
@@ -23,6 +24,9 @@ import android.webkit.WebViewClient
 import android.widget.Toast
 import androidx.core.content.FileProvider
 import androidx.webkit.WebViewAssetLoader
+import com.google.mlkit.vision.barcode.common.Barcode
+import com.google.mlkit.vision.codescanner.GmsBarcodeScanning
+import org.json.JSONObject
 import java.io.File
 import java.io.FileOutputStream
 import java.io.ByteArrayInputStream
@@ -61,6 +65,7 @@ class MainActivity : Activity() {
             .build()
 
         webView = WebView(this)
+        webView.addJavascriptInterface(BarcodeBridge(), "ObjectDetectiveNative")
         setContentView(webView)
 
         webView.setOnApplyWindowInsetsListener { view, insets ->
@@ -204,6 +209,44 @@ class MainActivity : Activity() {
         webView.loadUrl("https://appassets.androidplatform.net/assets/index-2.html")
     }
 
+    private inner class BarcodeBridge {
+        @JavascriptInterface
+        fun scanCode() {
+            runOnUiThread {
+                GmsBarcodeScanning.getClient(this@MainActivity).startScan()
+                    .addOnSuccessListener { barcode ->
+                        sendCodeScanResult(barcode.rawValue.orEmpty(), barcodeFormatLabel(barcode.format), "")
+                    }
+                    .addOnCanceledListener { sendCodeScanResult("", "", "Scan cancelled.") }
+                    .addOnFailureListener {
+                        sendCodeScanResult("", "", "The scanner could not start. Check Google Play services and try again.")
+                    }
+            }
+        }
+    }
+
+    private fun barcodeFormatLabel(format: Int): String = when (format) {
+        Barcode.FORMAT_QR_CODE -> "QR code"
+        Barcode.FORMAT_AZTEC -> "Aztec code"
+        Barcode.FORMAT_DATA_MATRIX -> "Data Matrix code"
+        Barcode.FORMAT_PDF417 -> "PDF417 code"
+        Barcode.FORMAT_EAN_13 -> "EAN-13 barcode"
+        Barcode.FORMAT_EAN_8 -> "EAN-8 barcode"
+        Barcode.FORMAT_UPC_A -> "UPC-A barcode"
+        Barcode.FORMAT_UPC_E -> "UPC-E barcode"
+        Barcode.FORMAT_CODE_39 -> "Code 39 barcode"
+        Barcode.FORMAT_CODE_93 -> "Code 93 barcode"
+        Barcode.FORMAT_CODE_128 -> "Code 128 barcode"
+        Barcode.FORMAT_ITF -> "ITF barcode"
+        Barcode.FORMAT_CODABAR -> "Codabar"
+        else -> "Barcode or QR code"
+    }
+
+    private fun sendCodeScanResult(value: String, format: String, error: String) {
+        val script = "window.onNativeCodeScan && window.onNativeCodeScan(" +
+            JSONObject.quote(value) + "," + JSONObject.quote(format) + "," + JSONObject.quote(error) + ");"
+        webView.post { webView.evaluateJavascript(script, null) }
+    }
     private fun createCameraImageUri(): Uri {
         val values = ContentValues().apply {
             put(
