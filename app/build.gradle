@@ -21,6 +21,13 @@ android {
         versionName "1.10"
     }
 
+    buildTypes {
+        debug {
+            applicationIdSuffix ".candidate"
+            versionNameSuffix "-candidate"
+        }
+    }
+
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_17
         targetCompatibility JavaVersion.VERSION_17
