@@ -346,15 +346,11 @@ function reconcileVerification(
       : verification.exact_match_status === "exact" || verification.exact_match_status === "likely"
       ? "likely"
       : "not_confirmed";
-    result.confidence = result.exact_match_status !== "not_confirmed"
-      ? result.exact_match_confidence
-      : Math.min(primary.confidence, verification.confidence);
+    result.confidence = Math.min(primary.confidence, verification.confidence);
   } else if (verification.verdict === "partial") {
     result.exact_match_confidence = Math.min(verification.exact_match_confidence, 0.74);
     result.exact_match_status = verification.exact_match_status === "likely" ? "likely" : "not_confirmed";
-    result.confidence = result.exact_match_status === "likely"
-      ? result.exact_match_confidence
-      : Math.min(primary.confidence, verification.confidence, 0.78);
+    result.confidence = Math.min(primary.confidence, verification.confidence);
   } else if (verification.verdict === "disagree") {
     result.confidence = knownText(verification.object)
       ? Math.min(verification.confidence, 0.68)
@@ -373,6 +369,14 @@ function reconcileVerification(
       result.warning,
       "The independent check could not confirm the identity. Add another clear photo before relying on this result.",
     ].filter(Boolean).join(" ");
+  }
+
+  if (verification.verdict === "agree" || verification.verdict === "partial") {
+    if (knownText(verification.brand)) result.brand = verification.brand;
+    if (knownText(verification.object)) result.object = verification.object;
+    if (knownText(result.brand) && !result.object.toLowerCase().includes(result.brand.toLowerCase())) {
+      result.object = `${result.brand} ${result.object}`;
+    }
   }
 
   if (knownText(verification.next_photo) && verification.next_photo !== "No additional photo needed.") {
@@ -442,6 +446,7 @@ async function verifyIdentification(
                 "Distinguish manufacturer marks from third-party streaming-service shortcuts: Netflix, Prime Video, YouTube and Disney+ buttons do not identify the remote manufacturer. Do not infer an exact TV model or guaranteed compatibility from a remote alone.",
                 "Before returning, check that object, brand, model, evidence, case-file summary, value reasoning and compatibility do not contradict one another or name a different manufacturer without clear evidence. Never describe an item as Samsung when a readable TCL manufacturer-specific mark is the strongest brand evidence.",
                 "Return confidence for the verified identity and a separate exact_match_confidence.",
+                "General confidence measures whether the broad object type and supported manufacturer are correct; do not lower it solely because the exact model number is unknown. Keep exact_match_confidence separate and lower it when model-level evidence is missing. A clear manufacturer-specific mark such as a TCL Channel key should increase confidence in a TCL TV remote, while leaving exact model certainty unresolved.",
                 "If the proposed identity is wrong or incomplete, return the best corrected object/brand/model/model_number/variant you can actually support.",
                 "Recalculate the value from scratch as the current UK SECOND-HAND resale value for the photographed item AS SHOWN. Do not copy or trust the proposed value if it looks like new-retail or replacement pricing. Do not assume original packaging, accessories, pristine condition or fully-tested working order unless visible evidence supports that. Apply a meaningful downward adjustment for visible wear, damage, missing parts, age, uncertainty and unverified working status. Fair or visibly worn electronics should normally be materially cheaper than a clean tested used example, and substantially below new retail. For a mixed-brand or incomplete bundle, value the photographed bundle as one used private-sale item; do not add the new replacement prices of its components. Do not award a branded-component premium when the exact model is unconfirmed. If there is heavy visible wear or working status is unverified, use the lower end of a realistic used range and describe functionality as untested. If the exact model or working condition is too uncertain for a useful resale estimate, return Unknown (GBP).",
                 "In evidence, describe identification evidence only. Do not say the proposed value, price or estimate was optimistic, pessimistic, high, low, correct or incorrect. The displayed value will already be the reconciled result.",
@@ -659,6 +664,7 @@ Deno.serve(async (request: Request): Promise<Response> => {
                 "Do not name a replaceable part as if it were the complete photographed item. If a larger host device or assembly is visible, describe the whole item in object and identify a component model separately in model or variant.",
                 "For example, if a vape tank is attached to a mod, describe the photographed object as the complete vape device with the identified tank; do not infer the mod's model from the tank's label.",
                 "General confidence is for identifying the complete photographed item. If only a component is identified or the host device remains unknown, lower confidence and explain the uncertainty. Confidence does not validate the value estimate, condition, completeness, or marketplace results.",
+                "Do not use exact-model uncertainty to depress general object confidence. A clear manufacturer-specific mark supports the broad object and brand even when the exact model is unknown; reserve exact_match_confidence for model-level certainty.",
                 "Use visible evidence only; do not invent details.",
                 "Estimate the current UK SECOND-HAND resale value for the photographed item AS SHOWN, not the new retail or replacement price. Start from a realistic used-market level for the identified model, then adjust downward for visible wear, damage, missing parts, missing accessories or packaging, age, uncertainty, and unverified working condition. Never assume an item is fully tested or working unless the photographs provide evidence. A Fair-condition or visibly heavily worn item should receive a materially lower range than a clean tested used example; Poor, damaged or incomplete items should be lower again. For a mixed-brand or incomplete bundle, value the photographed bundle as one used private-sale item; do not add the new replacement prices of its components. Do not award a branded-component premium when the exact model is unconfirmed. If there is heavy visible wear or working status is unverified, use the lower end of a realistic used range and describe functionality as untested. Never use a new-retail price range as the second-hand estimate. The value_estimate field must always use British pounds sterling (GBP) with the £ symbol and should be a cautious realistic range. If the exact identity or working status is too uncertain to support a useful resale price, return “Unknown (GBP)” rather than an inflated guess.",
                 "For compatibility, describe relevant standards, sizes, connectors, systems, or say that compatibility cannot be determined from the image.",
