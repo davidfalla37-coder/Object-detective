@@ -421,6 +421,7 @@ async function verifyIdentification(
       },
       body: JSON.stringify({
         model: VERIFICATION_MODEL,
+        store: false,
         input: [{
           role: "user",
           content: [
@@ -437,6 +438,9 @@ async function verifyIdentification(
                 "Use disagree when visible evidence points to a materially different identity.",
                 "Use insufficient when the photos cannot support a reliable decision.",
                 "Exact match requires a visible or uniquely diagnostic identifier, not just visual resemblance.",
+                "MANUFACTURER EVIDENCE: Prioritize readable manufacturer names and brand-specific buttons printed on the photographed item. On a TV remote, a dedicated manufacturer-branded button such as TCL Channel is strong evidence that the remote is for that manufacturer; include that brand in brand and object unless a clearer contradictory mark is visible.",
+                "Distinguish manufacturer marks from third-party streaming-service shortcuts: Netflix, Prime Video, YouTube and Disney+ buttons do not identify the remote manufacturer. Do not infer an exact TV model or guaranteed compatibility from a remote alone.",
+                "Before returning, check that object, brand, model, evidence, case-file summary, value reasoning and compatibility do not contradict one another or name a different manufacturer without clear evidence. Never describe an item as Samsung when a readable TCL manufacturer-specific mark is the strongest brand evidence.",
                 "Return confidence for the verified identity and a separate exact_match_confidence.",
                 "If the proposed identity is wrong or incomplete, return the best corrected object/brand/model/model_number/variant you can actually support.",
                 "Recalculate the value from scratch as the current UK SECOND-HAND resale value for the photographed item AS SHOWN. Do not copy or trust the proposed value if it looks like new-retail or replacement pricing. Do not assume original packaging, accessories, pristine condition or fully-tested working order unless visible evidence supports that. Apply a meaningful downward adjustment for visible wear, damage, missing parts, age, uncertainty and unverified working status. Fair or visibly worn electronics should normally be materially cheaper than a clean tested used example, and substantially below new retail. For a mixed-brand or incomplete bundle, value the photographed bundle as one used private-sale item; do not add the new replacement prices of its components. Do not award a branded-component premium when the exact model is unconfirmed. If there is heavy visible wear or working status is unverified, use the lower end of a realistic used range and describe functionality as untested. If the exact model or working condition is too uncertain for a useful resale estimate, return Unknown (GBP).",
@@ -596,6 +600,7 @@ Deno.serve(async (request: Request): Promise<Response> => {
         },
         body: JSON.stringify({
           model: PRIMARY_MODEL,
+          store: false,
           instructions: developerInstructions,
           input: [{ role: "user", content: [{ type: "input_text", text: userPrompt }] }],
           max_output_tokens: 350,
@@ -643,6 +648,7 @@ Deno.serve(async (request: Request): Promise<Response> => {
       },
       body: JSON.stringify({
         model: PRIMARY_MODEL,
+          store: false,
         input: [{
           role: "user",
           content: [
@@ -659,6 +665,9 @@ Deno.serve(async (request: Request): Promise<Response> => {
                 "Include safety, authenticity, electrical, chemical, or usage concerns in warning when relevant; otherwise use an empty string.",
                 "Return confidence as a number from 0 to 1.",
                 "Try to determine the exact make and model, not just the general object type. Read visible logos, labels, badges, stamped numbers, model numbers, reference numbers, distinctive design details and other identifying marks across all supplied views.",
+                "MANUFACTURER EVIDENCE: Prioritize readable manufacturer names and brand-specific buttons printed on the photographed item. On a TV remote, a dedicated manufacturer-branded button such as TCL Channel is strong evidence that the remote is for that manufacturer; include that brand in brand and object unless a clearer contradictory mark is visible.",
+                "Distinguish manufacturer marks from third-party streaming-service shortcuts: Netflix, Prime Video, YouTube and Disney+ buttons do not identify the remote manufacturer. Do not infer an exact TV model or guaranteed compatibility from a remote alone.",
+                "Before returning, check that object, brand, model, evidence, case-file summary, value reasoning and compatibility do not contradict one another or name a different manufacturer without clear evidence. Never describe an item as Samsung when a readable TCL manufacturer-specific mark is the strongest brand evidence.",
                 "Set exact_match_status to exact ONLY when the photographed item itself provides clear manufacturer plus model/reference/part-number evidence that uniquely identifies the model. Set it to likely when visual evidence strongly suggests a specific model but direct identifying text or numbers are missing or incomplete. Otherwise set it to not_confirmed.",
                 "Never invent a brand, model, model number, variant or identifier. Use Unknown when it cannot be supported by the photograph.",
                 "Return exact_match_confidence from 0 to 1 for the exact model-level identification, separately from the general object confidence.",
