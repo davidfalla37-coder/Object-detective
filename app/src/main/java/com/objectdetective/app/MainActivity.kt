@@ -87,7 +87,8 @@ class MainActivity : Activity() {
 
         webView.webChromeClient = object : WebChromeClient() {
             override fun onPermissionRequest(request: PermissionRequest) {
-                runOnUiThread { request.grant(request.resources) }
+                // Camera capture uses the Android camera app; web content needs no direct device permissions.
+                runOnUiThread { request.deny() }
             }
 
             override fun onShowFileChooser(
