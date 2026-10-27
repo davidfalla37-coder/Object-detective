@@ -62,12 +62,11 @@ interface InvestigationResult {
 interface VehicleLookupResult {
   status: "not_requested" | "manual" | "matched" | "not_configured" | "not_found" | "lookup_failed";
   summary: string;
-  prompt: string;
 }
 
 function cleanVehicleText(value: unknown): string {
   if (typeof value !== "string") return "";
-  return value.replace(/[\\u0000-\\u001f\\u007f]/g, " ").replace(/\\s+/g, " ").trim().slice(0, 80);
+  return value.replace(/[\u0000-\u001f\u007f]/g, " ").replace(/\s+/g, " ").trim().slice(0, 80);
 }
 
 function getManualVehicleDetails(value: unknown): Record<string, string> {
@@ -715,7 +714,7 @@ Deno.serve(async (request: Request): Promise<Response> => {
   const lookup = registration
     ? await lookupVehicleRegistration(registration)
     : { status: manualVehicleSummary ? "manual" as const : "not_requested" as const, summary: "" };
-  const vehicleSummary = lookup.summary || manualVehicleSummary;
+  const vehicleSummary = [lookup.summary, manualVehicleSummary].filter(Boolean).join("; ");
   const vehicleContextPrompt = vehicleSummary
     ? " Vehicle context supplied for this investigation: " + vehicleSummary + ". Treat these details as vehicle identity clues only. Do not claim the photographed part fits this vehicle unless fitment is independently confirmed by an exact OEM/part number or a trusted fitment source. Explain any missing details such as engine, trim or production date."
     : registration
