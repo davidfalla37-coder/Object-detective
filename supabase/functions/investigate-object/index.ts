@@ -17,6 +17,8 @@ interface RequestBody {
   question?: unknown;
   context?: unknown;
   messages?: unknown;
+  registrationNumber?: unknown;
+  vehicleDetails?: unknown;
 }
 
 interface InvestigationResult {
@@ -55,6 +57,66 @@ interface InvestigationResult {
   common_failures: string;
   fitting_difficulty: string;
   vehicle_safety: string;
+}
+
+interface VehicleLookupResult {
+  status: "not_requested" | "manual" | "matched" | "not_configured" | "not_found" | "lookup_failed";
+  summary: string;
+  prompt: string;
+}
+
+function cleanVehicleText(value: unknown): string {
+  if (typeof value !== "string") return "";
+  return value.replace(/[\\u0000-\\u001f\\u007f]/g, " ").replace(/\\s+/g, " ").trim().slice(0, 80);
+}
+
+function getManualVehicleDetails(value: unknown): Record<string, string> {
+  const input = value && typeof value === "object" ? value as Record<string, unknown> : {};
+  return {
+    make: cleanVehicleText(input.make),
+    model: cleanVehicleText(input.model),
+    year: cleanVehicleText(input.year),
+    engine: cleanVehicleText(input.engine),
+  };
+}
+
+function formatManualVehicle(details: Record<string, string>): string {
+  return [
+    details.year,
+    details.make,
+    details.model,
+    details.engine ? "engine/trim " + details.engine : "",
+  ].filter(Boolean).join(" ");
+}
+
+function normalizeRegistration(value: unknown): string {
+  if (typeof value !== "string") return "";
+  return value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 8);
+}
+
+async function lookupVehicleRegistration(registration: string): Promise<{ status: VehicleLookupResult["status"]; summary: string }> {
+  const apiKey = Deno.env.get("DVLA_VES_API_KEY");
+  if (!apiKey) return { status: "not_configured", summary: "" };
+  try {
+    const response = await fetch("https://driver-vehicle-licensing.api.gov.uk/vehicle-enquiry/v1/vehicles", {
+      method: "POST",
+      headers: { "x-api-key": apiKey, "Content-Type": "application/json" },
+      body: JSON.stringify({ registrationNumber: registration }),
+    });
+    if (response.status === 404) return { status: "not_found", summary: "" };
+    if (!response.ok) return { status: "lookup_failed", summary: "" };
+    const record = await response.json() as Record<string, unknown>;
+    const details = [
+      cleanVehicleText(record.make),
+      typeof record.yearOfManufacture === "number" ? String(record.yearOfManufacture) : "",
+      typeof record.engineCapacity === "number" ? record.engineCapacity + " cc" : "",
+      cleanVehicleText(record.fuelType),
+      cleanVehicleText(record.monthOfFirstRegistration),
+    ].filter(Boolean);
+    return { status: details.length ? "matched" : "lookup_failed", summary: details.join(", ") };
+  } catch {
+    return { status: "lookup_failed", summary: "" };
+  }
 }
 
 function jsonResponse(body: unknown, status = 200): Response {
@@ -453,7 +515,7 @@ async function verifyIdentification(
                 "Suggest the single best next photograph when more evidence would materially improve certainty.",
                 "The app supplied " + photoCount + " photo(s).",
                 "Proposed first-pass result: " + JSON.stringify(candidate),
-              ].join(" "),
+              ].join(" ") + vehicleContextPrompt,
             },
             {
               type: "input_image",
@@ -644,6 +706,28 @@ Deno.serve(async (request: Request): Promise<Response> => {
     );
   }
 
+  const registration = normalizeRegistration(body.registrationNumber);
+  if (typeof body.registrationNumber === "string" && body.registrationNumber.trim() && (registration.length < 2 || registration.length > 8)) {
+    return errorResponse("Enter a valid vehicle registration using letters and numbers only.", 400, "invalid_registration");
+  }
+  const manualVehicle = getManualVehicleDetails(body.vehicleDetails);
+  const manualVehicleSummary = formatManualVehicle(manualVehicle);
+  const lookup = registration
+    ? await lookupVehicleRegistration(registration)
+    : { status: manualVehicleSummary ? "manual" as const : "not_requested" as const, summary: "" };
+  const vehicleSummary = lookup.summary || manualVehicleSummary;
+  const vehicleContextPrompt = vehicleSummary
+    ? " Vehicle context supplied for this investigation: " + vehicleSummary + ". Treat these details as vehicle identity clues only. Do not claim the photographed part fits this vehicle unless fitment is independently confirmed by an exact OEM/part number or a trusted fitment source. Explain any missing details such as engine, trim or production date."
+    : registration
+    ? " The user supplied a vehicle registration, but no vehicle lookup result is available. Do not infer the vehicle identity from the registration text. Do not claim fitment."
+    : "";
+
+  const tryResult = (result: InvestigationResult) => ({
+    ...result,
+    vehicle_lookup_status: lookup.status,
+    vehicle_summary: vehicleSummary,
+  });
+
   try {
     const openAIResponse = await fetch("https://api.openai.com/v1/responses", {
       method: "POST",
@@ -819,9 +903,9 @@ Deno.serve(async (request: Request): Promise<Response> => {
 
     const verification = await verifyIdentification(image, primaryResult, photoCount);
     if (verification) {
-      return jsonResponse(reconcileVerification(primaryResult, verification));
+      return jsonResponse(tryResult(reconcileVerification(primaryResult, verification)));
     }
-    return jsonResponse(conservativeFallback(primaryResult));
+    return jsonResponse(tryResult(conservativeFallback(primaryResult)));
   } catch (error) {
     console.error("Object investigation failed:", error instanceof Error ? error.message : error);
     return errorResponse("Unable to investigate the object right now. Please try again.", 500, "internal_error");
