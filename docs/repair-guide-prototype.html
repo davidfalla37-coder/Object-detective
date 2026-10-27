@@ -1,0 +1,179 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#07101f">
+<title>Object Detective — Repair Guide prototype</title>
+<style>
+:root{color-scheme:dark;--bg:#07101f;--panel:#111c30;--panel2:#0c1729;--line:#293b59;--text:#f8fafc;--muted:#a7b4c7;--accent:#64d6ff;--good:#a7f3d0;--warn:#ffe2a3}
+*{box-sizing:border-box}
+body{margin:0;background:radial-gradient(ellipse at 50% -15%,#203654 0,#07101f 54%);color:var(--text);font:16px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif}
+main{max-width:760px;margin:auto;padding:22px 16px 50px}
+header{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:26px}
+.brand{display:flex;align-items:center;gap:11px;font-weight:850}.logo{display:grid;place-items:center;width:44px;height:44px;border-radius:14px;background:#fff;color:#08101e;font-size:23px}
+.badge{border:1px solid #37516f;color:#bad2ef;background:#10213a;border-radius:999px;padding:6px 10px;font-size:12px;font-weight:750}
+h1{font-size:clamp(32px,8vw,46px);line-height:1.04;letter-spacing:-.04em;margin:0 0 10px}
+h2{font-size:20px;line-height:1.2;margin:0 0 12px}
+p{color:var(--muted);margin:6px 0 0}
+.card{background:linear-gradient(145deg,rgba(17,28,48,.97),rgba(12,23,41,.98));border:1px solid var(--line);border-radius:22px;padding:18px;margin-top:15px;box-shadow:0 16px 46px #0004}
+.hero{padding:23px}.eyebrow{text-transform:uppercase;letter-spacing:.12em;font-size:11px;color:var(--accent);font-weight:850;margin-bottom:9px}
+.steps{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:18px}
+.steps span{padding:9px 8px;border:1px solid var(--line);background:#0b1628;border-radius:12px;text-align:center;color:#cfe4f8;font-size:12px;font-weight:700}
+label{display:block;color:#d4dfed;font-size:13px;font-weight:700;margin-top:13px}
+input,select{width:100%;margin-top:6px;padding:12px;border-radius:12px;border:1px solid #354b6c;background:#091426;color:var(--text);font:inherit}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.photo{min-height:132px;display:grid;place-items:center;text-align:center;border:2px dashed #486184;background:#091426;border-radius:16px;padding:16px;color:var(--muted)}
+.photo b{display:block;color:var(--text);font-size:15px}.photo .icon{font-size:31px;display:block;margin-bottom:4px}
+button{width:100%;min-height:50px;border:0;border-radius:14px;padding:13px 15px;font:inherit;font-weight:850;cursor:pointer}
+.primary{background:#f8fafc;color:#07101f;margin-top:15px}.secondary{background:#1b2a44;color:#fff;border:1px solid #354b6c;margin-top:11px}
+.result-top{display:flex;justify-content:space-between;align-items:start;gap:12px}.confidence{white-space:nowrap;background:#123629;border:1px solid #2c8058;color:var(--good);border-radius:999px;padding:6px 9px;font-size:12px;font-weight:850}
+.result-name{font-size:24px;font-weight:900;line-height:1.15}
+.subtle{font-size:13px;color:var(--muted)}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.tile{padding:12px;border:1px solid var(--line);border-radius:14px;background:#0b1628}.tile small{display:block;color:var(--muted);margin-bottom:4px}.tile strong{font-size:14px}
+.evidence{padding:12px;border-radius:14px;border:1px solid #29506b;background:#0b2131;color:#c7efff;font-size:14px}
+.fitment{padding:13px;border-radius:14px;border:1px solid #745a25;background:#2d2512;color:var(--warn);font-size:14px}
+ol{padding-left:23px;margin:10px 0 0}li{padding:0 0 10px 4px;color:#e3eaf3}li::marker{color:var(--accent);font-weight:850}
+.tool-list{display:flex;flex-wrap:wrap;gap:7px;margin-top:10px}.tool-list span{border:1px solid #354b6c;background:#0b1628;padding:6px 9px;border-radius:999px;color:#d6e5f4;font-size:12px}
+.demo-note{text-align:center;font-size:12px;color:#91a5bd;padding:15px 6px}
+.hidden{display:none!important}
+@media(max-width:520px){main{padding:15px 12px 35px}.hero,.card{padding:16px;border-radius:18px}.row,.grid{grid-template-columns:1fr}.steps span{font-size:11px;padding:8px 4px}}
+</style>
+</head>
+<body>
+<main>
+<header><div class="brand"><div class="logo">🔎</div><span>Object Detective</span></div><span class="badge">Repair Guide · Preview</span></header>
+
+<section class="hero card">
+  <div class="eyebrow">Identify it. Understand it. Work safely.</div>
+  <h1>From a photo to a clearer next step.</h1>
+  <p>A proposed flow for DIY and automotive investigations. Vehicle details are entered manually in this version.</p>
+  <div class="steps"><span>1 · Photograph</span><span>2 · Identify</span><span>3 · Follow a guide</span></div>
+</section>
+
+<section class="card" id="capture">
+  <h2>Start a repair investigation</h2>
+  <p>Choose an example and add the details you know. This preview uses sample content only.</p>
+  <label for="kind">What are you working on?
+    <select id="kind"><option value="car">A vehicle part</option><option value="diy">A home DIY item</option></select>
+  </label>
+  <div id="vehicle-fields">
+    <label for="plate">Vehicle registration · for your reference</label>
+    <input id="plate" maxlength="10" autocomplete="off" autocapitalize="characters" placeholder="e.g. AB12 CDE">
+    <div class="row">
+      <label for="make">Make<input id="make" maxlength="50" placeholder="e.g. Ford"></label>
+      <label for="model">Model<input id="model" maxlength="50" placeholder="e.g. Focus"></label>
+    </div>
+    <div class="row">
+      <label for="year">Year<input id="year" inputmode="numeric" maxlength="4" placeholder="e.g. 2018"></label>
+      <label for="engine">Engine / trim<input id="engine" maxlength="50" placeholder="If known"></label>
+    </div>
+  </div>
+  <div class="photo" style="margin-top:14px"><div><span class="icon">📷</span><b>Photo of the part or job</b><span class="subtle">In the app, this is where the user adds up to three angles.</span></div></div>
+  <button class="primary" id="show-guide" type="button">Show sample repair guide</button>
+</section>
+
+<section class="card hidden" id="guide" aria-live="polite">
+  <div class="result-top"><div><div class="eyebrow">Sample result</div><div class="result-name" id="result-name">Front windscreen wiper blade</div></div><span class="confidence" id="confidence">82% likely</span></div>
+  <p id="result-subtitle">A common replacement part. The exact connector and blade length still need checking.</p>
+
+  <section class="card">
+    <h2>What it does</h2>
+    <p id="purpose">Moves across the windscreen to clear rain and improve visibility.</p>
+  </section>
+
+  <section class="card">
+    <h2>Why the app thinks this</h2>
+    <div class="evidence" id="evidence">Sample evidence: the long flexible blade, end connectors and visible wiper-arm attachment. A close-up of the connector would improve the match.</div>
+  </section>
+
+  <section class="card">
+    <h2>Vehicle context</h2>
+    <div class="grid">
+      <div class="tile"><small>Details entered</small><strong id="vehicle-summary">No vehicle details supplied</strong></div>
+      <div class="tile"><small>Fitment check</small><strong id="fitment-label">Not confirmed</strong></div>
+    </div>
+    <div class="fitment" style="margin-top:12px" id="fitment-note">A registration or make and model alone does not prove that this exact blade fits. Check the vehicle handbook, the existing part number or the replacement manufacturer’s fitment list before buying.</div>
+  </section>
+
+  <section class="card">
+    <h2>Tools and preparation</h2>
+    <p>Confirm the replacement blade length and connector before starting.</p>
+    <div class="tool-list"><span>Correct replacement blade</span><span>Vehicle handbook</span><span>Soft cloth</span></div>
+  </section>
+
+  <section class="card">
+    <h2>Example fitting steps</h2>
+    <ol id="instructions">
+      <li>Park safely, switch off the ignition and check the vehicle handbook for the wiper service position.</li>
+      <li>Lift the wiper arm carefully and protect the windscreen with a folded cloth.</li>
+      <li>Release the old blade using its connector tab. Do not force the arm or connector.</li>
+      <li>Attach the replacement using the blade maker’s instructions; check that the lock clicks into place.</li>
+      <li>Lower the arm gently and test the wiper with washer fluid before driving.</li>
+    </ol>
+    <div class="fitment" style="margin-top:12px">Stop if the connector differs, the arm is damaged, or the handbook instructions do not match. A spring-loaded arm can strike and crack the windscreen.</div>
+  </section>
+
+  <section class="card">
+    <h2>Sources to check</h2>
+    <p>In a live version, the guide should link the vehicle handbook and the replacement part maker’s fitting instructions. Those sources are not connected in this preview.</p>
+  </section>
+  <button class="secondary" id="back" type="button">Back to investigation details</button>
+</section>
+
+<div class="demo-note">Interactive design preview only. It does not analyse a real photo, verify fitment or provide live repair advice. No entered details are sent or saved.</div>
+</main>
+<script>
+const kind=document.getElementById('kind');
+const vehicleFields=document.getElementById('vehicle-fields');
+const guide=document.getElementById('guide');
+const capture=document.getElementById('capture');
+const examples={
+  car:{
+    name:'Front windscreen wiper blade',
+    confidence:'82% likely',
+    subtitle:'A common replacement part. The exact connector and blade length still need checking.',
+    purpose:'Moves across the windscreen to clear rain and improve visibility.',
+    evidence:'Sample evidence: the long flexible blade, end connectors and visible wiper-arm attachment. A close-up of the connector would improve the match.',
+    fitment:'Not confirmed'
+  },
+  diy:{
+    name:'Loose cabinet handle',
+    confidence:'91% likely',
+    subtitle:'A simple hardware issue. Check the screw type and handle condition before tightening.',
+    purpose:'The handle gives a secure grip for opening and closing the cabinet door.',
+    evidence:'Sample evidence: a two-point handle with visible fixing screws. A close-up of the screw heads would confirm the tool needed.',
+    fitment:'Not applicable'
+  }
+};
+kind.addEventListener('change',()=>{vehicleFields.classList.toggle('hidden',kind.value!=='car')});
+document.getElementById('show-guide').addEventListener('click',()=>{
+  const sample=examples[kind.value];
+  document.getElementById('result-name').textContent=sample.name;
+  document.getElementById('confidence').textContent=sample.confidence;
+  document.getElementById('result-subtitle').textContent=sample.subtitle;
+  document.getElementById('purpose').textContent=sample.purpose;
+  document.getElementById('evidence').textContent=sample.evidence;
+  document.getElementById('fitment-label').textContent=sample.fitment;
+  const entered=[document.getElementById('year').value.trim(),document.getElementById('make').value.trim(),document.getElementById('model').value.trim(),document.getElementById('engine').value.trim()].filter(Boolean).join(' ');
+  document.getElementById('vehicle-summary').textContent=kind.value==='car'?(entered||'No vehicle details supplied'):'Not needed for this example';
+  if(kind.value==='diy'){
+    document.getElementById('fitment-note').textContent='This example does not require vehicle fitment. Confirm the handle and fastener sizes before using replacement hardware.';
+    document.getElementById('instructions').innerHTML='<li>Support the cabinet door so it does not move while you work.</li><li>Check whether the handle is loose at the fixing points or whether the screw threads are damaged.</li><li>Use a screwdriver that fits the screw head and tighten gently; stop if the screw turns without gripping.</li><li>Replace damaged fasteners with the same type and suitable length for the door material.</li><li>Check the handle is secure without overtightening or crushing the door surface.</li>';
+  }else{
+    document.getElementById('fitment-note').textContent='A registration or make and model alone does not prove that this exact blade fits. Check the vehicle handbook, the existing part number or the replacement manufacturer’s fitment list before buying.';
+    document.getElementById('instructions').innerHTML='<li>Park safely, switch off the ignition and check the vehicle handbook for the wiper service position.</li><li>Lift the wiper arm carefully and protect the windscreen with a folded cloth.</li><li>Release the old blade using its connector tab. Do not force the arm or connector.</li><li>Attach the replacement using the blade maker’s instructions; check that the lock clicks into place.</li><li>Lower the arm gently and test the wiper with washer fluid before driving.</li>';
+  }
+  guide.classList.remove('hidden');
+  capture.classList.add('hidden');
+  guide.scrollIntoView({behavior:'smooth',block:'start'});
+});
+document.getElementById('back').addEventListener('click',()=>{
+  guide.classList.add('hidden');
+  capture.classList.remove('hidden');
+  capture.scrollIntoView({behavior:'smooth',block:'start'});
+});
+</script>
+</body>
+</html>
