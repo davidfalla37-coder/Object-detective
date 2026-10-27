@@ -38,6 +38,11 @@
     .chat-form{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px}
     .chat-input{min-height:50px}.chat-send{min-height:50px;padding:10px 14px}
     .chat-status{min-height:22px;color:var(--muted);font-size:13px;margin-top:7px}
+    .vehicle-context input{width:100%;margin-top:6px;padding:12px;border-radius:11px;border:1px solid #354b6c;background:#091426;color:var(--text);font:inherit}
+    .vehicle-context .vehicle-fields{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+    .vehicle-context label{display:block;color:var(--muted);font-size:13px;margin-top:10px}
+    .vehicle-context .context-note{font-size:13px;margin-bottom:0}
+    @media(max-width:420px){.vehicle-context .vehicle-fields{grid-template-columns:1fr}}
     @media(max-width:480px){.buttons{grid-template-columns:1fr}h1{font-size:32px}}
   </style>
 </head>
@@ -45,6 +50,22 @@
 <main>
   <h1>🔎 Object Detective</h1>
   <p>Take or choose a clear photo and discover what the object is, what it does, and what it may be worth.</p>
+
+  <section class="card vehicle-context" aria-labelledby="vehicle-context-title">
+    <h2 id="vehicle-context-title">Working on a vehicle part?</h2>
+    <p class="context-note">Add the vehicle registration and any details you know to help narrow down the part. A registration lookup does not prove that a part fits.</p>
+    <label for="vehicle-registration">UK vehicle registration (optional)
+      <input id="vehicle-registration" type="text" autocomplete="off" autocapitalize="characters" maxlength="10" placeholder="e.g. AB12 CDE">
+    </label>
+    <div class="vehicle-fields">
+      <label for="vehicle-make">Make<input id="vehicle-make" maxlength="60" placeholder="e.g. Renault"></label>
+      <label for="vehicle-model">Model<input id="vehicle-model" maxlength="60" placeholder="e.g. Mégane RS"></label>
+      <label for="vehicle-year">Year<input id="vehicle-year" inputmode="numeric" maxlength="4" placeholder="e.g. 2015"></label>
+      <label for="vehicle-engine">Engine / trim<input id="vehicle-engine" maxlength="60" placeholder="e.g. 2.0 petrol, 265"></label>
+    </div>
+    <p class="context-note">Registration lookup is awaiting DVLA API access. You can still add the vehicle details manually. The registration is sent only for a lookup and is not saved in investigation history.</p>
+    <div class="tip hidden" id="vehicle-context-status" role="status"></div>
+  </section>
 
   <section class="card">
     <div class="photo"><div id="placeholder"><span class="emoji">📷</span>Take a clear photograph</div><img id="preview" alt="Selected object"></div>
@@ -194,6 +215,14 @@ const photoCount=document.getElementById('photo-count');
 const photoTip=document.getElementById('photo-tip');
 const thumbs=document.getElementById('thumbs');
 const qualityBox=document.getElementById('quality');
+const vehicleRegistration=document.getElementById('vehicle-registration');
+const vehicleContextStatus=document.getElementById('vehicle-context-status');
+const vehicleInputs={
+  make:document.getElementById('vehicle-make'),
+  model:document.getElementById('vehicle-model'),
+  year:document.getElementById('vehicle-year'),
+  engine:document.getElementById('vehicle-engine')
+};
 const clear=document.getElementById('clear');
 const historyList=document.getElementById('history-list');
 const emptyHistory=document.getElementById('empty-history');
@@ -226,6 +255,10 @@ file.onchange=async()=>{
 clear.onclick=()=>{
   selectedFiles=[];
   photoChecks=[];
+  vehicleRegistration.value='';
+  Object.values(vehicleInputs).forEach(input=>input.value='');
+  vehicleContextStatus.classList.add('hidden');
+  vehicleContextStatus.textContent='';
   preview.removeAttribute('src');preview.style.display='none';
   placeholder.classList.remove('hidden');
   identify.disabled=true;result.classList.add('hidden');errorBox.classList.add('hidden');
@@ -262,7 +295,8 @@ identify.onclick=async()=>{
   statusBox.classList.remove('hidden');errorBox.classList.add('hidden');result.classList.add('hidden');
   try{
     const image=await buildInvestigationImage(selectedFiles,1800,.86);
-    const response=await fetch(FUNCTION_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({image,photoCount:selectedFiles.length,mode:'multi-angle-accuracy'})});
+    const vehicleDetails=Object.fromEntries(Object.entries(vehicleInputs).map(([key,input])=>[key,input.value.trim()]).filter(([,value])=>value));
+    const response=await fetch(FUNCTION_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({image,photoCount:selectedFiles.length,mode:'multi-angle-accuracy',registrationNumber:vehicleRegistration.value.trim(),vehicleDetails})});
     const data=await response.json().catch(()=>({}));
     if(!response.ok)throw new Error(data?.error?.message||data?.error||`Investigation failed (${response.status})`);
     render(data);
@@ -353,6 +387,22 @@ function render(data,saveResult=true){
   const warning=document.getElementById('warning');
   if(data.warning){warning.textContent=data.warning;warning.classList.remove('hidden')}else warning.classList.add('hidden');
   configureMatchHelper(data);
+  if(data.vehicle_lookup_status==='matched'){
+    vehicleContextStatus.textContent='Vehicle details retrieved: '+(data.vehicle_summary||'').trim()+'. Check the part number before relying on fitment.';
+    vehicleContextStatus.classList.remove('hidden');
+  }else if(data.vehicle_lookup_status==='not_configured'){
+    vehicleContextStatus.textContent='The registration lookup is not connected yet. '+(data.vehicle_summary?'Using the vehicle details you entered: '+data.vehicle_summary+'.':'Add make, model, year or engine details above and investigate again.');
+    vehicleContextStatus.classList.remove('hidden');
+  }else if(data.vehicle_lookup_status==='lookup_failed'||data.vehicle_lookup_status==='not_found'){
+    vehicleContextStatus.textContent='The registration could not be matched. '+(data.vehicle_summary?'Using the vehicle details you entered: '+data.vehicle_summary+'.':'Check the registration or add the vehicle details manually.');
+    vehicleContextStatus.classList.remove('hidden');
+  }else if(data.vehicle_lookup_status==='manual'){
+    vehicleContextStatus.textContent='Using the vehicle details you entered: '+(data.vehicle_summary||'')+'. Fitment still needs to be checked against the OEM part number.';
+    vehicleContextStatus.classList.remove('hidden');
+  }else{
+    vehicleContextStatus.classList.add('hidden');
+    vehicleContextStatus.textContent='';
+  }
   const vehicleDetails=document.getElementById('vehicle-details');
   const isVehiclePart=data.is_vehicle_part===true;
   vehicleDetails.classList.toggle('hidden',!isVehiclePart);
