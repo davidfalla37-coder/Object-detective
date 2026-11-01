@@ -46,11 +46,6 @@
   <h1>🔎 Object Detective</h1>
   <p>Take or choose a clear photo and discover what the object is, what it does, and what it may be worth.</p>
 
-  <section class="card" aria-labelledby="payment-promise-title">
-    <h2 id="payment-promise-title">Clear and fair payments</h2>
-    <p>Object Detective will never charge you or start a subscription unless you clearly choose it. If Pro is offered, we’ll show what it includes, the price, billing period and renewal terms before you sign up. Using the free app will never automatically become a paid subscription. We’ll make cancellation easy to find and complete.</p>
-  </section>
-
   <section class="card">
     <div class="photo"><div id="placeholder"><span class="emoji">📷</span>Take a clear photograph</div><img id="preview" alt="Selected object"></div>
     <p class="photo-guide"><span class="photo-count" id="photo-count">0 of 3 photos</span> — extra angles help prevent incorrect guesses.</p>
@@ -184,6 +179,11 @@
     <div class="chat-status" id="chat-status" role="status"></div>
   </section>
 </section>
+
+  <section class="card" aria-labelledby="payment-promise-title">
+    <h2 id="payment-promise-title">Clear and fair payments</h2>
+    <p>Object Detective will never charge you or start a subscription unless you clearly choose it. If Pro is offered, we’ll show what it includes, the price, billing period and renewal terms before you sign up. Using the free app will never automatically become a paid subscription. We’ll make cancellation easy to find and complete.</p>
+  </section>
 </main>
 <script>
 const FUNCTION_URL='https://gboyflbwcobhzbvpdtat.supabase.co/functions/v1/investigate-object';
