@@ -458,12 +458,11 @@ async function verifyIdentification(
                 "Proposed first-pass result: " + JSON.stringify(candidate),
               ].join(" "),
             },
-            {
-              ...images.map((image) => ({
-                type: "input_image",
-                image_url: image,
-                detail: "high",
-              })),
+            ...images.map((image) => ({
+              type: "input_image",
+              image_url: image,
+              detail: "high",
+            })),
           ],
         }],
         text: {
@@ -714,12 +713,11 @@ Deno.serve(async (request: Request): Promise<Response> => {
                 "When is_vehicle_part is false, return an empty string for every vehicle-specific string field.",
               ].join(" "),
             },
-            {
-              ...images.map((image) => ({
-                type: "input_image",
-                image_url: image,
-                detail: "high",
-              })),
+            ...images.map((image) => ({
+              type: "input_image",
+              image_url: image,
+              detail: "high",
+            })),
           ],
         }],
         text: {
