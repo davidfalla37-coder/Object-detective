@@ -266,8 +266,8 @@ identify.onclick=async()=>{
   identify.disabled=true;choose.disabled=true;
   statusBox.classList.remove('hidden');errorBox.classList.add('hidden');result.classList.add('hidden');
   try{
-    const image=await buildInvestigationImage(selectedFiles,1800,.86);
-    const response=await fetch(FUNCTION_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({image,photoCount:selectedFiles.length,mode:'multi-angle-accuracy'})});
+    const images=await buildInvestigationImages(selectedFiles,1800,.86);
+    const response=await fetch(FUNCTION_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({images,photoCount:selectedFiles.length,mode:'multi-angle-accuracy'})});
     const data=await response.json().catch(()=>({}));
     if(!response.ok)throw new Error(data?.error?.message||data?.error||`Investigation failed (${response.status})`);
     render(data);
@@ -317,29 +317,16 @@ function loadImage(input){
   });
 }
 
-async function buildInvestigationImage(inputs,maxSide,quality){
-  const images=await Promise.all(inputs.map(loadImage));
-  if(images.length===1){
-    const image=images[0];
+async function buildInvestigationImages(inputs,maxSide,quality){
+  return Promise.all(inputs.map(async input=>{
+    const image=await loadImage(input);
     const scale=Math.min(1,maxSide/Math.max(image.width,image.height));
     const canvas=document.createElement('canvas');
-    canvas.width=Math.max(1,Math.round(image.width*scale));canvas.height=Math.max(1,Math.round(image.height*scale));
+    canvas.width=Math.max(1,Math.round(image.width*scale));
+    canvas.height=Math.max(1,Math.round(image.height*scale));
     canvas.getContext('2d').drawImage(image,0,0,canvas.width,canvas.height);
     return canvas.toDataURL('image/jpeg',quality);
-  }
-  const gap=16,columns=2,rows=Math.ceil(images.length/columns),cell=Math.floor((maxSide-gap*(columns+1))/columns);
-  const canvas=document.createElement('canvas');
-  canvas.width=maxSide;canvas.height=rows*cell+gap*(rows+1);
-  const context=canvas.getContext('2d');
-  context.fillStyle='#07101f';context.fillRect(0,0,canvas.width,canvas.height);
-  images.forEach((image,index)=>{
-    const column=index%columns,row=Math.floor(index/columns);
-    const scale=Math.min(cell/image.width,cell/image.height);
-    const width=image.width*scale,height=image.height*scale;
-    const x=gap+column*(cell+gap)+(cell-width)/2,y=gap+row*(cell+gap)+(cell-height)/2;
-    context.drawImage(image,x,y,width,height);
-  });
-  return canvas.toDataURL('image/jpeg',quality);
+  }));
 }
 
 function render(data,saveResult=true){
