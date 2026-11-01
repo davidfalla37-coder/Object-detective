@@ -8,10 +8,11 @@ const corsHeaders = {
 const PRIMARY_MODEL = "gpt-4.1-mini";
 const VERIFICATION_MODEL = "gpt-4.1";
 const MAX_IMAGE_DATA_URL_LENGTH = 20 * 1024 * 1024;
-const MAX_REQUEST_LENGTH = MAX_IMAGE_DATA_URL_LENGTH + 1024;
+const MAX_REQUEST_LENGTH = MAX_IMAGE_DATA_URL_LENGTH * 3 + 16 * 1024;
 
 interface RequestBody {
   image?: unknown;
+  images?: unknown;
   photoCount?: unknown;
   mode?: unknown;
   question?: unknown;
@@ -400,7 +401,7 @@ function conservativeFallback(result: InvestigationResult): InvestigationResult 
 }
 
 async function verifyIdentification(
-  image: string,
+  images: string[],
   primary: InvestigationResult,
   photoCount: number,
 ): Promise<VerificationResult | null> {
@@ -458,10 +459,11 @@ async function verifyIdentification(
               ].join(" "),
             },
             {
-              type: "input_image",
-              image_url: image,
-              detail: "high",
-            },
+              ...images.map((image) => ({
+                type: "input_image",
+                image_url: image,
+                detail: "high",
+              })),
           ],
         }],
         text: {
@@ -541,6 +543,10 @@ Deno.serve(async (request: Request): Promise<Response> => {
     body = await request.json() as RequestBody;
   } catch {
     return errorResponse("Request body must be valid JSON.", 400, "invalid_json");
+  }
+
+  if (new TextEncoder().encode(JSON.stringify(body)).length > MAX_REQUEST_LENGTH) {
+    return errorResponse("The selected photos are too large. Please use clearer, smaller photos.", 413, "request_too_large");
   }
 
 
@@ -629,18 +635,27 @@ Deno.serve(async (request: Request): Promise<Response> => {
     }
   }
 
-  if (typeof body.image !== "string" || body.image.trim().length === 0) {
-    return errorResponse("An image data URL is required in the 'image' field.", 400, "missing_image");
+  const rawImages = Array.isArray(body.images)
+    ? body.images
+    : typeof body.image === "string"
+    ? [body.image]
+    : [];
+  if (rawImages.length === 0) {
+    return errorResponse("At least one image data URL is required.", 400, "missing_image");
   }
-
-  const image = body.image.trim();
-  if (image.length > MAX_IMAGE_DATA_URL_LENGTH) {
-    return errorResponse("The image is too large. Please send an image under 20 MB.", 413, "image_too_large");
+  if (rawImages.length > 3) {
+    return errorResponse("Please send no more than three photos.", 400, "too_many_images");
   }
-
-  if (!isValidImageDataUrl(image)) {
+  const images = rawImages.map((value) => typeof value === "string" ? value.trim() : "");
+  if (images.some((value) => !value)) {
+    return errorResponse("Each photo must be a valid image data URL.", 400, "invalid_image");
+  }
+  if (images.some((value) => value.length > MAX_IMAGE_DATA_URL_LENGTH)) {
+    return errorResponse("A photo is too large. Please use smaller photos.", 413, "image_too_large");
+  }
+  if (!images.every(isValidImageDataUrl)) {
     return errorResponse(
-      "The 'image' field must be a base64 data URL for a JPEG, PNG, WEBP, or GIF image.",
+      "Photos must be base64 data URLs for JPEG, PNG, WEBP, or GIF images.",
       400,
       "invalid_image",
     );
@@ -700,10 +715,11 @@ Deno.serve(async (request: Request): Promise<Response> => {
               ].join(" "),
             },
             {
-              type: "input_image",
-              image_url: image,
-              detail: "high",
-            },
+              ...images.map((image) => ({
+                type: "input_image",
+                image_url: image,
+                detail: "high",
+              })),
           ],
         }],
         text: {
@@ -818,10 +834,8 @@ Deno.serve(async (request: Request): Promise<Response> => {
     }
 
     const primaryResult = normalizeResult(parsed);
-    const photoCountRaw = typeof body.photoCount === "number" ? body.photoCount : Number(body.photoCount);
-    const photoCount = Number.isFinite(photoCountRaw) ? Math.max(1, Math.min(3, Math.round(photoCountRaw))) : 1;
-
-    const verification = await verifyIdentification(image, primaryResult, photoCount);
+    const photoCount = images.length;
+    const verification = await verifyIdentification(images, primaryResult, photoCount);
     if (verification) {
       return jsonResponse(reconcileVerification(primaryResult, verification));
     }
