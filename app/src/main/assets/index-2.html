@@ -48,7 +48,7 @@
 
   <section class="card">
     <div class="photo"><div id="placeholder"><span class="emoji">📷</span>Take a clear photograph</div><img id="preview" alt="Selected object"></div>
-    <p class="photo-guide"><span class="photo-count" id="photo-count">0 of 3 photos</span> — extra angles help prevent incorrect guesses.</p>
+    <p class="photo-guide"><span class="photo-count" id="photo-count">0 of 5 photos</span> — extra angles help prevent incorrect guesses.</p>
     <div class="thumbs hidden" id="thumbs" aria-label="Selected photographs"></div>
     <div class="quality hidden" id="quality" role="status"></div>
     <div class="tip" id="photo-tip">Show the whole object. Add a close-up of any label or model number. For watch straps, include the connector and the back of the watch; a ruler beside the strap helps show its width.</div>
@@ -208,13 +208,13 @@ let selectedFiles=[];
 let photoChecks=[];
 
 choose.onclick=()=>{
-  if(selectedFiles.length>=3)return;
+  if(selectedFiles.length>=5)return;
   file.value='';
   file.click();
 };
 file.onchange=async()=>{
   const selectedFile=file.files&&file.files[0];
-  if(!selectedFile||selectedFiles.length>=3)return;
+  if(!selectedFile||selectedFiles.length>=5)return;
   choose.disabled=true;
   const check=await inspectPhoto(selectedFile).catch(()=>({level:'warn',message:'Photo quality could not be checked.'}));
   selectedFiles.push(selectedFile);
@@ -239,8 +239,8 @@ clear.onclick=()=>{
 
 function updatePhotoGuide(){
   const count=selectedFiles.length;
-  photoCount.textContent=`${count} of 3 photo${count===1?'':'s'}`;
-  choose.textContent=count===0?'Take first photo':count<3?'Add another angle':'3 photos added';
+  photoCount.textContent=`${count} of 5 photo${count===1?'':'s'}`;
+  choose.textContent=count===0?'Take first photo':count<5?'Add another angle':'5 photos added';
   choose.disabled=count>=3;
   clear.classList.toggle('hidden',count===0);
   thumbs.classList.toggle('hidden',count===0);
@@ -275,7 +275,7 @@ identify.onclick=async()=>{
     errorBox.textContent=error.message||'The investigation failed. Please try again.';
     errorBox.classList.remove('hidden');
   }finally{
-    statusBox.classList.add('hidden');identify.disabled=false;choose.disabled=selectedFiles.length>=3;
+    statusBox.classList.add('hidden');identify.disabled=false;choose.disabled=selectedFiles.length>=5;
   }
 };
 
