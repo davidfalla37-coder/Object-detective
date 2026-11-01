@@ -8,7 +8,7 @@ const corsHeaders = {
 const PRIMARY_MODEL = "gpt-4.1-mini";
 const VERIFICATION_MODEL = "gpt-4.1";
 const MAX_IMAGE_DATA_URL_LENGTH = 20 * 1024 * 1024;
-const MAX_REQUEST_LENGTH = MAX_IMAGE_DATA_URL_LENGTH * 3 + 16 * 1024;
+const MAX_REQUEST_LENGTH = MAX_IMAGE_DATA_URL_LENGTH * 5 + 16 * 1024;
 
 interface RequestBody {
   image?: unknown;
@@ -535,7 +535,7 @@ Deno.serve(async (request: Request): Promise<Response> => {
 
   const contentLength = Number(request.headers.get("content-length") || 0);
   if (contentLength > MAX_REQUEST_LENGTH) {
-    return errorResponse("The request is too large. Please send an image under 20 MB.", 413, "request_too_large");
+    return errorResponse("The selected photos are too large. Please use smaller photos.", 413, "request_too_large");
   }
 
   let body: RequestBody;
@@ -643,7 +643,7 @@ Deno.serve(async (request: Request): Promise<Response> => {
   if (rawImages.length === 0) {
     return errorResponse("At least one image data URL is required.", 400, "missing_image");
   }
-  if (rawImages.length > 3) {
+  if (rawImages.length > 5) {
     return errorResponse("Please send no more than three photos.", 400, "too_many_images");
   }
   const images = rawImages.map((value) => typeof value === "string" ? value.trim() : "");
