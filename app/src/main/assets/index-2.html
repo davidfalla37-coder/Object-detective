@@ -39,6 +39,27 @@
     .chat-input{min-height:50px}.chat-send{min-height:50px;padding:10px 14px}
     .chat-status{min-height:22px;color:var(--muted);font-size:13px;margin-top:7px}
     @media(max-width:480px){.buttons{grid-template-columns:1fr}h1{font-size:32px}}
+    :root{--bg-alt:#15233d;--panel:#111c30;--field:#091426;--border:#354b6c;--secondary:#1b2a44}
+    :root[data-theme="light"]{color-scheme:light;--bg:#f3f6fb;--bg-alt:#e7eef7;--panel:#fff;--line:#cbd5e1;--text:#17243a;--muted:#536176;--accent:#006b91;--danger:#9d2626;--field:#f8fafc;--border:#b9c7d8;--secondary:#e5edf7}
+    body{background:linear-gradient(160deg,var(--bg-alt) 0,var(--bg) 42%)}.card{background:var(--panel)}.photo{background:var(--field)}
+    button.secondary{background:var(--secondary);border-color:var(--border);color:var(--text)}
+    .match-fields input,.sell-card textarea,.sell-card input,.sell-card select,.chat-input,.setting-select,.feedback-text{background:var(--field);color:var(--text);border-color:var(--border)}
+    .modal-backdrop{position:fixed;inset:0;z-index:50;display:grid;place-items:center;padding:20px;background:#020817cc}
+    .guide-dialog{width:min(100%,460px);background:var(--panel);border:1px solid var(--line);border-radius:20px;padding:22px;box-shadow:0 24px 70px #0008}
+    .guide-step-count{font-size:13px;color:var(--accent);font-weight:800}.guide-actions{display:flex;gap:10px;margin-top:18px}.guide-actions button{flex:1}
+    .setting-row{display:grid;gap:8px;margin:14px 0}.setting-select,.feedback-text{width:100%;border:1px solid var(--border);border-radius:12px;padding:12px;font:inherit}
+    .feedback-text{min-height:95px;resize:vertical;line-height:1.45}.feedback-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
+    .feedback-status{min-height:22px;color:var(--accent);font-size:14px;margin-top:8px}.feedback-card{border-color:#365274}
+    .link-button{display:grid;place-items:center;min-height:50px;padding:12px;border-radius:14px;background:var(--secondary);border:1px solid var(--border);color:var(--text);font-weight:750;text-align:center;text-decoration:none;margin-top:10px}
+    :root[data-theme="light"] .photo{border-color:#8ba0b8;color:#526176}:root[data-theme="light"] .tip{background:#eef5ff;border-color:#c6d7ec;color:#26384f}
+    :root[data-theme="light"] .quality{background:#e8f6fb;border-color:#acd8e6;color:#13526a}:root[data-theme="light"] .quality.warn{background:#fff5d9;border-color:#e5cf8b;color:#684e0c}
+    :root[data-theme="light"] .explain{color:#344257}:root[data-theme="light"] .warning,:root[data-theme="light"] .draft-caution{background:#fff3d4;color:#624a14}
+    :root[data-theme="light"] .history-item,:root[data-theme="light"] .chat-thread,:root[data-theme="light"] .match-fields input,:root[data-theme="light"] .sell-card textarea,:root[data-theme="light"] .sell-card input,:root[data-theme="light"] .sell-card select,:root[data-theme="light"] .chat-input{background:#f4f7fb;color:#17243a;border-color:#c3cfdd}
+    :root[data-theme="light"] .history-image{background:#e9eef5}:root[data-theme="light"] .chat-message.assistant{background:#e4ebf4;color:#17243a}:root[data-theme="light"] .chat-message.user{background:#d9f0f7;color:#17394b}
+    :root[data-theme="light"] #shops a,:root[data-theme="light"] #vehicle-shops a,:root[data-theme="light"] .market-links a{background:#e5edf7;border-color:#c3cfdd;color:#17243a}
+    :root[data-theme="light"] .market-links a.recommended{background:#e1f4e9;border-color:#9ac9aa;color:#174a2e}:root[data-theme="light"] .vehicle-card{background:linear-gradient(145deg,#fff8df,#fff 55%);border-color:#d8bd72}
+    :root[data-theme="light"] .safety{background:#fff0ed;color:#7b3024;border-color:#e4b6ac}
+    @media(prefers-color-scheme:light){:root[data-theme="system"]{color-scheme:light;--bg:#f3f6fb;--bg-alt:#e7eef7;--panel:#fff;--line:#cbd5e1;--text:#17243a;--muted:#536176;--accent:#006b91;--danger:#9d2626;--field:#f8fafc;--border:#b9c7d8;--secondary:#e5edf7}:root[data-theme="system"] .card{background:#fff}:root[data-theme="system"] .photo{background:#f8fafc;border-color:#8ba0b8;color:#526176}:root[data-theme="system"] .tip{background:#eef5ff;border-color:#c6d7ec;color:#26384f}:root[data-theme="system"] .explain{color:#344257}:root[data-theme="system"] button.secondary,:root[data-theme="system"] .link-button,:root[data-theme="system"] #shops a,:root[data-theme="system"] #vehicle-shops a,:root[data-theme="system"] .market-links a{background:#e5edf7;color:#17243a;border-color:#c3cfdd}:root[data-theme="system"] .history-item,:root[data-theme="system"] .chat-thread,:root[data-theme="system"] .match-fields input,:root[data-theme="system"] .sell-card textarea,:root[data-theme="system"] .sell-card input,:root[data-theme="system"] .sell-card select,:root[data-theme="system"] .chat-input{background:#f4f7fb;color:#17243a;border-color:#c3cfdd}:root[data-theme="system"] .chat-message.assistant{background:#e4ebf4;color:#17243a}:root[data-theme="system"] .chat-message.user{background:#d9f0f7;color:#17394b}:root[data-theme="system"] .vehicle-card{background:linear-gradient(145deg,#fff8df,#fff 55%);border-color:#d8bd72}:root[data-theme="system"] .safety{background:#fff0ed;color:#7b3024;border-color:#e4b6ac}}
   </style>
 </head>
 <body>
@@ -75,11 +96,31 @@
     <div class="row"><span class="label">Purpose</span><span class="value" id="purpose"></span></div>
     <div class="row"><span class="label">Estimated second-hand value</span><span class="value" id="value_estimate"></span></div>
     <div class="row"><span class="label">Condition assessment</span><span class="condition-badge cannot-tell" id="condition_badge">Can't tell</span><span class="value" id="condition"></span></div>
-    <div class="row"><span class="label">Identification confidence</span><span class="value" id="confidence"></span></div>
-    <p class="explain" id="confidence-note">This score covers visual identification only. It does not verify the value, condition, or marketplace search results.</p>
+    <div class="row"><span class="label">Object-type confidence</span><span class="value" id="confidence"></span></div>
+    <p class="explain" id="confidence-note">This is an AI estimate of the broad object identification, not a verified probability. Exact model certainty is shown separately.</p>
+    <div class="row"><span class="label">Exact make/model match</span><span class="value" id="exact-match">Not confirmed</span></div>
+    <p class="explain" id="exact-match-evidence"></p>
     <p class="explain" id="explanation"></p>
     <p class="explain" id="compatibility"></p>
     <div class="warning hidden" id="warning"></div>
+    <section class="card feedback-card" id="accuracy-feedback">
+      <h3>Was this identification right?</h3>
+      <p>Your answer is not sent automatically. If you choose to share a correction, the message will not include your photos.</p>
+      <div class="feedback-actions" id="feedback-vote">
+        <button class="secondary" type="button" id="feedback-yes">Yes, looks right</button>
+        <button class="secondary" type="button" id="feedback-no">No, correct it</button>
+      </div>
+      <div id="feedback-correction" class="hidden">
+        <label class="setting-row" for="correct-object">What is the object actually?
+          <input class="setting-select" id="correct-object" maxlength="120" placeholder="Your best identification">
+        </label>
+        <label class="setting-row" for="correction-notes">What clue should the app have noticed?
+          <textarea class="feedback-text" id="correction-notes" maxlength="500" placeholder="For example, a readable logo or the shape of a part"></textarea>
+        </label>
+        <button class="primary" type="button" id="share-correction">Share correction</button>
+      </div>
+      <div class="feedback-status" id="feedback-status" role="status"></div>
+    </section>
     <section class="card match-helper hidden" id="match-helper">
       <h2 id="match-helper-title">Improve matching</h2>
       <p id="match-helper-copy">Add details from a label or measure the item to make shopping searches more useful.</p>
@@ -180,11 +221,37 @@
   </section>
 </section>
 
+  <section class="card" id="app-settings">
+    <h2>App settings</h2>
+    <label class="setting-row" for="theme-select">Appearance
+      <select class="setting-select" id="theme-select">
+        <option value="system">Use device setting</option><option value="dark">Dark</option><option value="light">Light</option>
+      </select>
+    </label>
+    <button class="secondary" type="button" id="replay-guide" style="width:100%">Show how to use the app</button>
+    <a class="link-button" id="rate-app" href="https://play.google.com/store/apps/details?id=com.objectdetective.app" rel="noopener">Open Object Detective on Google Play</a>
+    <p class="photo-guide">The Play Store rating option depends on the app and testing track available to your account.</p>
+  </section>
+  <section class="card feedback-card" id="app-feedback">
+    <h2>Send app feedback</h2>
+    <p>Tell us what worked or what needs improving. Nothing is sent until you choose to share it, and this form does not attach your photos.</p>
+    <textarea class="feedback-text" id="general-feedback" maxlength="1000" placeholder="What would you like us to know?"></textarea>
+    <button class="primary" type="button" id="share-general-feedback" style="width:100%;margin-top:10px">Share feedback</button>
+    <textarea class="feedback-text hidden" id="feedback-export" readonly aria-label="Feedback text to copy"></textarea>
+    <div class="feedback-status" id="general-feedback-status" role="status"></div>
+  </section>
   <section class="card" aria-labelledby="payment-promise-title">
     <h2 id="payment-promise-title">Clear and fair payments</h2>
     <p>Object Detective will never charge you or start a subscription unless you clearly choose it. If Pro is offered, we’ll show what it includes, the price, billing period and renewal terms before you sign up. Using the free app will never automatically become a paid subscription. We’ll make cancellation easy to find and complete.</p>
   </section>
 </main>
+<div class="modal-backdrop hidden" id="welcome-guide">
+  <section class="guide-dialog" role="dialog" aria-modal="true" aria-labelledby="guide-title" aria-describedby="guide-copy">
+    <div class="guide-step-count" id="guide-step-count">Step 1 of 3</div>
+    <h2 id="guide-title">Welcome to Object Detective</h2><p id="guide-copy"></p>
+    <div class="guide-actions"><button class="secondary" id="guide-skip" type="button">Skip guide</button><button class="primary" id="guide-next" type="button">Continue</button></div>
+  </section>
+</div>
 <script>
 const FUNCTION_URL='https://gboyflbwcobhzbvpdtat.supabase.co/functions/v1/investigate-object';
 const file=document.getElementById('file');
@@ -340,6 +407,18 @@ function render(data,saveResult=true){
   const rawConfidence=Number(data.confidence);
   const confidencePercent=rawConfidence>=0&&rawConfidence<=1?rawConfidence*100:rawConfidence;
   document.getElementById('confidence').textContent=Number.isFinite(confidencePercent)?`${Math.round(confidencePercent)}%`:'Unknown';
+  const exactRaw=Number(data.exact_match_confidence);
+  const exactPct=Number.isFinite(exactRaw)?Math.round(exactRaw<=1?exactRaw*100:exactRaw):null;
+  const exactStatus=data.exact_match_status||'not_confirmed';
+  const exactLabels={exact:'AI reports an exact match',likely:'Likely match — check the model number',not_confirmed:'Exact model not confirmed'};
+  document.getElementById('exact-match').textContent=(exactLabels[exactStatus]||exactLabels.not_confirmed)+(exactPct===null?'':` (${exactPct}%)`);
+  document.getElementById('exact-match-evidence').textContent=data.exact_match_evidence||'Look for a readable brand and model number to confirm an exact match.';
+  currentFeedbackData=data;
+  document.getElementById('feedback-correction').classList.add('hidden');
+  document.getElementById('feedback-vote').classList.remove('hidden');
+  document.getElementById('feedback-status').textContent='';
+  document.getElementById('correct-object').value='';
+  document.getElementById('correction-notes').value='';
   document.getElementById('explanation').textContent=data.explanation||'';
   document.getElementById('compatibility').textContent=data.compatibility?`Compatibility: ${data.compatibility}`:'';
   const warning=document.getElementById('warning');
@@ -456,6 +535,30 @@ async function saveInvestigation(data){
   const items=readHistory();
   items.unshift({id:Date.now(),date:new Date().toISOString(),thumbnail,data});
   if(writeHistory(items.slice(0,10)))renderHistory();
+
+const GUIDE_KEY='object-detective-guide-complete-v1',THEME_KEY='object-detective-theme-v1';
+const guideSteps=[
+ {title:'Photograph the whole object',copy:'Take up to five clear photos. Start with the whole item, then add labels, model numbers, connectors or other useful details.'},
+ {title:'Check what the photos support',copy:'The app gives a likely object identification and separate exact model certainty. An unconfirmed exact match means you should check a label or take another close-up.'},
+ {title:'Treat values as estimates',copy:'Values, condition and compatibility may be wrong. Check important details yourself, especially before buying, selling, repairing or fitting a part.'}
+];
+let guideIndex=0,currentFeedbackData=null;
+function updateGuide(){const step=guideSteps[guideIndex];document.getElementById('guide-step-count').textContent='Step '+(guideIndex+1)+' of '+guideSteps.length;document.getElementById('guide-title').textContent=step.title;document.getElementById('guide-copy').textContent=step.copy;document.getElementById('guide-next').textContent=guideIndex===guideSteps.length-1?'Start investigating':'Continue'}
+function openGuide(){guideIndex=0;updateGuide();document.getElementById('welcome-guide').classList.remove('hidden');document.getElementById('guide-next').focus()}
+function closeGuide(){document.getElementById('welcome-guide').classList.add('hidden');try{localStorage.setItem(GUIDE_KEY,'yes')}catch{}}
+document.getElementById('guide-next').onclick=()=>{if(guideIndex<guideSteps.length-1){guideIndex++;updateGuide()}else closeGuide()};
+document.getElementById('guide-skip').onclick=closeGuide;document.getElementById('replay-guide').onclick=openGuide;
+try{if(!localStorage.getItem(GUIDE_KEY))setTimeout(openGuide,350)}catch{}
+const themeSelect=document.getElementById('theme-select');
+function applyTheme(theme){const allowed=['system','light','dark'].includes(theme)?theme:'system';document.documentElement.setAttribute('data-theme',allowed);themeSelect.value=allowed}
+try{applyTheme(localStorage.getItem(THEME_KEY)||'system')}catch{applyTheme('system')}
+themeSelect.onchange=()=>{applyTheme(themeSelect.value);try{localStorage.setItem(THEME_KEY,themeSelect.value)}catch{}};
+document.getElementById('feedback-yes').onclick=()=>{document.getElementById('feedback-status').textContent='Thanks. Your answer has not been sent.'};
+document.getElementById('feedback-no').onclick=()=>{document.getElementById('feedback-correction').classList.remove('hidden');document.getElementById('correct-object').focus()};
+function feedbackText(kind,details){const d=currentFeedbackData||{},score=Number(d.confidence);return ['Object Detective feedback','App version: 1.12','Feedback type: '+kind,d.object?'App identification: '+d.object:'',d.exact_match_status?'Exact match status: '+d.exact_match_status:'',Number.isFinite(score)?'Object-type confidence: '+Math.round(score<=1?score*100:score)+'%':'',details||'','No photos are included.'].filter(Boolean).join('\n')}
+async function shareFeedback(text,statusId){const status=document.getElementById(statusId),box=document.getElementById('feedback-export');try{if(navigator.share){await navigator.share({title:'Object Detective feedback',text});status.textContent='Feedback shared using the app you chose.';return}}catch(error){if(error&&error.name==='AbortError'){status.textContent='Sharing cancelled. Nothing was sent.';return}}try{if(navigator.clipboard&&navigator.clipboard.writeText){await navigator.clipboard.writeText(text);status.textContent='Feedback copied. Paste it into a message to share.';return}}catch{}box.value=text;box.classList.remove('hidden');box.focus();box.select();status.textContent='Feedback text is ready to copy and share. Nothing was sent automatically.'}
+document.getElementById('share-correction').onclick=()=>{const corrected=document.getElementById('correct-object').value.trim(),notes=document.getElementById('correction-notes').value.trim();if(!corrected&&!notes){document.getElementById('feedback-status').textContent='Add the correct object or a clue before sharing.';return}shareFeedback(feedbackText('identification correction','User correction: '+(corrected||'not supplied')+'\nHelpful clue: '+(notes||'not supplied')),'feedback-status')};
+document.getElementById('share-general-feedback').onclick=()=>{const details=document.getElementById('general-feedback').value.trim();if(!details){document.getElementById('general-feedback-status').textContent='Write a short message first.';return}shareFeedback(feedbackText('app feedback',details),'general-feedback-status')};
 }
 
 function confidenceLabel(value){

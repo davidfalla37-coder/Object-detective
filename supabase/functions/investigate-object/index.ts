@@ -643,7 +643,7 @@ Deno.serve(async (request: Request): Promise<Response> => {
     return errorResponse("At least one image data URL is required.", 400, "missing_image");
   }
   if (rawImages.length > 5) {
-    return errorResponse("Please send no more than three photos.", 400, "too_many_images");
+    return errorResponse("Please send no more than five photos.", 400, "too_many_images");
   }
   const images = rawImages.map((value) => typeof value === "string" ? value.trim() : "");
   if (images.some((value) => !value)) {

@@ -4,33 +4,34 @@
 Object Detective
 
 ## Short description
-Photograph mystery objects and investigate what they are, what they fit and what they may be worth.
+Identify everyday objects and parts from photos, with cautious clues and values.
 
 ## Full description
-Ever found a mystery part, tool, bracket, component or random object and wondered what it is?
+Found an unfamiliar object, tool, household item or vehicle part? Object Detective helps you investigate it from photos.
 
-Object Detective turns your phone camera into an AI-assisted investigation tool.
+Take up to five clear photos of an item, including labels or close-up details, and receive an AI-assisted result with:
 
-Take a clear photo and get:
-• A likely identification
-• What the object is used for
-• A confidence score
-• A cautious value estimate
-• Compatibility clues
-• Safety warnings when appropriate
-• Saved investigation history
-• Follow-up chat about an investigation
-• Editable sale-listing drafts with links to marketplaces
+- A likely object and what it may be used for
+- Object-type confidence and separate exact model certainty
+- Visible clues and a suggested next photo when more evidence may help
+- A cautious second-hand value estimate in GBP
+- Condition and compatibility notes where the photos support them
+- Recent investigations saved on your device
+- Follow-up questions about a result
+- An editable draft listing to help prepare an item for sale
 
-Object Detective is designed for garages, workshops, DIY projects, second-hand finds, car parts, tools, hardware, electronics and everyday mystery objects.
+Use it for everyday objects, tools, hardware, electronics, DIY finds and vehicle parts. Clear photos of the whole item and any readable label help the investigation.
 
-Important: results are estimates, not proof. Always verify expensive or safety-critical items with a qualified source.
+Object Detective can make mistakes. A confidence score is an AI estimate, not proof. Values are not guaranteed sale prices, and compatibility, authenticity, condition and safety must be checked independently. Verify safety-critical items with a qualified source before purchase, repair or use.
 
 ## Suggested category
 Tools
 
 ## Feature graphic
-assets/object-detective-feature.png
+Use the approved Object Detective feature graphic in Play Console.
+
+## Suggested screenshots
+Capture screenshots from the actual release build. Suggested order and captions are in `STORE_SCREENSHOT_PLAN.md`.
 
 ## Privacy policy
 Host privacy-policy.html at a public HTTPS URL and enter that URL in Play Console.
