@@ -241,7 +241,7 @@ function updatePhotoGuide(){
   const count=selectedFiles.length;
   photoCount.textContent=`${count} of 5 photo${count===1?'':'s'}`;
   choose.textContent=count===0?'Take first photo':count<5?'Add another angle':'5 photos added';
-  choose.disabled=count>=3;
+  choose.disabled=count>=5;
   clear.classList.toggle('hidden',count===0);
   thumbs.classList.toggle('hidden',count===0);
   thumbs.innerHTML='';
@@ -258,7 +258,7 @@ function updatePhotoGuide(){
   qualityBox.classList.toggle('warn',warnings.length>0);
   qualityBox.textContent=warnings.length?warnings.join(' '):'✓ Photo quality looks good for identification.';
   identify.disabled=count===0;
-  photoTip.textContent=count===0?'Show the whole object first. Include a label or model number if visible. For watch straps, photograph both attachment points and the back of the watch; a ruler beside the strap helps show width.':count===1?'For better matching, add a close-up of the label or model number. For watch straps, show the connector and watch back.':count===2?'A final close-up of any code, connector or distinctive detail can help narrow the match.':'Three views are ready. Photo quality does not confirm the exact model or fit.';
+  photoTip.textContent=count===0?'Show the whole object first. Include a label or model number if visible. For watch straps, photograph both attachment points and the back of the watch; a ruler beside the strap helps show width.':count===1?'For better matching, add a close-up of the label or model number. For watch straps, show the connector and watch back.':count===2?'A final close-up of any code, connector or distinctive detail can help narrow the match.':'Extra views are ready. Photo quality does not confirm the exact model or fit.';
 }
 
 identify.onclick=async()=>{
