@@ -535,6 +535,7 @@ async function saveInvestigation(data){
   const items=readHistory();
   items.unshift({id:Date.now(),date:new Date().toISOString(),thumbnail,data});
   if(writeHistory(items.slice(0,10)))renderHistory();
+}
 
 const GUIDE_KEY='object-detective-guide-complete-v1',THEME_KEY='object-detective-theme-v1';
 const guideSteps=[
@@ -559,7 +560,6 @@ function feedbackText(kind,details){const d=currentFeedbackData||{},score=Number
 async function shareFeedback(text,statusId){const status=document.getElementById(statusId),box=document.getElementById('feedback-export');try{if(navigator.share){await navigator.share({title:'Object Detective feedback',text});status.textContent='Feedback shared using the app you chose.';return}}catch(error){if(error&&error.name==='AbortError'){status.textContent='Sharing cancelled. Nothing was sent.';return}}try{if(navigator.clipboard&&navigator.clipboard.writeText){await navigator.clipboard.writeText(text);status.textContent='Feedback copied. Paste it into a message to share.';return}}catch{}box.value=text;box.classList.remove('hidden');box.focus();box.select();status.textContent='Feedback text is ready to copy and share. Nothing was sent automatically.'}
 document.getElementById('share-correction').onclick=()=>{const corrected=document.getElementById('correct-object').value.trim(),notes=document.getElementById('correction-notes').value.trim();if(!corrected&&!notes){document.getElementById('feedback-status').textContent='Add the correct object or a clue before sharing.';return}shareFeedback(feedbackText('identification correction','User correction: '+(corrected||'not supplied')+'\nHelpful clue: '+(notes||'not supplied')),'feedback-status')};
 document.getElementById('share-general-feedback').onclick=()=>{const details=document.getElementById('general-feedback').value.trim();if(!details){document.getElementById('general-feedback-status').textContent='Write a short message first.';return}shareFeedback(feedbackText('app feedback',details),'general-feedback-status')};
-}
 
 function confidenceLabel(value){
   const raw=Number(value),percent=raw>=0&&raw<=1?raw*100:raw;
