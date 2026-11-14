@@ -32,8 +32,8 @@ jobs:
 
       - name: Put app icon in Android resources
         run: |
-          mkdir -p app/src/main/res/drawable
-          cp ic_launcher.xml app/src/main/res/drawable/ic_launcher.xml
+          mkdir -p app/src/main/res/drawable-nodpi
+          cp ic_launcher.webp app/src/main/res/drawable-nodpi/ic_launcher.webp
 
       - name: Build AAB
         run: gradle --no-daemon bundleRelease
