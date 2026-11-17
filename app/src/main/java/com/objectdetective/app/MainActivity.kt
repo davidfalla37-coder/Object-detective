@@ -98,16 +98,31 @@ class MainActivity : Activity() {
                 fileCallback?.onReceiveValue(null)
                 fileCallback = callback
 
-                val cameraUri = createCameraImageUri()
-                cameraImageUri = cameraUri
-                val cameraIntent = Intent(MediaStore.ACTION_IMAGE_CAPTURE).apply {
-                    putExtra(MediaStore.EXTRA_OUTPUT, cameraUri)
-                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                    addFlags(Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
-                }
+                val captureEnabled = fileChooserParams?.isCaptureEnabled == true
 
                 return try {
-                    startActivityForResult(cameraIntent, FILE_REQUEST_CODE)
+                    if (captureEnabled) {
+                        val cameraUri = createCameraImageUri()
+                        cameraImageUri = cameraUri
+                        val cameraIntent = Intent(MediaStore.ACTION_IMAGE_CAPTURE).apply {
+                            putExtra(MediaStore.EXTRA_OUTPUT, cameraUri)
+                            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                            addFlags(Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
+                        }
+                        startActivityForResult(cameraIntent, FILE_REQUEST_CODE)
+                    } else {
+                        val allowMultiple =
+                            fileChooserParams?.mode == WebChromeClient.FileChooserParams.MODE_OPEN_MULTIPLE
+                        val galleryIntent = Intent(Intent.ACTION_GET_CONTENT).apply {
+                            type = "image/*"
+                            addCategory(Intent.CATEGORY_OPENABLE)
+                            putExtra(Intent.EXTRA_ALLOW_MULTIPLE, allowMultiple)
+                        }
+                        startActivityForResult(
+                            Intent.createChooser(galleryIntent, "Choose photos"),
+                            FILE_REQUEST_CODE
+                        )
+                    }
                     true
                 } catch (_: Exception) {
                     cameraImageUri?.let { contentResolver.delete(it, null, null) }
@@ -116,7 +131,7 @@ class MainActivity : Activity() {
                     fileCallback = null
                     Toast.makeText(
                         this@MainActivity,
-                        "Unable to open the camera.",
+                        if (captureEnabled) "Unable to open the camera." else "Unable to open the gallery.",
                         Toast.LENGTH_SHORT
                     ).show()
                     false
@@ -219,23 +234,37 @@ class MainActivity : Activity() {
             return
         }
 
+        val selectedUris = mutableListOf<Uri>()
+        data?.clipData?.let { clip ->
+            for (index in 0 until clip.itemCount) {
+                val uri = clip.getItemAt(index).uri
+                if (uri !in selectedUris) selectedUris.add(uri)
+            }
+        }
+        data?.data?.let { uri ->
+            if (uri !in selectedUris) selectedUris.add(uri)
+        }
+        if (selectedUris.isEmpty()) {
+            cameraImageUri?.let(selectedUris::add)
+        }
+
         try {
-            val selectedUri = data?.data
-            val jpegUri = if (selectedUri != null) {
-                cameraImageUri?.let { contentResolver.delete(it, null, null) }
-                convertToJpeg(selectedUri)
-            } else {
-                cameraImageUri ?: throw IOException("The camera did not return an image.")
+            if (selectedUris.isEmpty()) {
+                throw IOException("No image was selected.")
+            }
+
+            val readyUris = selectedUris.map { uri ->
+                if (uri == cameraImageUri) uri else convertToJpeg(uri)
             }
             cameraImageUri = null
-            callback?.onReceiveValue(arrayOf(jpegUri))
+            callback?.onReceiveValue(readyUris.toTypedArray())
         } catch (_: Exception) {
             cameraImageUri?.let { contentResolver.delete(it, null, null) }
             cameraImageUri = null
             callback?.onReceiveValue(null)
             Toast.makeText(
                 this,
-                "That image could not be converted.",
+                "That image could not be opened.",
                 Toast.LENGTH_LONG
             ).show()
         }
