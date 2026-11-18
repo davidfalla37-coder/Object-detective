@@ -513,15 +513,11 @@ function render(data,saveResult=true){
 function isWholeVehicleResult(data){
   if(data.is_vehicle_part===true)return false;
   const clues=[data.category,data.object,data.purpose].map(usefulText).join(" ").toLowerCase();
-  return /\\b(car|vehicle|van|automobile|motorcycle|motorbike)\\b/.test(clues);
+  const words=clues.split(/[^a-z0-9]+/).filter(Boolean);
+  return ["car","vehicle","van","automobile","motorcycle","motorbike"].some(word=>words.includes(word));
 }
 function buildVehicleSearchTerms(data){
-  const values=[data.brand,data.model,data.variant,data.model_number,data.object]
-    .map(usefulText).filter(Boolean);
-  const description=values.join(" ").replace(/^(car|vehicle|van|automobile|motorcycle|motorbike)\\s*[:(—-]?\\s*/i,"").replace(/\\)$/,"").trim();
-  const make=usefulText(data.brand);
-  const model=usefulText(data.model)||usefulText(data.variant);
-  return{make,model,description};
+  return{make:usefulText(data.brand),model:usefulText(data.model)};
 }
 function isWatchStrap(data){
   const words=[data.object,data.category,data.purpose].map(usefulText).join(" ").toLowerCase();
