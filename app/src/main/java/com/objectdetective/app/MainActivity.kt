@@ -1,6 +1,7 @@
 package com.objectdetective.app
 
 import android.app.Activity
+import android.app.AlertDialog
 import android.content.ContentValues
 import android.content.Intent
 import android.graphics.Bitmap
@@ -20,19 +21,39 @@ import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.widget.Toast
+import com.google.android.play.core.appupdate.AppUpdateManager
+import com.google.android.play.core.appupdate.AppUpdateManagerFactory
+import com.google.android.play.core.appupdate.AppUpdateOptions
+import com.google.android.play.core.appupdate.AppUpdateType
+import com.google.android.play.core.install.InstallStateUpdatedListener
+import com.google.android.play.core.install.model.InstallStatus
+import com.google.android.play.core.install.model.UpdateAvailability
 import java.io.IOException
 
 class MainActivity : Activity() {
     private lateinit var webView: WebView
     private var fileCallback: ValueCallback<Array<Uri>>? = null
     private var cameraImageUri: Uri? = null
+    private lateinit var appUpdateManager: AppUpdateManager
+    private var updatePromptShown = false
+    private var downloadedUpdateDialogShown = false
+
+    private val updateListener = InstallStateUpdatedListener { state ->
+        if (state.installStatus() == InstallStatus.DOWNLOADED) {
+            runOnUiThread { showDownloadedUpdateDialog() }
+        }
+    }
 
     companion object {
         private const val FILE_REQUEST_CODE = 1001
+        private const val UPDATE_REQUEST_CODE = 1002
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        appUpdateManager = AppUpdateManagerFactory.create(this)
+        appUpdateManager.registerListener(updateListener)
 
         webView = WebView(this)
         setContentView(webView)
@@ -140,6 +161,69 @@ class MainActivity : Activity() {
         }
 
         webView.loadUrl("file:///android_asset/index-2.html")
+        webView.post { checkForAppUpdate() }
+    }
+
+    private fun checkForAppUpdate() {
+        appUpdateManager.appUpdateInfo
+            .addOnSuccessListener { updateInfo ->
+                if (updateInfo.installStatus() == InstallStatus.DOWNLOADED) {
+                    showDownloadedUpdateDialog()
+                    return@addOnSuccessListener
+                }
+
+                val options = AppUpdateOptions.newBuilder(AppUpdateType.FLEXIBLE).build()
+                if (
+                    updateInfo.updateAvailability() != UpdateAvailability.UPDATE_AVAILABLE ||
+                    !updateInfo.isUpdateTypeAllowed(options) ||
+                    updatePromptShown || isFinishing || isDestroyed
+                ) {
+                    return@addOnSuccessListener
+                }
+
+                updatePromptShown = true
+                AlertDialog.Builder(this)
+                    .setTitle("Update available")
+                    .setMessage("A newer version of Object Detective is ready. You can download it now while continuing to use the app.")
+                    .setPositiveButton("Update now") { _, _ ->
+                        try {
+                            appUpdateManager.startUpdateFlowForResult(
+                                updateInfo,
+                                this,
+                                options,
+                                UPDATE_REQUEST_CODE
+                            )
+                        } catch (_: Exception) {
+                            Toast.makeText(
+                                this,
+                                "The update could not be started. Please try again later.",
+                                Toast.LENGTH_LONG
+                            ).show()
+                        }
+                    }
+                    .setNegativeButton("Not now", null)
+                    .show()
+            }
+    }
+
+    private fun showDownloadedUpdateDialog() {
+        if (downloadedUpdateDialogShown || isFinishing || isDestroyed) return
+        downloadedUpdateDialogShown = true
+
+        AlertDialog.Builder(this)
+            .setTitle("Update ready")
+            .setMessage("Object Detective has downloaded the update. Restart the app to finish installing it.")
+            .setPositiveButton("Restart now") { _, _ -> appUpdateManager.completeUpdate() }
+            .setNegativeButton("Later") { _, _ -> downloadedUpdateDialogShown = false }
+            .setOnCancelListener { downloadedUpdateDialogShown = false }
+            .show()
+    }
+
+    override fun onDestroy() {
+        if (::appUpdateManager.isInitialized) {
+            appUpdateManager.unregisterListener(updateListener)
+        }
+        super.onDestroy()
     }
 
     private fun createCameraImageUri(): Uri {
