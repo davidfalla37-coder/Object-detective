@@ -473,7 +473,7 @@ function reconcileVerification(
     /\b([A-Z][A-Za-z0-9&.'-]{1,30})\s+(?:brand(?:ing| name)?|logo|wordmark|manufacturer mark)\s+(?:is\s+)?(?:clearly\s+)?(?:visible|readable|legible)\b/,
   );
   const reverseReadableBrandMatch = evidenceText.match(
-    /\b(?:brand(?:ing| name)?|logo|wordmark)\s+(?:of\s+)?([A-Z][A-Za-z0-9&.'-]{1,30})\s+(?:is\s+)?(?:clearly\s+)?(?:visible|readable|legible)\b/,
+    /\b(?:brand(?:ing| name)?|logo|wordmark)\s+(?:of\s+)?["'“‘]?([A-Z][A-Za-z0-9&.-]{1,30})["'”’]?\s+(?:is\s+)?(?:clearly\s+)?(?:visible|readable|legible)\b/,
   );
   const explicitReadableBrand = manufacturerEvidence?.brand ||
     readableBrandMatch?.[1] || reverseReadableBrandMatch?.[1] || "";
@@ -482,9 +482,10 @@ function reconcileVerification(
   const anyBrandClaim = primaryBrandKnown || verificationBrandKnown;
   // A readable maker name in the evidence outranks a second pass's visual/design guess.
   const directBrandDisagreement = knownText(explicitReadableBrand) && (
-    (primaryBrandKnown && normalizeBrand(primary.brand) !== normalizeBrand(explicitReadableBrand)) ||
-    (verificationBrandKnown && normalizeBrand(verification.brand) !== normalizeBrand(explicitReadableBrand)) ||
-    (!primaryBrandKnown && !verificationBrandKnown)
+    !primaryBrandKnown ||
+    normalizeBrand(primary.brand) !== normalizeBrand(explicitReadableBrand) ||
+    !verificationBrandKnown ||
+    normalizeBrand(verification.brand) !== normalizeBrand(explicitReadableBrand)
   );
   const brandConflict = !knownText(explicitReadableBrand) &&
     (brandDisagreement || (anyBrandClaim && (noReadableMakerMark || makerMarkIsTentative)));
