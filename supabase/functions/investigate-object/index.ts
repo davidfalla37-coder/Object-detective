@@ -692,6 +692,18 @@ function reconcileVerification(
     result.next_photo = verification.next_photo;
   }
 
+  const hasSpecificModelIdentifier = knownText(result.model) || knownText(result.model_number);
+  const identityIsTooUncertain =
+    result.exact_match_status === "not_confirmed" ||
+    result.exact_match_confidence < 0.6 ||
+    !knownText(result.brand) ||
+    !hasSpecificModelIdentifier;
+  if (identityIsTooUncertain) {
+    result.value_estimate = "Unknown (GBP)";
+    result.value_reasoning =
+      "Withheld because the make or exact model is not confirmed. Identify the model and compare current UK completed sales before estimating a resale price.";
+  }
+
   result.explanation = rebuiltExplanation(result, verification, brandConflict, directBrandDisagreement);
   reconcileStrapMaterial(result, primary.object);
   return result;
