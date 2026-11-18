@@ -505,6 +505,9 @@ function reconcileVerification(
   const supportedBrand = brandClaims.find((claim) =>
     normalizedClaims.filter((candidate) => candidate === normalizeBrand(claim)).length >= 2
   ) ?? "";
+  const explicitReadableBrand = manufacturerEvidence?.brand ?? "";
+  // A dedicated readable-mark pass can resolve disagreement between general visual checks.
+  const directBrandDisagreement = Boolean(explicitReadableBrand) && (brandDisagreement || !supportedBrand);
   const labelTextClaims = [
     ...evidenceText.matchAll(/\\btext\\s+["'“‘]?([A-Z][A-Za-z0-9&.-]{1,30})["'”’]?\\s+(?:printed|shown|visible|on it)\\b/g),
     ...evidenceText.matchAll(/\\b([A-Z][A-Za-z0-9&.-]{1,30})\\s+text\\s+(?:is\\s+)?(?:partially\\s+|faintly\\s+|clearly\\s+)?visible\\b/g),
@@ -512,7 +515,6 @@ function reconcileVerification(
   const labelDisagreesWithConsensus = Boolean(supportedBrand) &&
     labelTextClaims.some((claim) => claim !== normalizeBrand(supportedBrand));
   const hasBrandClaim = brandClaims.length > 0 || labelTextClaims.length > 0;
-  const directBrandDisagreement = false;
   const brandConflict = hasBrandClaim && (
     distinctClaims.length > 1 ||
     !supportedBrand ||
