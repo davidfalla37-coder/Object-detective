@@ -710,23 +710,8 @@ function conservativeFallback(result: InvestigationResult): InvestigationResult 
 
 async function verifyIdentification(
   images: string[],
-  primary: InvestigationResult | null,
   photoCount: number,
 ): Promise<VerificationResult | null> {
-  const candidate = primary ? {
-    object: primary.object,
-    brand: primary.brand,
-    model: primary.model,
-    model_number: primary.model_number,
-    variant: primary.variant,
-    value_estimate: primary.value_estimate,
-    condition: primary.condition,
-    condition_grade: primary.condition_grade,
-    condition_evidence: primary.condition_evidence,
-    confidence: primary.confidence,
-    exact_match_status: primary.exact_match_status,
-    exact_match_confidence: primary.exact_match_confidence,
-  } : null;
 
   try {
     const response = await fetch("https://api.openai.com/v1/responses", {
@@ -745,21 +730,17 @@ async function verifyIdentification(
               type: "input_text",
               text: [
                 "Act as an independent forensic product-identification verifier.",
-                primary
-                  ? "Do not trust the proposed identification. Inspect the supplied photograph(s) from scratch, then compare your visual conclusion with the proposed candidate."
-                  : "Independently inspect the supplied photograph(s) from scratch. No first-pass candidate is provided; identify only the object and manufacturer supported by visible evidence.",
-                "Independently assess the proposed condition using the photographs. Cross-check condition and condition_evidence against the object and against each other. Never describe the same component with conflicting materials, such as calling a watch strap silicone in object but leather in condition. If its material is uncertain or the fields disagree, use neutral wording such as 'strap' and describe only visible wear; do not guess leather, silicone, rubber or another material.",
-                "Visible evidence has priority over the proposed answer. Never invent text, logos, model numbers, serial numbers, variants, dimensions or provenance.",
+                "Independently inspect the supplied photograph(s) from scratch. There is no candidate answer; identify only the object and manufacturer supported by visible evidence.",
+                "Assess condition independently using the photographs. Cross-check condition and condition_evidence against the object and each other. Never describe the same component with conflicting materials, such as calling a watch strap silicone in object but leather in condition. If its material is uncertain, use neutral wording such as 'strap' and describe only visible wear; do not guess leather, silicone, rubber or another material.",
+                "Use visible evidence only. Never invent text, logos, model numbers, serial numbers, variants, dimensions or provenance.",
                 "Read visible logos and embossed words in every orientation, including upside down or rotated; do not replace an uncertain wordmark with a visually similar brand. Never identify a manufacturer from a faint/ambiguous logo or from design resemblance alone. If the evidence says no readable mark is visible, or any brand evidence is faint or uncertain, set brand to Unknown and describe only the broad object type.",
                 "Distinguish electrical socket contact patterns from vents, refill wells, bottle ports, or other openings. A wall-plug fragrance warmer with refill wells is an air-freshener device, not a multi-socket power adapter; multiple refill openings are not electrical outlets. A clearly embossed Febreze logo must not be misread as Forza.",
-                 primary
-                  ? "Check whether the proposed name describes the whole photographed item or only one visible component. If a larger device or assembly is shown but the candidate names only one component, use verdict partial, describe the whole photographed item in object, and keep the component model separate."
-                  : "Describe the whole photographed item, not only a replaceable component. Keep any component model separate from the main object.",
+                "Describe the whole photographed item, not only a replaceable component. Keep any component model separate from the main object.",
                  "Do not infer a host device's model from a readable label on an attached component. A correct component label does not by itself confirm the complete device's model.",
                 "Use verdict agree when the broad object and any named manufacturer are independently supported by visible evidence; use partial when only the broad type or brand is supported but the exact model is not.",
                 "Use partial when the general type or brand is supported but the exact model/variant is not fully proven.",
                 "GENERAL MANUFACTURER EVIDENCE FOR ALL CATEGORIES: If readable manufacturer text or a logo is visible on the photographed item, case, underside or packaging, return that maker in brand and include it in object. If the broad object and brand are supported but the exact model is not, use verdict partial, set model and model_number to Unknown, and set exact_match_status to not_confirmed. Ask for a close-up only when lettering is genuinely unreadable; do not lose a supported brand because model-level evidence is missing. A readable Samsung mark on an earbuds case supports Samsung earbuds, not a specific Galaxy Buds model.",
-                "Use disagree only when the visible evidence contradicts the initial visual conclusion; use insufficient when no reliable broad identification is possible.",
+                "Use disagree only when the available views contain materially contradictory identity clues; use insufficient when no reliable broad identification is possible.",
                 "Use insufficient when the photos cannot support a reliable decision.",
                 "Exact match requires a visible or uniquely diagnostic identifier, not just visual resemblance.",
                 "MANUFACTURER EVIDENCE: Prioritize readable manufacturer names and brand-specific buttons printed on the photographed item. On a TV remote, a dedicated manufacturer-branded button such as TCL Channel is strong evidence that the remote is for that manufacturer; include that brand in brand and object unless a clearer contradictory mark is visible.",
@@ -769,13 +750,11 @@ async function verifyIdentification(
                 "Return confidence for the verified identity and a separate exact_match_confidence.",
                 "General confidence measures whether the broad object type and supported manufacturer are correct; do not lower it solely because the exact model number is unknown. Keep exact_match_confidence separate and lower it when model-level evidence is missing. A clear manufacturer-specific mark such as a TCL Channel key should increase confidence in a TCL TV remote, while leaving exact model certainty unresolved.",
                 "Return the best-supported object, brand, model, model number and variant from the visible evidence; use Unknown whenever a detail is unsupported.",
-                "Recalculate the value from scratch as the current UK SECOND-HAND resale value for the photographed item AS SHOWN. Do not copy or trust the proposed value if it looks like new-retail or replacement pricing. Do not assume original packaging, accessories, pristine condition or fully-tested working order unless visible evidence supports that. Apply a meaningful downward adjustment for visible wear, damage, missing parts, age, uncertainty and unverified working status. Fair or visibly worn electronics should normally be materially cheaper than a clean tested used example, and substantially below new retail. For a mixed-brand or incomplete bundle, value the photographed bundle as one used private-sale item; do not add the new replacement prices of its components. Do not award a branded-component premium when the exact model is unconfirmed. If there is heavy visible wear or working status is unverified, use the lower end of a realistic used range and describe functionality as untested. If the exact model or working condition is too uncertain for a useful resale estimate, return Unknown (GBP).",
-                "In evidence, describe identification evidence only. Do not say the proposed value, price or estimate was optimistic, pessimistic, high, low, correct or incorrect. The displayed value will already be the reconciled result.",
+                "Estimate the current UK SECOND-HAND resale value for the photographed item AS SHOWN. Do not assume original packaging, accessories, pristine condition or tested working order unless visible evidence supports that. Adjust for visible wear, damage, missing parts, age, uncertainty and unverified working status. Fair or visibly worn electronics should normally be materially cheaper than a clean tested used example, and substantially below new retail. For a mixed-brand or incomplete bundle, value the photographed bundle as one used private-sale item; do not add new replacement prices of its components. Do not award a branded-component premium when the exact model is unconfirmed. If working status is unverified, describe functionality as untested and use a cautious range. If the exact model or working condition is too uncertain for a useful resale estimate, return Unknown (GBP).",
+                "In evidence, describe only the visible identification clues; do not discuss price comparisons.",
                 "Suggest the single best next photograph when more evidence would materially improve certainty.",
                 "The app supplied " + photoCount + " photo(s).",
-                candidate
-                  ? "Proposed first-pass result: " + JSON.stringify(candidate)
-                  : "No first-pass result is provided. This must be an independent visual assessment.",
+                "This is an independent visual assessment; return the best-supported result from the visible evidence.",
               ].join(" "),
             },
             ...images.map((image) => ({
@@ -989,7 +968,7 @@ Deno.serve(async (request: Request): Promise<Response> => {
   try {
     const photoCount = images.length;
     // Run the independent visual check alongside the first-pass analysis to avoid serial model latency.
-    const verificationPromise = verifyIdentification(images, null, photoCount);
+    const verificationPromise = verifyIdentification(images, photoCount);
     const openAIResponse = await fetch("https://api.openai.com/v1/responses", {
       method: "POST",
       headers: {
