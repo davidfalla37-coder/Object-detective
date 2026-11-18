@@ -381,10 +381,14 @@ identify.onclick=async()=>{
   try{
     const images=await buildInvestigationImages(selectedFiles,1800,.86);
     const photoKey=await fingerprintFiles(selectedFiles);
+    const firstPhotoKey=selectedFiles[0]?await fingerprintFiles([selectedFiles[0]]):null;
+    const thumb=selectedFiles[0]?await makeHistoryThumbnail(selectedFiles[0]).catch(()=>''):'';
+    const thumbKey=await fingerprintDataUrl(thumb);
     const response=await fetch(FUNCTION_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({images,photoCount:selectedFiles.length,mode:'multi-angle-accuracy'})});
     let data=await response.json().catch(()=>({}));
     if(!response.ok)throw new Error(data?.error?.message||data?.error||`Investigation failed (${response.status})`);
-    const savedCorrection=photoKey?readPhotoCorrections()[photoKey]:null;
+    const corrections=readPhotoCorrections();
+    const savedCorrection=(photoKey&&corrections[photoKey])||(firstPhotoKey&&corrections[firstPhotoKey])||(thumbKey&&corrections[thumbKey]);
     if(savedCorrection)data=applyCorrection(data,savedCorrection);
     render(data);
   }catch(error){
@@ -632,6 +636,16 @@ themeSelect.onchange=()=>{applyTheme(themeSelect.value);try{localStorage.setItem
 document.getElementById('feedback-yes').onclick=()=>{document.getElementById('feedback-status').textContent='Thanks. Your answer has not been sent.'};
 document.getElementById('feedback-no').onclick=()=>{document.getElementById('feedback-correction').classList.remove('hidden');document.getElementById('correct-brand').focus()};
 function readPhotoCorrections(){try{return JSON.parse(localStorage.getItem(CORRECTIONS_KEY)||'{}')}catch{return{}}}
+async function fingerprintDataUrl(dataUrl){
+  try{
+    if(!dataUrl||!window.crypto||!crypto.subtle)return null;
+    const encoded=String(dataUrl).split(',')[1];if(!encoded)return null;
+    const raw=atob(encoded),bytes=new Uint8Array(raw.length);
+    for(let i=0;i<raw.length;i++)bytes[i]=raw.charCodeAt(i);
+    const digest=await crypto.subtle.digest('SHA-256',bytes);
+    return Array.from(new Uint8Array(digest),byte=>byte.toString(16).padStart(2,'0')).join('');
+  }catch{return null}
+}
 async function fingerprintFiles(files){
   try{
     if(!window.crypto||!crypto.subtle)return null;
@@ -667,14 +681,19 @@ document.getElementById('apply-correction').onclick=async()=>{
   const status=document.getElementById('feedback-status');
   if(!brand&&!object){status.textContent='Enter the confirmed brand or corrected object first.';return}
   const correction={brand,object};
-  const key=await fingerprintFiles(selectedFiles);
-  if(key){
-    const saved=readPhotoCorrections();saved[key]=correction;
-    const keys=Object.keys(saved);if(keys.length>25)for(const oldKey of keys.slice(0,keys.length-25))delete saved[oldKey];
+  const current=currentFeedbackData||{};
+  const keys=[await fingerprintFiles(selectedFiles),selectedFiles[0]?await fingerprintFiles([selectedFiles[0]]):null,await fingerprintDataUrl(current.history_thumbnail)].filter(Boolean);
+  if(keys.length){
+    const saved=readPhotoCorrections();for(const key of keys)saved[key]=correction;
+    const savedKeys=Object.keys(saved);if(savedKeys.length>25)for(const oldKey of savedKeys.slice(0,savedKeys.length-25))delete saved[oldKey];
     try{localStorage.setItem(CORRECTIONS_KEY,JSON.stringify(saved))}catch{}
   }
-  render(applyCorrection(currentFeedbackData||{},correction));
-  status.textContent=key?`${brand||object} correction applied and saved for these exact photos on this device.`:'Correction applied to this result. Photo-set saving is unavailable on this device.';
+  const corrected=applyCorrection(current,correction);
+  if(corrected.history_item_id){
+    const entries=readHistory().map(entry=>entry.id===corrected.history_item_id?{...entry,data:corrected}:entry);
+    writeHistory(entries);render(corrected,false);renderHistory();
+  }else render(corrected);
+  status.textContent=keys.length?`${brand||object} correction applied and saved for these photos on this device.`:'Correction applied to this result. Photo-set saving is unavailable on this device.';
 };
 function feedbackText(kind,details){const d=currentFeedbackData||{},score=Number(d.confidence);return ['Object Detective feedback','App version: 1.15','Feedback type: '+kind,d.object?'App identification: '+d.object:'',d.exact_match_status?'Exact match status: '+d.exact_match_status:'',Number.isFinite(score)?'Object-type confidence: '+Math.round(score<=1?score*100:score)+'%':'',details||'','No photos are included.'].filter(Boolean).join('\n')}
 async function shareFeedback(text,statusId){const status=document.getElementById(statusId),box=document.getElementById('feedback-export');try{if(navigator.share){await navigator.share({title:'Object Detective feedback',text});status.textContent='Feedback shared using the app you chose.';return}}catch(error){if(error&&error.name==='AbortError'){status.textContent='Sharing cancelled. Nothing was sent.';return}}try{if(navigator.clipboard&&navigator.clipboard.writeText){await navigator.clipboard.writeText(text);status.textContent='Feedback copied. Paste it into a message to share.';return}}catch{}box.value=text;box.classList.remove('hidden');box.focus();box.select();status.textContent='Feedback text is ready to copy and share. Nothing was sent automatically.'}
@@ -700,7 +719,8 @@ function renderHistory(){
     info.append(name,meta);
     const remove=document.createElement('button');remove.type='button';remove.className='history-delete';remove.textContent='×';remove.setAttribute('aria-label','Delete saved investigation');
     remove.onclick=event=>{event.stopPropagation();writeHistory(readHistory().filter(entry=>entry.id!==item.id));renderHistory()};
-    row.onclick=()=>render(item.data,false);row.onkeydown=event=>{if(event.key==='Enter'||event.key===' '){event.preventDefault();render(item.data,false)}};row.append(image,info,remove);historyList.appendChild(row);
+    const openItem=()=>render({...item.data,history_item_id:item.id,history_thumbnail:item.thumbnail||''},false);
+    row.onclick=openItem;row.onkeydown=event=>{if(event.key==='Enter'||event.key===' '){event.preventDefault();openItem()}};row.append(image,info,remove);historyList.appendChild(row);
   });
 }
 
