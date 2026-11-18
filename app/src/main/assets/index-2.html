@@ -160,7 +160,12 @@
         <div id="shops" class="hidden">
       <h2>Find one like this</h2>
       <p>These are search suggestions, not verified matches. Listings may show accessories or similar products; check the exact model and whether the complete item is included.</p>
-      <div class="buttons">
+      <p class="hidden" id="vehicle-buy-note">Search car listings on Auto Trader or MOTORS. These links are search shortcuts, not verified matches; check the exact model, year, mileage, condition and seller details.</p>
+      <div class="buttons hidden" id="vehicle-buy-shops">
+        <a id="shop-autotrader" href="#" target="_blank" rel="noopener">Auto Trader</a>
+        <a id="shop-motors" href="#" target="_blank" rel="noopener">MOTORS</a>
+      </div>
+      <div class="buttons" id="general-buy-shops">
         <a id="shop-ebay" href="#">eBay</a>
         <a id="shop-amazon" href="#">Amazon</a>
         <a id="shop-etsy" href="#">Etsy</a>
@@ -474,21 +479,50 @@ function render(data,saveResult=true){
     document.getElementById('vehicle-motorcycle').href='https://www.google.com/search?q='+encodeURIComponent('UK motorcycle parts '+decodeURIComponent(vehicleQuery));
   }
     const query=encodeURIComponent(buildShopSearchTerms(data));
-  const shops={
-    ebay:'https://www.ebay.co.uk/sch/i.html?_nkw=',
-    amazon:'https://www.amazon.co.uk/s?k=',
-    etsy:'https://www.etsy.com/uk/search?q=',
-    vinted:'https://www.vinted.co.uk/catalog?search_text=',
-    google:'https://www.google.com/search?tbm=shop&q='
-  };
-  for(const [name,url] of Object.entries(shops))
-    document.getElementById('shop-'+name).href=url+query;
-  document.getElementById('shops').classList.toggle('hidden',!query);
+  const isWholeVehicle=isWholeVehicleResult(data);
+  const vehicleQuery=buildVehicleSearchTerms(data);
+  const vehicleBuyShops=document.getElementById('vehicle-buy-shops');
+  const generalBuyShops=document.getElementById('general-buy-shops');
+  document.getElementById('vehicle-buy-note').classList.toggle('hidden',!isWholeVehicle);
+  vehicleBuyShops.classList.toggle('hidden',!isWholeVehicle);
+  generalBuyShops.classList.toggle('hidden',isWholeVehicle);
+  if(isWholeVehicle){
+    const atParams=new URLSearchParams();
+    if(vehicleQuery.make)atParams.set('make',vehicleQuery.make);
+    if(vehicleQuery.model)atParams.set('model',vehicleQuery.model);
+    const atUrl='https://www.autotrader.co.uk/car-search'+(atParams.toString()?'?'+atParams.toString():'');
+    document.getElementById('shop-autotrader').href=atUrl;
+    document.getElementById('shop-motors').href='https://www.motors.co.uk/';
+  }else{
+    const shops={
+      ebay:'https://www.ebay.co.uk/sch/i.html?_nkw=',
+      amazon:'https://www.amazon.co.uk/s?k=',
+      etsy:'https://www.etsy.com/uk/search?q=',
+      vinted:'https://www.vinted.co.uk/catalog?search_text=',
+      google:'https://www.google.com/search?tbm=shop&q='
+    };
+    for(const [name,url] of Object.entries(shops))
+      document.getElementById('shop-'+name).href=url+query;
+  }
+  document.getElementById('shops').classList.toggle('hidden',!query&&!isWholeVehicle);
   updateSellDraft(data);resetChat(data);
   result.classList.remove('hidden');result.scrollIntoView({behavior:'smooth',block:'start'});
   if(saveResult)saveInvestigation(data).catch(()=>{});
 }
 
+function isWholeVehicleResult(data){
+  if(data.is_vehicle_part===true)return false;
+  const clues=[data.category,data.object,data.purpose].map(usefulText).join(" ").toLowerCase();
+  return /\\b(car|vehicle|van|automobile|motorcycle|motorbike)\\b/.test(clues);
+}
+function buildVehicleSearchTerms(data){
+  const values=[data.brand,data.model,data.variant,data.model_number,data.object]
+    .map(usefulText).filter(Boolean);
+  const description=values.join(" ").replace(/^(car|vehicle|van|automobile|motorcycle|motorbike)\\s*[:(—-]?\\s*/i,"").replace(/\\)$/,"").trim();
+  const make=usefulText(data.brand);
+  const model=usefulText(data.model)||usefulText(data.variant);
+  return{make,model,description};
+}
 function isWatchStrap(data){
   const words=[data.object,data.category,data.purpose].map(usefulText).join(" ").toLowerCase();
   return /watch\s*(strap|band)|\bstrap for (a )?watch\b|replacement watch strap/.test(words);
