@@ -633,15 +633,17 @@ document.getElementById('feedback-yes').onclick=()=>{document.getElementById('fe
 document.getElementById('feedback-no').onclick=()=>{document.getElementById('feedback-correction').classList.remove('hidden');document.getElementById('correct-brand').focus()};
 function readPhotoCorrections(){try{return JSON.parse(localStorage.getItem(CORRECTIONS_KEY)||'{}')}catch{return{}}}
 async function fingerprintFiles(files){
-  if(!window.crypto||!crypto.subtle)return null;
-  const hashes=[];
-  for(const file of files){
-    const digest=await crypto.subtle.digest('SHA-256',await file.arrayBuffer());
-    hashes.push(Array.from(new Uint8Array(digest),byte=>byte.toString(16).padStart(2,'0')).join(''));
-  }
-  hashes.sort();
-  const combined=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(hashes.join(':')));
-  return Array.from(new Uint8Array(combined),byte=>byte.toString(16).padStart(2,'0')).join('');
+  try{
+    if(!window.crypto||!crypto.subtle)return null;
+    const hashes=[];
+    for(const file of files){
+      const digest=await crypto.subtle.digest('SHA-256',await file.arrayBuffer());
+      hashes.push(Array.from(new Uint8Array(digest),byte=>byte.toString(16).padStart(2,'0')).join(''));
+    }
+    hashes.sort();
+    const combined=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(hashes.join(':')));
+    return Array.from(new Uint8Array(combined),byte=>byte.toString(16).padStart(2,'0')).join('');
+  }catch{return null}
 }
 function applyCorrection(data,correction){
   const corrected={...data};
@@ -668,6 +670,7 @@ document.getElementById('apply-correction').onclick=async()=>{
   const key=await fingerprintFiles(selectedFiles);
   if(key){
     const saved=readPhotoCorrections();saved[key]=correction;
+    const keys=Object.keys(saved);if(keys.length>25)for(const oldKey of keys.slice(0,keys.length-25))delete saved[oldKey];
     try{localStorage.setItem(CORRECTIONS_KEY,JSON.stringify(saved))}catch{}
   }
   render(applyCorrection(currentFeedbackData||{},correction));
