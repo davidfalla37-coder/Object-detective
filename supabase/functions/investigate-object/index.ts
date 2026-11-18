@@ -73,6 +73,37 @@ function isValidImageDataUrl(value: string): boolean {
   return /^data:image\/(jpeg|jpg|png|webp|gif);base64,[A-Za-z0-9+/]+={0,2}$/i.test(value);
 }
 
+function sanitizeConditionLanguage(input: string): string {
+  return input
+    .replace(/\boverall intact and appears functional\b/gi, "overall physically intact; functionality not verified")
+    .replace(/\bappears to be functional\b/gi, "appears physically intact; functionality not verified")
+    .replace(/\bappears functional\b/gi, "appears physically intact; functionality not verified")
+    .replace(/\blooks functional\b/gi, "appears physically intact; functionality not verified");
+}
+
+function reconcileStrapMaterial(result: InvestigationResult, primaryObject: string): void {
+  const materialPattern = /\b(stainless steel|faux leather|vegan leather|silicone|rubber|leather|nylon|fabric|synthetic|plastic|metal)\s+(?:watch\s+)?strap\b/i;
+  const materialFrom = (description: string): string | null =>
+    materialPattern.exec(description)?.[1]?.toLowerCase() ?? null;
+  const objectMaterials = [materialFrom(primaryObject), materialFrom(result.object)]
+    .filter((material): material is string => material !== null);
+  const distinctMaterials = [...new Set(objectMaterials)];
+
+  if (distinctMaterials.length === 0) return;
+
+  const claimPattern = /\b(stainless steel|faux leather|vegan leather|silicone|rubber|leather|nylon|fabric|synthetic|plastic|metal)(\s+(?:watch\s+)?strap)\b/gi;
+  const align = (text: string): string => text.replace(claimPattern, (claim, material: string, suffix: string) => {
+    if (distinctMaterials.length > 1) return "strap";
+    return material.toLowerCase() === distinctMaterials[0]
+      ? claim
+      : `${distinctMaterials[0]}${suffix}`;
+  });
+
+  result.condition = align(result.condition);
+  result.condition_evidence = align(result.condition_evidence);
+  result.explanation = align(result.explanation);
+}
+
 function normalizeResult(value: unknown): InvestigationResult {
   const record = value && typeof value === "object"
     ? value as Record<string, unknown>
@@ -127,13 +158,6 @@ function normalizeResult(value: unknown): InvestigationResult {
 
   const caseFileSummary = text("case_file_summary");
   const nextPhoto = text("next_photo");
-  const sanitizeConditionLanguage = (input: string): string =>
-    input
-      .replace(/\boverall intact and appears functional\b/gi, "overall physically intact; functionality not verified")
-      .replace(/\bappears to be functional\b/gi, "appears physically intact; functionality not verified")
-      .replace(/\bappears functional\b/gi, "appears physically intact; functionality not verified")
-      .replace(/\blooks functional\b/gi, "appears physically intact; functionality not verified");
-
   const conditionEvidence = sanitizeConditionLanguage(text("condition_evidence"));
   const baseExplanation = text("explanation");
 
@@ -238,6 +262,9 @@ interface VerificationResult {
   confidence: number;
   exact_match_status: "exact" | "likely" | "not_confirmed";
   exact_match_confidence: number;
+  condition: string;
+  condition_grade: "new_sealed" | "like_new" | "used" | "worn_damaged" | "cannot_tell";
+  condition_evidence: string;
   evidence: string;
   next_photo: string;
 }
@@ -265,6 +292,12 @@ function normalizeVerification(value: unknown): VerificationResult {
     : "insufficient";
   const statusRaw = record.exact_match_status;
   const status = statusRaw === "exact" || statusRaw === "likely" ? statusRaw : "not_confirmed";
+  const rawConditionGrade = record.condition_grade;
+  const conditionGrade = rawConditionGrade === "new_sealed" || rawConditionGrade === "like_new" ||
+      rawConditionGrade === "used" || rawConditionGrade === "worn_damaged" ||
+      rawConditionGrade === "cannot_tell"
+    ? rawConditionGrade
+    : "cannot_tell";
 
   return {
     verdict,
@@ -277,6 +310,9 @@ function normalizeVerification(value: unknown): VerificationResult {
     confidence: numberValue("confidence"),
     exact_match_status: status,
     exact_match_confidence: numberValue("exact_match_confidence"),
+    condition: textValue("condition"),
+    condition_grade: conditionGrade,
+    condition_evidence: textValue("condition_evidence"),
     evidence: textValue("evidence")
       .split(/(?<=[.!?])\s+/)
       .filter((sentence) => !/\bproposed\s+(value|price|estimate)\b/i.test(sentence))
@@ -286,7 +322,18 @@ function normalizeVerification(value: unknown): VerificationResult {
   };
 }
 
-function rebuiltExplanation(result: InvestigationResult, verification: VerificationResult): string {
+function rebuiltExplanation(
+  result: InvestigationResult,
+  verification: VerificationResult,
+  brandConflict = false,
+): string {
+  if (brandConflict) {
+    return [
+      `Broad identification: ${result.object}. The two image checks disagreed on the manufacturer, so the brand and exact model are unconfirmed.`,
+      `Best next check: ${result.next_photo}`,
+    ].join(" ");
+  }
+
   const verifiedPercent = Math.round(result.exact_match_confidence * 100);
   const parts: string[] = [];
 
@@ -316,31 +363,88 @@ function reconcileVerification(
   verification: VerificationResult,
 ): InvestigationResult {
   const result: InvestigationResult = { ...primary };
+  const normalizeBrand = (value: string): string =>
+    value.trim().toLowerCase().replace(/[^a-z0-9]+/g, "");
+  const primaryBrandKnown = knownText(primary.brand);
+  const verificationBrandKnown = knownText(verification.brand);
+  const brandConflict = primaryBrandKnown && verificationBrandKnown &&
+    normalizeBrand(primary.brand) !== normalizeBrand(verification.brand);
 
-  // Keep the independent used-value recalculation even when both checks agree on identity.
-  if (verification.verdict !== "insufficient" && knownText(verification.value_estimate)) {
+  const stripIdentityClaims = (description: string): string => {
+    let generic = description;
+    const claimedIdentity = [
+      primary.brand,
+      verification.brand,
+      primary.model,
+      verification.model,
+      primary.model_number,
+      verification.model_number,
+      primary.variant,
+      verification.variant,
+    ]
+      .filter(knownText)
+      .sort((a, b) => b.length - a.length);
+
+    for (const claim of claimedIdentity) {
+      const escaped = claim.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      generic = generic.replace(new RegExp(escaped, "gi"), " ");
+    }
+
+    return generic.replace(/\\s+/g, " ").replace(/^[\\s,;:–—-]+|[\\s,;:–—-]+$/g, "").trim() || "Unknown";
+  };
+
+  // Keep the independent used-value recalculation only when the identity checks
+  // do not conflict on manufacturer.
+  if (!brandConflict && verification.verdict !== "insufficient" && knownText(verification.value_estimate)) {
     result.value_estimate = verification.value_estimate;
   }
 
-  if (verification.verdict === "partial" || verification.verdict === "disagree") {
-    if (knownText(verification.object)) result.object = verification.object;
-    if (knownText(verification.brand)) result.brand = verification.brand;
-    if (knownText(verification.model)) result.model = verification.model;
-    if (knownText(verification.model_number)) result.model_number = verification.model_number;
-    if (knownText(verification.variant)) result.variant = verification.variant;
-    if (knownText(verification.value_estimate)) result.value_estimate = verification.value_estimate;
-  } else if (verification.verdict === "agree") {
-    if (!knownText(result.brand) && knownText(verification.brand)) result.brand = verification.brand;
-    if (!knownText(result.model) && knownText(verification.model)) result.model = verification.model;
-    if (!knownText(result.model_number) && knownText(verification.model_number)) result.model_number = verification.model_number;
-    if (!knownText(result.variant) && knownText(verification.variant)) result.variant = verification.variant;
+  if (knownText(verification.condition)) {
+    const verifiedCondition = sanitizeConditionLanguage(verification.condition);
+    const verifiedConditionEvidence = sanitizeConditionLanguage(verification.condition_evidence);
+    result.condition_evidence = verifiedConditionEvidence;
+    result.condition = verifiedConditionEvidence !== "Unknown" && verifiedConditionEvidence !== ""
+      ? `${verifiedCondition} — Visible evidence: ${verifiedConditionEvidence}`
+      : verifiedCondition;
+    result.condition_grade = verification.condition_grade;
+  }
+
+  if (!brandConflict) {
+    if (verification.verdict === "partial" || verification.verdict === "disagree") {
+      if (knownText(verification.object)) result.object = verification.object;
+      if (knownText(verification.brand)) result.brand = verification.brand;
+      if (knownText(verification.model)) result.model = verification.model;
+      if (knownText(verification.model_number)) result.model_number = verification.model_number;
+      if (knownText(verification.variant)) result.variant = verification.variant;
+      if (knownText(verification.value_estimate)) result.value_estimate = verification.value_estimate;
+    } else if (verification.verdict === "agree") {
+      if (!knownText(result.brand) && knownText(verification.brand)) result.brand = verification.brand;
+      if (!knownText(result.model) && knownText(verification.model)) result.model = verification.model;
+      if (!knownText(result.model_number) && knownText(verification.model_number)) result.model_number = verification.model_number;
+      if (!knownText(result.variant) && knownText(verification.variant)) result.variant = verification.variant;
+    }
   }
 
   const strongIdentifier =
     knownText(result.brand) &&
     (knownText(result.model_number) || knownText(result.model) || knownText(result.part_number));
 
-  if (verification.verdict === "agree") {
+  if (brandConflict) {
+    result.object = stripIdentityClaims(primary.object);
+    if (!knownText(result.object)) result.object = stripIdentityClaims(verification.object);
+    result.brand = "Unknown";
+    result.model = "Unknown";
+    result.model_number = "Unknown";
+    result.variant = "Unknown";
+    result.confidence = Math.min(primary.confidence, verification.confidence, 0.50);
+    result.exact_match_confidence = Math.min(primary.exact_match_confidence, verification.exact_match_confidence, 0.35);
+    result.exact_match_status = "not_confirmed";
+    result.next_photo = "Take a sharp close-up of the maker's logo and model text on the case, including its underside and inside the lid.";
+    result.warning = [
+      result.warning,
+      "The identification checks named different manufacturers. The brand, exact model, and value estimate are unconfirmed; check the case markings before relying on the estimate.",
+    ].filter(Boolean).join(" ");
+  } else if (verification.verdict === "agree") {
     result.exact_match_confidence = Math.min(primary.exact_match_confidence, verification.exact_match_confidence);
     result.exact_match_status = verification.exact_match_status === "exact" && strongIdentifier
       ? "exact"
@@ -372,11 +476,10 @@ function reconcileVerification(
     ].filter(Boolean).join(" ");
   }
 
-  if (verification.verdict === "agree") {
+  if (!brandConflict && verification.verdict === "agree") {
     if (knownText(verification.brand)) result.brand = verification.brand;
     if (knownText(verification.object)) result.object = verification.object;
 
-    // Promote a verifier-supported model to the headline while keeping uncertain trims and years unclaimed.
     const verifiedModel = verification.model.trim();
     const modelIsSpecific = knownText(verifiedModel) &&
       !/^(car|vehicle|automobile|van|unknown)$/i.test(verifiedModel);
@@ -389,7 +492,7 @@ function reconcileVerification(
     } else if (knownText(result.brand) && !result.object.toLowerCase().includes(result.brand.toLowerCase())) {
       result.object = result.brand + " " + result.object;
     }
-  } else if (verification.verdict === "partial") {
+  } else if (!brandConflict && verification.verdict === "partial") {
     if (knownText(verification.brand)) result.brand = verification.brand;
     if (knownText(verification.object)) result.object = verification.object;
     if (knownText(result.brand) && !result.object.toLowerCase().includes(result.brand.toLowerCase())) {
@@ -397,11 +500,12 @@ function reconcileVerification(
     }
   }
 
-  if (knownText(verification.next_photo) && verification.next_photo !== "No additional photo needed.") {
+  if (!brandConflict && knownText(verification.next_photo) && verification.next_photo !== "No additional photo needed.") {
     result.next_photo = verification.next_photo;
   }
 
-  result.explanation = rebuiltExplanation(result, verification);
+  result.explanation = rebuiltExplanation(result, verification, brandConflict);
+  reconcileStrapMaterial(result, primary.object);
   return result;
 }
 
@@ -414,6 +518,7 @@ function conservativeFallback(result: InvestigationResult): InvestigationResult 
     fallback.warning,
     "A second verification pass was unavailable, so this result is shown cautiously.",
   ].filter(Boolean).join(" ");
+  reconcileStrapMaterial(fallback, result.object);
   return fallback;
 }
 
@@ -429,6 +534,9 @@ async function verifyIdentification(
     model_number: primary.model_number,
     variant: primary.variant,
     value_estimate: primary.value_estimate,
+    condition: primary.condition,
+    condition_grade: primary.condition_grade,
+    condition_evidence: primary.condition_evidence,
     confidence: primary.confidence,
     exact_match_status: primary.exact_match_status,
     exact_match_confidence: primary.exact_match_confidence,
@@ -452,6 +560,7 @@ async function verifyIdentification(
               text: [
                 "Act as an independent forensic product-identification verifier.",
                 "Do not trust the proposed identification. Inspect the supplied photograph(s) from scratch, then compare your visual conclusion with the proposed candidate.",
+                "Independently assess the proposed condition using the photographs. Cross-check condition and condition_evidence against the object and against each other. Never describe the same component with conflicting materials, such as calling a watch strap silicone in object but leather in condition. If its material is uncertain or the fields disagree, use neutral wording such as 'strap' and describe only visible wear; do not guess leather, silicone, rubber or another material.",
                 "Visible evidence has priority over the proposed answer. Never invent text, logos, model numbers, serial numbers, variants, dimensions or provenance.",
                 "Read visible logos and embossed words in every orientation, including upside down or rotated; do not replace an uncertain wordmark with a visually similar brand. If lettering cannot be read confidently, use Unknown.",
                 "Distinguish electrical socket contact patterns from vents, refill wells, bottle ports, or other openings. A wall-plug fragrance warmer with refill wells is an air-freshener device, not a multi-socket power adapter; multiple refill openings are not electrical outlets. A clearly embossed Febreze logo must not be misread as Forza.",
@@ -465,7 +574,8 @@ async function verifyIdentification(
                 "Exact match requires a visible or uniquely diagnostic identifier, not just visual resemblance.",
                 "MANUFACTURER EVIDENCE: Prioritize readable manufacturer names and brand-specific buttons printed on the photographed item. On a TV remote, a dedicated manufacturer-branded button such as TCL Channel is strong evidence that the remote is for that manufacturer; include that brand in brand and object unless a clearer contradictory mark is visible.",
                 "Distinguish manufacturer marks from third-party streaming-service shortcuts: Netflix, Prime Video, YouTube and Disney+ buttons do not identify the remote manufacturer. Do not infer an exact TV model or guaranteed compatibility from a remote alone.",
-                "Before returning, check that object, brand, model, evidence, case-file summary, value reasoning and compatibility do not contradict one another or name a different manufacturer without clear evidence. Never describe an item as Samsung when a readable TCL manufacturer-specific mark is the strongest brand evidence.",
+                "Before returning, check that object, brand, model, condition, condition_evidence, evidence, case-file summary, value reasoning and compatibility do not contradict one another or name a different manufacturer without clear evidence. Never describe an item as Samsung when a readable TCL manufacturer-specific mark is the strongest brand evidence.",
+                "Return concise condition and condition_evidence fields from an independent visual assessment. Use the allowed condition_grade values; when material is unclear, say 'strap' without a material label.",
                 "Return confidence for the verified identity and a separate exact_match_confidence.",
                 "General confidence measures whether the broad object type and supported manufacturer are correct; do not lower it solely because the exact model number is unknown. Keep exact_match_confidence separate and lower it when model-level evidence is missing. A clear manufacturer-specific mark such as a TCL Channel key should increase confidence in a TCL TV remote, while leaving exact model certainty unresolved.",
                 "If the proposed identity is wrong or incomplete, return the best corrected object/brand/model/model_number/variant you can actually support.",
@@ -502,6 +612,9 @@ async function verifyIdentification(
                 confidence: { type: "number", minimum: 0, maximum: 1 },
                 exact_match_status: { type: "string", enum: ["exact", "likely", "not_confirmed"] },
                 exact_match_confidence: { type: "number", minimum: 0, maximum: 1 },
+                condition: { type: "string" },
+                condition_grade: { type: "string", enum: ["new_sealed", "like_new", "used", "worn_damaged", "cannot_tell"] },
+                condition_evidence: { type: "string" },
                 evidence: { type: "string" },
                 next_photo: { type: "string" },
               },
@@ -516,6 +629,9 @@ async function verifyIdentification(
                 "confidence",
                 "exact_match_status",
                 "exact_match_confidence",
+                "condition",
+                "condition_grade",
+                "condition_evidence",
                 "evidence",
                 "next_photo",
               ],
@@ -716,7 +832,8 @@ Deno.serve(async (request: Request): Promise<Response> => {
                 "Return exact_match_confidence from 0 to 1 for the exact model-level identification, separately from the general object confidence.",
                 "In exact_match_evidence, briefly state the visible evidence that supports the exact or likely match, or explain what extra photo (for example a label, serial plate, underside, rear badge or model number) would be needed to confirm it.",
                 "SMART PHOTO DETECTIVE: choose the single most useful additional photograph that would most improve certainty. Be concrete, for example: 'Photograph the label on the underside so the model number is readable' or 'Take a straight-on close-up of the hallmark'. Put that instruction in next_photo. If the exact model is already confirmed by clear visible identifiers, return 'No additional photo needed.'.",
-                "CONDITION DETECTIVE: assess only condition that is visibly supported. In condition, give a concise grade-style description such as Excellent, Good, Fair, Poor, or Unknown followed by a short explanation. In condition_evidence, state the visible wear, scratches, cracks, corrosion, missing pieces, modifications, staining, dents, packaging condition or other relevant clues. Never invent hidden faults or internal condition. A photograph cannot prove that electronics, mechanisms, batteries, motors or other functions work. Never write 'appears functional', 'looks functional' or similar based only on appearance; say 'appears physically intact; functionality not verified' when appropriate.",
+                "CONDITION DETECTIVE: assess only condition that is visibly supported. In condition, give a concise grade-style description such as Excellent, Good, Fair, Poor, or Unknown followed by a short explanation. In condition_evidence, state the visible wear, scratches, cracks, corrosion, missing pieces, modifications, staining, dents, packaging condition or other relevant clues. Cross-check material claims against the identified object and other condition text; if a strap's material is uncertain or contradictory, say 'strap' without naming a material. Never invent hidden faults or internal condition. A photograph cannot prove that electronics, mechanisms, batteries, motors or other functions work. Never write 'appears functional', 'looks functional' or similar based only on appearance; say 'appears physically intact; functionality not verified' when appropriate.",
+                "Before returning, cross-check material descriptions for the same component across object, condition and condition_evidence. If a strap material is uncertain or conflicts across fields, call it a strap without naming a material.",
                 "CONDITION LABEL: set condition_grade to exactly one of new_sealed, like_new, used, worn_damaged, or cannot_tell. Use new_sealed only when the item is visibly unused and original seals or packaging are clearly intact. Use like_new for visibly unused or nearly pristine items without proof of factory sealing. Use used for ordinary visible signs of use. Use worn_damaged for substantial wear, damage, or visible missing parts. Use cannot_tell when the photographs do not support a condition judgment. Do not infer working order from condition.",
                 "MINI DETECTIVE CASE FILE: in case_file_summary, give a compact evidence-led summary of what the object appears to be, the strongest identifying clues, any supported era/variant detail, what is still uncertain, and the main visible factors affecting value. Keep it concise enough to read comfortably in the current app result screen.",
                 "Do not claim an item is authentic, genuine, counterfeit, rare, safe, compatible, or valuable unless the photograph provides enough evidence. When authentication or provenance cannot be established from images, say so plainly.",
