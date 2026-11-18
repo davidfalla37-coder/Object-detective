@@ -203,6 +203,8 @@
     <h3>Choose where to list</h3>
     <div class="sell-recommendation" id="sell-recommendation" role="status">A marketplace suggestion will appear here.</div>
     <div class="market-links" id="market-links">
+      <a id="sell-autotrader" href="https://www.autotrader.co.uk/cars/sell-my-car/" target="_blank" rel="noopener">Sell on Auto Trader</a>
+      <a id="sell-motors" href="https://www.motors.co.uk/sell-my-car.php" target="_blank" rel="noopener">Sell on MOTORS</a>
       <a id="sell-ebay" href="https://www.ebay.co.uk/sl/sell" target="_blank" rel="noopener">Sell on eBay</a>
       <a id="sell-facebook" href="https://www.facebook.com/marketplace/" target="_blank" rel="noopener">Sell on Facebook Marketplace</a>
       <a id="sell-gumtree" href="https://www.gumtree.com/" target="_blank" rel="noopener">Sell on Gumtree</a>
@@ -633,6 +635,8 @@ function suggestedAskPrice(value){
 }
 function suggestedMarketplace(data){
   const clues=[data.category,data.object,data.purpose].map(usefulText).join(" ").toLowerCase();
+  if(data.is_vehicle_part!==true&&/\\b(car|vehicle|van|automobile)\\b/.test(clues))
+    return{key:"autotrader",name:"Auto Trader",reason:"a car-specific marketplace; MOTORS is also available below"};
   if(/clothing|fashion|garment|shoe|sneaker|handbag|bag|coat|dress|vintage wear/.test(clues))
     return{key:"vinted",name:"Vinted",reason:"a good first place for clothing, shoes and accessories"};
   if(/handmade|craft|artwork|wall art|vintage|antique|collectible|collectable|jewell?ery|crafts/.test(clues))
@@ -679,6 +683,8 @@ function updateSellDraft(data){
   const recommendation=suggestedMarketplace(data);
   document.getElementById("sell-recommendation").textContent="Suggested first choice: "+recommendation.name+" — "+recommendation.reason+". Compare its fees, audience and rules before listing.";
   document.querySelectorAll("#market-links a").forEach(link=>{
+    const carSite=link.id==="sell-autotrader"||link.id==="sell-motors";
+    link.hidden=carSite&&recommendation.key!=="autotrader";
     link.classList.toggle("recommended",link.id==="sell-"+recommendation.key);
     const marketplace=link.textContent.replace(/^Sell on /,"").replace(/ · Suggested$/,"");
     link.textContent=link.id==="sell-"+recommendation.key?"Sell on "+recommendation.name+" · Suggested":"Sell on "+marketplace;
