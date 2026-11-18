@@ -349,7 +349,7 @@ async function inspectManufacturerMark(
               text: [
                 "You are a literal manufacturer-mark reader. Inspect the supplied product photos only for printed, embossed, or engraved maker names on the item, especially inside a transparent case lid and on the case underside.",
                 "Ignore the previous identity guesses and do not infer a maker from product shape, colour, design, or similarity to a brand.",
-                "Read the actual letters. Samsung and Nothing are competing candidate names in this case: do not choose either unless its wordmark is visibly legible in the pixels. A faint, reflected, partial, or blurred mark is not readable.",
+                "Read the actual letters. Samsung and Nothing are competing candidate names in this case: do not choose either from product design alone. Inspect the inside of the transparent lid closely. A faint wordmark still counts as readable if its letters can be made out when examined closely; transcribe only the letters actually visible, and return Unknown only when you cannot read a maker name.",
                 "If a readable maker name is present, transcribe it exactly and state where it appears. If not, set readable to false and brand to Unknown. Do not report the exact product model.",
               ].join(" "),
             },
