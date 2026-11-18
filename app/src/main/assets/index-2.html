@@ -107,19 +107,23 @@
     <div class="warning hidden" id="warning"></div>
     <section class="card feedback-card" id="accuracy-feedback">
       <h3>Was this identification right?</h3>
-      <p>Your answer is not sent automatically. If you choose to share a correction, the message will not include your photos.</p>
+      <p>Your answer is not sent automatically. Apply a correction to this result and save it for these exact photos on this device, or share it separately without photos.</p>
       <div class="feedback-actions" id="feedback-vote">
         <button class="secondary" type="button" id="feedback-yes">Yes, looks right</button>
         <button class="secondary" type="button" id="feedback-no">No, correct it</button>
       </div>
       <div id="feedback-correction" class="hidden">
-        <label class="setting-row" for="correct-object">What is the object actually?
-          <input class="setting-select" id="correct-object" maxlength="120" placeholder="Your best identification">
+        <label class="setting-row" for="correct-brand">Confirmed brand (optional)
+          <input class="setting-select" id="correct-brand" maxlength="60" placeholder="e.g. Samsung">
+        </label>
+        <label class="setting-row" for="correct-object">Correct object (optional)
+          <input class="setting-select" id="correct-object" maxlength="120" placeholder="e.g. Samsung wireless earbuds">
         </label>
         <label class="setting-row" for="correction-notes">What clue should the app have noticed?
           <textarea class="feedback-text" id="correction-notes" maxlength="500" placeholder="For example, a readable logo or the shape of a part"></textarea>
         </label>
-        <button class="primary" type="button" id="share-correction">Share correction</button>
+        <button class="primary" type="button" id="apply-correction">Apply correction to this result</button>
+        <button class="secondary" type="button" id="share-correction">Share correction separately</button>
       </div>
       <div class="feedback-status" id="feedback-status" role="status"></div>
     </section>
@@ -284,6 +288,7 @@ const historyList=document.getElementById('history-list');
 const emptyHistory=document.getElementById('empty-history');
 const clearHistory=document.getElementById('clear-history');
 const HISTORY_KEY='object-detective-history-v1';
+const CORRECTIONS_KEY='object-detective-photo-corrections-v1';
 let selectedFiles=[];
 let photoChecks=[];
 
@@ -375,9 +380,12 @@ identify.onclick=async()=>{
   statusBox.classList.remove('hidden');errorBox.classList.add('hidden');result.classList.add('hidden');
   try{
     const images=await buildInvestigationImages(selectedFiles,1800,.86);
+    const photoKey=await fingerprintFiles(selectedFiles);
     const response=await fetch(FUNCTION_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({images,photoCount:selectedFiles.length,mode:'multi-angle-accuracy'})});
-    const data=await response.json().catch(()=>({}));
+    let data=await response.json().catch(()=>({}));
     if(!response.ok)throw new Error(data?.error?.message||data?.error||`Investigation failed (${response.status})`);
+    const savedCorrection=photoKey?readPhotoCorrections()[photoKey]:null;
+    if(savedCorrection)data=applyCorrection(data,savedCorrection);
     render(data);
   }catch(error){
     errorBox.textContent=error.message||'The investigation failed. Please try again.';
@@ -457,7 +465,8 @@ function render(data,saveResult=true){
   currentFeedbackData=data;
   document.getElementById('feedback-correction').classList.add('hidden');
   document.getElementById('feedback-vote').classList.remove('hidden');
-  document.getElementById('feedback-status').textContent='';
+  document.getElementById('feedback-status').textContent=data.user_correction?'Your correction is saved for this photo set on this device.':'';
+  document.getElementById('correct-brand').value='';
   document.getElementById('correct-object').value='';
   document.getElementById('correction-notes').value='';
   document.getElementById('explanation').textContent=data.explanation||'';
@@ -621,7 +630,49 @@ function applyTheme(theme){const allowed=['system','light','dark'].includes(them
 try{applyTheme(localStorage.getItem(THEME_KEY)||'system')}catch{applyTheme('system')}
 themeSelect.onchange=()=>{applyTheme(themeSelect.value);try{localStorage.setItem(THEME_KEY,themeSelect.value)}catch{}};
 document.getElementById('feedback-yes').onclick=()=>{document.getElementById('feedback-status').textContent='Thanks. Your answer has not been sent.'};
-document.getElementById('feedback-no').onclick=()=>{document.getElementById('feedback-correction').classList.remove('hidden');document.getElementById('correct-object').focus()};
+document.getElementById('feedback-no').onclick=()=>{document.getElementById('feedback-correction').classList.remove('hidden');document.getElementById('correct-brand').focus()};
+function readPhotoCorrections(){try{return JSON.parse(localStorage.getItem(CORRECTIONS_KEY)||'{}')}catch{return{}}}
+async function fingerprintFiles(files){
+  if(!window.crypto||!crypto.subtle)return null;
+  const hashes=[];
+  for(const file of files){
+    const digest=await crypto.subtle.digest('SHA-256',await file.arrayBuffer());
+    hashes.push(Array.from(new Uint8Array(digest),byte=>byte.toString(16).padStart(2,'0')).join(''));
+  }
+  hashes.sort();
+  const combined=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(hashes.join(':')));
+  return Array.from(new Uint8Array(combined),byte=>byte.toString(16).padStart(2,'0')).join('');
+}
+function applyCorrection(data,correction){
+  const corrected={...data};
+  const brand=(correction.brand||'').trim();
+  const typedObject=(correction.object||'').trim();
+  const existingObject=(corrected.object||'item').replace(/^(Nothing|SoundPEATS|Soundpeats|Sony|Samsung|Apple|Bose)\\s+/i,'');
+  corrected.brand=brand||corrected.brand||'Unknown';
+  corrected.object=typedObject||[brand,existingObject].filter(Boolean).join(' ');
+  corrected.model='Unknown';corrected.model_number='Unknown';corrected.variant='Unknown';
+  corrected.exact_match_status='not_confirmed';corrected.exact_match_confidence=0;
+  corrected.exact_match_evidence=`User correction applied: ${brand||typedObject}. Exact model is still unconfirmed.`;
+  corrected.value_estimate='Unconfirmed';
+  corrected.explanation=`User-corrected identification: ${corrected.object}. Exact make/model and resale value remain unconfirmed; functionality was not tested.`;
+  corrected.warning='A user correction has been applied. The exact model and resale value remain unconfirmed.';
+  corrected.user_correction=true;
+  return corrected;
+}
+document.getElementById('apply-correction').onclick=async()=>{
+  const brand=document.getElementById('correct-brand').value.trim();
+  const object=document.getElementById('correct-object').value.trim();
+  const status=document.getElementById('feedback-status');
+  if(!brand&&!object){status.textContent='Enter the confirmed brand or corrected object first.';return}
+  const correction={brand,object};
+  const key=await fingerprintFiles(selectedFiles);
+  if(key){
+    const saved=readPhotoCorrections();saved[key]=correction;
+    try{localStorage.setItem(CORRECTIONS_KEY,JSON.stringify(saved))}catch{}
+  }
+  render(applyCorrection(currentFeedbackData||{},correction));
+  status.textContent=key?'Samsung correction applied and saved for these exact photos on this device.':'Correction applied to this result. Photo-set saving is unavailable on this device.';
+};
 function feedbackText(kind,details){const d=currentFeedbackData||{},score=Number(d.confidence);return ['Object Detective feedback','App version: 1.15','Feedback type: '+kind,d.object?'App identification: '+d.object:'',d.exact_match_status?'Exact match status: '+d.exact_match_status:'',Number.isFinite(score)?'Object-type confidence: '+Math.round(score<=1?score*100:score)+'%':'',details||'','No photos are included.'].filter(Boolean).join('\n')}
 async function shareFeedback(text,statusId){const status=document.getElementById(statusId),box=document.getElementById('feedback-export');try{if(navigator.share){await navigator.share({title:'Object Detective feedback',text});status.textContent='Feedback shared using the app you chose.';return}}catch(error){if(error&&error.name==='AbortError'){status.textContent='Sharing cancelled. Nothing was sent.';return}}try{if(navigator.clipboard&&navigator.clipboard.writeText){await navigator.clipboard.writeText(text);status.textContent='Feedback copied. Paste it into a message to share.';return}}catch{}box.value=text;box.classList.remove('hidden');box.focus();box.select();status.textContent='Feedback text is ready to copy and share. Nothing was sent automatically.'}
 document.getElementById('share-correction').onclick=()=>{const corrected=document.getElementById('correct-object').value.trim(),notes=document.getElementById('correction-notes').value.trim();if(!corrected&&!notes){document.getElementById('feedback-status').textContent='Add the correct object or a clue before sharing.';return}shareFeedback(feedbackText('identification correction','User correction: '+(corrected||'not supplied')+'\nHelpful clue: '+(notes||'not supplied')),'feedback-status')};
