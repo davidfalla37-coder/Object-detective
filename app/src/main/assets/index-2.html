@@ -69,7 +69,7 @@
 
   <section class="card">
     <div class="photo" id="photo-area" role="button" tabindex="0" aria-label="Take a photo with the camera"><div id="placeholder"><span class="emoji">📷</span><span id="photo-prompt">Tap here to take a photo</span></div><img id="preview" alt="Selected object"></div>
-    <p class="photo-guide"><span class="photo-count" id="photo-count">0 of 5 photos</span> — extra angles help prevent incorrect guesses.</p>
+    <p class="photo-guide"><span class="photo-count" id="photo-count">0 of 5 photos</span> — <span id="photo-step">Start with the whole item; add a close-up of its brand or model label if present.</span></p>
     <div class="thumbs hidden" id="thumbs" aria-label="Selected photographs"></div>
     <div class="quality hidden" id="quality" role="status"></div>
     <div class="tip" id="photo-tip">Show the whole object. Add a close-up of any label or model number. For watch straps, include the connector and the back of the watch; a ruler beside the strap helps show its width.</div>
@@ -164,6 +164,7 @@
         <div id="shops" class="hidden">
       <h2>Find one like this</h2>
       <p>These are search suggestions, not verified matches. Listings may show accessories or similar products; check the exact model and whether the complete item is included.</p>
+      <p class="explain hidden" id="affiliate-disclosure"></p>
       <p class="hidden" id="vehicle-buy-note">Search car listings on Auto Trader or MOTORS. These links are search shortcuts, not verified matches; check the exact model, year, mileage, condition and seller details.</p>
       <div class="buttons hidden" id="vehicle-buy-shops">
         <a id="shop-autotrader" href="#" target="_blank" rel="noopener">Auto Trader</a>
@@ -267,6 +268,8 @@
 </div>
 <script>
 const FUNCTION_URL='https://gboyflbwcobhzbvpdtat.supabase.co/functions/v1/investigate-object';
+const AMAZON_ASSOCIATE_TAG='';
+const AMAZON_APP_LINKS_APPROVED=false;
 const cameraFile=document.getElementById('camera-file');
 const galleryFile=document.getElementById('gallery-file');
 const takePhoto=document.getElementById('take-photo');
@@ -349,6 +352,8 @@ clear.onclick=()=>{
 function updatePhotoGuide(){
   const count=selectedFiles.length;
   photoCount.textContent=`${count} of 5 photo${count===1?'':'s'}`;
+  const photoStep=document.getElementById('photo-step');
+  if(photoStep)photoStep.textContent=count===0?'Start with the whole item; add a close-up of its brand or model label if present.':count===1?'Next, show the maker/model label or the underside.':count===2?'More views are optional; add one that shows a useful detail.':'Extra views are optional. Avoid repeating the same angle.';
   takePhoto.textContent=count===0?'📷 Take first photo':count<5?'📷 Add another angle':'5 photos added';
   photoPrompt.textContent=count===0?'Tap here to take a photo':count<5?'Tap here to add another angle':'Photo limit reached';
   photoArea.setAttribute('aria-label',count===0?'Take a photo with the camera':count<5?'Add another photo with the camera':'Photo limit reached');
@@ -380,12 +385,22 @@ identify.onclick=async()=>{
   statusBox.classList.remove('hidden');errorBox.classList.add('hidden');result.classList.add('hidden');
   try{
     const images=await buildInvestigationImages(selectedFiles,1800,.86);
-    const photoKey=await fingerprintFiles(selectedFiles);
-    const firstPhotoKey=selectedFiles[0]?await fingerprintFiles([selectedFiles[0]]):null;
-    const thumb=selectedFiles[0]?await makeHistoryThumbnail(selectedFiles[0]).catch(()=>''):'';
-    const thumbKey=await fingerprintDataUrl(thumb);
-    const response=await fetch(FUNCTION_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({images,photoCount:selectedFiles.length,mode:'multi-angle-accuracy'})});
-    let data=await response.json().catch(()=>({}));
+    const analysisPromise=(async()=>{
+      const response=await fetch(FUNCTION_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({images,photoCount:selectedFiles.length,mode:'multi-angle-accuracy'})});
+      const data=await response.json().catch(()=>({}));
+      return{response,data};
+    })();
+    const metadataPromise=(async()=>{
+      const [photoKey,firstPhotoKey,thumb]=await Promise.all([
+        fingerprintFiles(selectedFiles),
+        selectedFiles[0]?fingerprintFiles([selectedFiles[0]]):Promise.resolve(null),
+        selectedFiles[0]?makeHistoryThumbnail(selectedFiles[0]).catch(()=>''):Promise.resolve('')
+      ]);
+      const thumbKey=await fingerprintDataUrl(thumb);
+      return{photoKey,firstPhotoKey,thumbKey};
+    })();
+    const [{response,data:responseData},{photoKey,firstPhotoKey,thumbKey}]=await Promise.all([analysisPromise,metadataPromise]);
+    let data=responseData;
     if(!response.ok)throw new Error(data?.error?.message||data?.error||`Investigation failed (${response.status})`);
     const corrections=readPhotoCorrections();
     const savedCorrection=(photoKey&&corrections[photoKey])||(firstPhotoKey&&corrections[firstPhotoKey])||(thumbKey&&corrections[thumbKey]);
@@ -514,8 +529,17 @@ function render(data,saveResult=true){
       vinted:'https://www.vinted.co.uk/catalog?search_text=',
       google:'https://www.google.com/search?tbm=shop&q='
     };
-    for(const [name,url] of Object.entries(shops))
-      document.getElementById('shop-'+name).href=url+query;
+    for(const [name,url] of Object.entries(shops)){
+      let target=url+query;
+      if(name==='amazon'&&AMAZON_APP_LINKS_APPROVED&&AMAZON_ASSOCIATE_TAG)target+='&tag='+encodeURIComponent(AMAZON_ASSOCIATE_TAG);
+      document.getElementById('shop-'+name).href=target;
+    }
+    const disclosure=document.getElementById('affiliate-disclosure');
+    const amazonAffiliateActive=AMAZON_APP_LINKS_APPROVED&&Boolean(AMAZON_ASSOCIATE_TAG);
+    if(disclosure){
+      disclosure.textContent=amazonAffiliateActive?'As an Amazon Associate I earn from qualifying purchases. Object Detective may receive a commission from qualifying purchases at no extra cost to you.':'';
+      disclosure.classList.toggle('hidden',!amazonAffiliateActive);
+    }
   }
   document.getElementById('shops').classList.toggle('hidden',!query&&!isWholeVehicle);
   updateSellDraft(data);resetChat(data);
