@@ -326,7 +326,15 @@ function rebuiltExplanation(
   result: InvestigationResult,
   verification: VerificationResult,
   brandConflict = false,
+  directBrandDisagreement = false,
 ): string {
+  if (directBrandDisagreement) {
+    return [
+      `Readable maker text supports ${result.brand}; the exact model is unconfirmed because no model number is readable.`,
+      `Best next check: ${result.next_photo}`,
+    ].join(" ");
+  }
+
   if (brandConflict) {
     return [
       `Broad identification: ${result.object}. The photos do not provide clear, consistent manufacturer evidence, so the brand and exact model are unconfirmed.`,
@@ -375,22 +383,36 @@ function reconcileVerification(
     verification.evidence,
   ].join(" ");
   const noReadableMakerMark =
-    /\b(?:no|not|cannot|can't|unable to|unreadable|illegible)\b.{0,55}\b(?:brand(?:ing)?|logo|wordmark|manufacturer|model(?: number| text)?|label|markings?)\b/i.test(evidenceText) ||
-    /\b(?:brand(?:ing)?|logo|wordmark|manufacturer|model(?: number| text)?|label|markings?)\b.{0,55}\b(?:not discernible|not readable|unreadable|illegible|unclear)\b/i.test(evidenceText);
+    /\b(?:no|not|cannot|can't|unable to|unreadable|illegible)\b.{0,45}\b(?:brand(?: name)?|branding|logo|wordmark|manufacturer name|brand mark|maker mark)\b/i.test(evidenceText) ||
+    /\b(?:brand(?: name)?|branding|logo|wordmark|manufacturer name|brand mark|maker mark)\b.{0,45}\b(?:not discernible|not readable|unreadable|illegible|unclear)\b/i.test(evidenceText);
   const makerMarkIsTentative =
     /\b(?:faint(?:ly)?|ambiguous|uncertain|unreadable|illegible)\b.{0,45}\b(?:logo|wordmark|lettering|branding|brand mark|maker mark)\b/i.test(evidenceText) ||
     /\b(?:logo|wordmark|lettering|branding|brand mark|maker mark)\b.{0,45}\b(?:faint(?:ly)?|ambiguous|uncertain|unreadable|illegible)\b/i.test(evidenceText) ||
     /\b(?:design|style|shape|appearance)\b.{0,80}\b(?:distinctive|consistent with|characteristic|typical of)\b/i.test(evidenceText);
+  const readableBrandMatch = evidenceText.match(
+    /\b([A-Z][A-Za-z0-9&.'-]{1,30})\s+(?:brand(?: name)?|logo|wordmark|manufacturer mark)\s+(?:is\s+)?(?:clearly\s+)?(?:visible|readable|legible)\b/,
+  );
+  const reverseReadableBrandMatch = evidenceText.match(
+    /\b(?:brand(?: name)?|logo|wordmark)\s+(?:of\s+)?([A-Z][A-Za-z0-9&.'-]{1,30})\s+(?:is\s+)?(?:clearly\s+)?(?:visible|readable|legible)\b/,
+  );
+  const explicitReadableBrand = readableBrandMatch?.[1] || reverseReadableBrandMatch?.[1] || "";
   const brandDisagreement = primaryBrandKnown && verificationBrandKnown &&
     normalizeBrand(primary.brand) !== normalizeBrand(verification.brand);
   const anyBrandClaim = primaryBrandKnown || verificationBrandKnown;
-  const brandConflict = brandDisagreement || (anyBrandClaim && (noReadableMakerMark || makerMarkIsTentative));
-
+  // A readable maker name in the evidence outranks a second pass's visual/design guess.
+  const directBrandDisagreement = knownText(explicitReadableBrand) && (
+    (primaryBrandKnown && normalizeBrand(primary.brand) !== normalizeBrand(explicitReadableBrand)) ||
+    (verificationBrandKnown && normalizeBrand(verification.brand) !== normalizeBrand(explicitReadableBrand)) ||
+    (!primaryBrandKnown && !verificationBrandKnown)
+  );
+  const brandConflict = !knownText(explicitReadableBrand) &&
+    (brandDisagreement || (anyBrandClaim && (noReadableMakerMark || makerMarkIsTentative)));
   const stripIdentityClaims = (description: string): string => {
     let generic = description;
     const claimedIdentity = [
       primary.brand,
       verification.brand,
+      explicitReadableBrand,
       primary.model,
       verification.model,
       primary.model_number,
@@ -445,7 +467,29 @@ function reconcileVerification(
     knownText(result.brand) &&
     (knownText(result.model_number) || knownText(result.model) || knownText(result.part_number));
 
-  if (brandConflict) {
+  if (directBrandDisagreement) {
+    const genericObject = stripIdentityClaims(primary.object);
+    result.brand = explicitReadableBrand;
+    result.object = /\bearbud\b/i.test(genericObject)
+      ? `${explicitReadableBrand} wireless earbuds with charging case`
+      : `${explicitReadableBrand} ${genericObject}`;
+    result.model = "Unknown";
+    result.model_number = "Unknown";
+    result.variant = "Unknown";
+    result.exact_match_status = "not_confirmed";
+    result.confidence = Math.min(primary.confidence, 0.85);
+    result.exact_match_confidence = Math.min(primary.exact_match_confidence, verification.exact_match_confidence, 0.45);
+    result.exact_match_evidence = `Readable ${explicitReadableBrand} maker text is reported in the photos; the exact model number is not readable.`;
+    result.next_photo = `Take a close-up of the case underside label and any model or serial text; the ${explicitReadableBrand} mark is already identified.`;
+    result.case_file_summary = `Visible maker text supports ${explicitReadableBrand}; exact model remains unconfirmed.`;
+    result.identifying_clues = "Unknown";
+    result.warning = [
+      result.warning,
+      brandDisagreement
+        ? `Readable maker text supports ${explicitReadableBrand}, but the other check suggested a different maker. The exact model and value remain provisional.`
+        : `Readable maker text supports ${explicitReadableBrand}; the exact model and value remain provisional.`,
+    ].filter(Boolean).join(" ");
+  } else if (brandConflict) {
     result.object = stripIdentityClaims(primary.object);
     if (!knownText(result.object)) result.object = stripIdentityClaims(verification.object);
     result.brand = "Unknown";
@@ -518,11 +562,11 @@ function reconcileVerification(
     }
   }
 
-  if (!brandConflict && knownText(verification.next_photo) && verification.next_photo !== "No additional photo needed.") {
+  if (!brandConflict && !directBrandDisagreement && knownText(verification.next_photo) && verification.next_photo !== "No additional photo needed.") {
     result.next_photo = verification.next_photo;
   }
 
-  result.explanation = rebuiltExplanation(result, verification, brandConflict);
+  result.explanation = rebuiltExplanation(result, verification, brandConflict, directBrandDisagreement);
   reconcileStrapMaterial(result, primary.object);
   return result;
 }
