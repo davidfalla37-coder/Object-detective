@@ -479,6 +479,7 @@ function reconcileVerification(
   ].filter(knownText);
   const normalizedClaims = brandClaims.map(normalizeBrand);
   const distinctClaims = [...new Set(normalizedClaims)];
+  const brandDisagreement = distinctClaims.length > 1;
   const supportedBrand = brandClaims.find((claim) =>
     normalizedClaims.filter((candidate) => candidate === normalizeBrand(claim)).length >= 2
   ) ?? "";
