@@ -372,11 +372,28 @@ function reconcileVerification(
     ].filter(Boolean).join(" ");
   }
 
-  if (verification.verdict === "agree" || verification.verdict === "partial") {
+  if (verification.verdict === "agree") {
+    if (knownText(verification.brand)) result.brand = verification.brand;
+    if (knownText(verification.object)) result.object = verification.object;
+
+    // Promote a verifier-supported model to the headline while keeping uncertain trims and years unclaimed.
+    const verifiedModel = verification.model.trim();
+    const modelIsSpecific = knownText(verifiedModel) &&
+      !/^(car|vehicle|automobile|van|unknown)$/i.test(verifiedModel);
+    if (modelIsSpecific &&
+      (verification.exact_match_status === "likely" || verification.exact_match_status === "exact")) {
+      result.object = knownText(result.brand) &&
+        !verifiedModel.toLowerCase().includes(result.brand.toLowerCase())
+        ? result.brand + " " + verifiedModel
+        : verifiedModel;
+    } else if (knownText(result.brand) && !result.object.toLowerCase().includes(result.brand.toLowerCase())) {
+      result.object = result.brand + " " + result.object;
+    }
+  } else if (verification.verdict === "partial") {
     if (knownText(verification.brand)) result.brand = verification.brand;
     if (knownText(verification.object)) result.object = verification.object;
     if (knownText(result.brand) && !result.object.toLowerCase().includes(result.brand.toLowerCase())) {
-      result.object = `${result.brand} ${result.object}`;
+      result.object = result.brand + " " + result.object;
     }
   }
 
