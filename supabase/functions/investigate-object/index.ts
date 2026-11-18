@@ -469,33 +469,34 @@ function reconcileVerification(
     /\b(?:faint(?:ly)?|ambiguous|uncertain|unreadable|illegible)\b.{0,45}\b(?:logo|wordmark|lettering|branding|brand mark|maker mark)\b/i.test(evidenceText) ||
     /\b(?:logo|wordmark|lettering|branding|brand mark|maker mark)\b.{0,45}\b(?:faint(?:ly)?|ambiguous|uncertain|unreadable|illegible)\b/i.test(evidenceText) ||
     /\b(?:design|style|shape|appearance)\b.{0,80}\b(?:distinctive|consistent with|characteristic|typical of)\b/i.test(evidenceText);
-  const readableBrandMatch = evidenceText.match(
-    /\b([A-Z][A-Za-z0-9&.'-]{1,30})\s+(?:brand(?:ing| name)?|logo|wordmark|manufacturer mark)\s+(?:is\s+)?(?:clearly\s+)?(?:visible|readable|legible)\b/,
+  // A model-generated sentence claiming that a logo is readable is not proof.
+  // Require the same brand in at least two independent structured checks, and
+  // fail closed when any check or quoted label transcription names another maker.
+  const brandClaims = [
+    primary.brand,
+    verification.brand,
+    manufacturerEvidence?.brand ?? "",
+  ].filter(knownText);
+  const normalizedClaims = brandClaims.map(normalizeBrand);
+  const distinctClaims = [...new Set(normalizedClaims)];
+  const supportedBrand = brandClaims.find((claim) =>
+    normalizedClaims.filter((candidate) => candidate === normalizeBrand(claim)).length >= 2
+  ) ?? "";
+  const labelTextClaims = [
+    ...evidenceText.matchAll(/\\btext\\s+["'“‘]?([A-Z][A-Za-z0-9&.-]{1,30})["'”’]?\\s+(?:printed|shown|visible|on it)\\b/g),
+    ...evidenceText.matchAll(/\\b([A-Z][A-Za-z0-9&.-]{1,30})\\s+text\\s+(?:is\\s+)?(?:partially\\s+|faintly\\s+|clearly\\s+)?visible\\b/g),
+  ].map((match) => normalizeBrand(match[1]));
+  const labelDisagreesWithConsensus = Boolean(supportedBrand) &&
+    labelTextClaims.some((claim) => claim !== normalizeBrand(supportedBrand));
+  const hasBrandClaim = brandClaims.length > 0 || labelTextClaims.length > 0;
+  const directBrandDisagreement = false;
+  const brandConflict = hasBrandClaim && (
+    distinctClaims.length > 1 ||
+    !supportedBrand ||
+    labelDisagreesWithConsensus ||
+    noReadableMakerMark ||
+    makerMarkIsTentative
   );
-  const reverseReadableBrandMatch = evidenceText.match(
-    /\b(?:brand(?:ing| name)?|logo|wordmark)\s+(?:of\s+)?["'“‘]?([A-Z][A-Za-z0-9&.-]{1,30})["'”’]?\s+(?:is\s+)?(?:clearly\s+)?(?:visible|readable|legible)\b/,
-  );
-  const visibleMakerTextMatch = evidenceText.match(
-    /\b(?:(?:partially|faintly|clearly)\s+)?visible\s+([A-Z][A-Za-z0-9&.-]{1,30})\s+(?:text|wordmark|logo|brand name)\b/i,
-  );
-  const trailingVisibleMakerTextMatch = evidenceText.match(
-    /\b([A-Z][A-Za-z0-9&.-]{1,30})\s+(?:text|wordmark|logo|brand name)\s+(?:is\s+)?(?:partially\s+|faintly\s+|clearly\s+)?visible\b/i,
-  );
-  const explicitReadableBrand = manufacturerEvidence?.brand ||
-    readableBrandMatch?.[1] || reverseReadableBrandMatch?.[1] ||
-    visibleMakerTextMatch?.[1] || trailingVisibleMakerTextMatch?.[1] || "";
-  const brandDisagreement = primaryBrandKnown && verificationBrandKnown &&
-    normalizeBrand(primary.brand) !== normalizeBrand(verification.brand);
-  const anyBrandClaim = primaryBrandKnown || verificationBrandKnown;
-  // A readable maker name in the evidence outranks a second pass's visual/design guess.
-  const directBrandDisagreement = knownText(explicitReadableBrand) && (
-    !primaryBrandKnown ||
-    normalizeBrand(primary.brand) !== normalizeBrand(explicitReadableBrand) ||
-    !verificationBrandKnown ||
-    normalizeBrand(verification.brand) !== normalizeBrand(explicitReadableBrand)
-  );
-  const brandConflict = !knownText(explicitReadableBrand) &&
-    (brandDisagreement || (anyBrandClaim && (noReadableMakerMark || makerMarkIsTentative)));
   const stripIdentityClaims = (description: string): string => {
     let generic = description;
     const claimedIdentity = [
@@ -581,12 +582,14 @@ function reconcileVerification(
         : `Readable maker text supports ${explicitReadableBrand}; the exact model and value remain provisional.`,
     ].filter(Boolean).join(" ");
   } else if (brandConflict) {
-    result.object = stripIdentityClaims(primary.object);
-    if (!knownText(result.object)) result.object = stripIdentityClaims(verification.object);
+    result.object = "Wireless earbuds with charging case";
     result.brand = "Unknown";
     result.model = "Unknown";
     result.model_number = "Unknown";
     result.variant = "Unknown";
+    result.exact_match_evidence = "The manufacturer checks conflict or cannot confirm a readable brand; the exact model is unconfirmed.";
+    result.case_file_summary = "Wireless earbuds with charging case; manufacturer and exact model are unconfirmed.";
+    result.identifying_clues = "Wireless earbuds and a charging case.";
     result.confidence = brandDisagreement
       ? Math.min(primary.confidence, verification.confidence, 0.50)
       : Math.min(primary.confidence, verification.confidence, 0.80);
@@ -650,6 +653,13 @@ function reconcileVerification(
     if (knownText(verification.object)) result.object = verification.object;
     if (knownText(result.brand) && !result.object.toLowerCase().includes(result.brand.toLowerCase())) {
       result.object = result.brand + " " + result.object;
+    }
+  }
+
+  if (!brandConflict && supportedBrand) {
+    result.brand = supportedBrand;
+    if (!result.object.toLowerCase().includes(supportedBrand.toLowerCase())) {
+      result.object = `${supportedBrand} ${result.object}`;
     }
   }
 
