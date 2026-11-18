@@ -475,8 +475,15 @@ function reconcileVerification(
   const reverseReadableBrandMatch = evidenceText.match(
     /\b(?:brand(?:ing| name)?|logo|wordmark)\s+(?:of\s+)?["'“‘]?([A-Z][A-Za-z0-9&.-]{1,30})["'”’]?\s+(?:is\s+)?(?:clearly\s+)?(?:visible|readable|legible)\b/,
   );
+  const visibleMakerTextMatch = evidenceText.match(
+    /\b(?:(?:partially|faintly|clearly)\s+)?visible\s+([A-Z][A-Za-z0-9&.-]{1,30})\s+(?:text|wordmark|logo|brand name)\b/i,
+  );
+  const trailingVisibleMakerTextMatch = evidenceText.match(
+    /\b([A-Z][A-Za-z0-9&.-]{1,30})\s+(?:text|wordmark|logo|brand name)\s+(?:is\s+)?(?:partially\s+|faintly\s+|clearly\s+)?visible\b/i,
+  );
   const explicitReadableBrand = manufacturerEvidence?.brand ||
-    readableBrandMatch?.[1] || reverseReadableBrandMatch?.[1] || "";
+    readableBrandMatch?.[1] || reverseReadableBrandMatch?.[1] ||
+    visibleMakerTextMatch?.[1] || trailingVisibleMakerTextMatch?.[1] || "";
   const brandDisagreement = primaryBrandKnown && verificationBrandKnown &&
     normalizeBrand(primary.brand) !== normalizeBrand(verification.brand);
   const anyBrandClaim = primaryBrandKnown || verificationBrandKnown;
