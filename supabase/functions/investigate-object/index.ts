@@ -347,9 +347,9 @@ async function inspectManufacturerMark(
             {
               type: "input_text",
               text: [
-                "You are a literal manufacturer-mark reader. Inspect the supplied product photos only for printed, embossed, or engraved maker names on the item, especially inside a transparent case lid and on the case underside.",
-                "Ignore the previous identity guesses and do not infer a maker from product shape, colour, design, or similarity to a brand.",
-                "Read the actual letters. Samsung and Nothing are competing candidate names in this case: do not choose either from product design alone. Inspect the inside of the transparent lid closely. A faint wordmark still counts as readable if its letters can be made out when examined closely; transcribe only the letters actually visible, and return Unknown only when you cannot read a maker name.",
+                "You are a literal manufacturer-mark reader. Inspect the supplied product photos only for printed, embossed, or engraved maker names on the item, including inside lids, undersides, labels, and model plates.",
+                "Ignore earlier identity guesses and do not infer a maker from product shape, colour, design, or resemblance to a brand.",
+                "Read the actual letters. A faint mark still counts as readable if its letters can be made out on close inspection; transcribe only the text that is actually visible. If the exact maker name cannot be read, return Unknown.",
                 "If a readable maker name is present, transcribe it exactly and state where it appears. If not, set readable to false and brand to Unknown. Do not report the exact product model.",
               ].join(" "),
             },
@@ -1117,11 +1117,17 @@ Deno.serve(async (request: Request): Promise<Response> => {
     const photoCount = images.length;
     const verification = await verifyIdentification(images, primaryResult, photoCount);
     if (verification) {
+      const primaryBrandKnown = knownText(primaryResult.brand);
+      const verifiedBrandKnown = knownText(verification.brand);
       const primaryBrand = primaryResult.brand.trim().toLowerCase().replace(/[^a-z0-9]+/g, "");
       const verifiedBrand = verification.brand.trim().toLowerCase().replace(/[^a-z0-9]+/g, "");
-      const brandConflict = knownText(primaryResult.brand) && knownText(verification.brand) &&
-        primaryBrand !== verifiedBrand;
-      const manufacturerEvidence = brandConflict ? await inspectManufacturerMark(images) : null;
+      const brandConflict = primaryBrandKnown && verifiedBrandKnown && primaryBrand !== verifiedBrand;
+      const brandMissing = !primaryBrandKnown || !verifiedBrandKnown;
+      const exactIdentityUnclear = primaryResult.exact_match_status === "not_confirmed" ||
+        verification.exact_match_status === "not_confirmed";
+      const manufacturerEvidence = brandConflict || (brandMissing && exactIdentityUnclear)
+        ? await inspectManufacturerMark(images)
+        : null;
       return jsonResponse(reconcileVerification(primaryResult, verification, manufacturerEvidence));
     }
     return jsonResponse(conservativeFallback(primaryResult));
