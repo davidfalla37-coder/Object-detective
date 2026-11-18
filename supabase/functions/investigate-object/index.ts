@@ -269,6 +269,12 @@ interface VerificationResult {
   next_photo: string;
 }
 
+interface ManufacturerMarkEvidence {
+  readable: boolean;
+  brand: string;
+  evidence: string;
+}
+
 function knownText(value: string): boolean {
   const normalized = value.trim().toLowerCase();
   return normalized.length > 0 && normalized !== "unknown" && normalized !== "unknown (gbp)";
@@ -322,6 +328,78 @@ function normalizeVerification(value: unknown): VerificationResult {
   };
 }
 
+async function inspectManufacturerMark(
+  images: string[],
+): Promise<ManufacturerMarkEvidence | null> {
+  try {
+    const response = await fetch("https://api.openai.com/v1/responses", {
+      method: "POST",
+      headers: {
+        "Authorization": "Bearer " + OPENAI_API_KEY,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: VERIFICATION_MODEL,
+        store: false,
+        input: [{
+          role: "user",
+          content: [
+            {
+              type: "input_text",
+              text: [
+                "You are a literal manufacturer-mark reader. Inspect the supplied product photos only for printed, embossed, or engraved maker names on the item, especially inside a transparent case lid and on the case underside.",
+                "Ignore the previous identity guesses and do not infer a maker from product shape, colour, design, or similarity to a brand.",
+                "Read the actual letters. Samsung and Nothing are competing candidate names in this case: do not choose either unless its wordmark is visibly legible in the pixels. A faint, reflected, partial, or blurred mark is not readable.",
+                "If a readable maker name is present, transcribe it exactly and state where it appears. If not, set readable to false and brand to Unknown. Do not report the exact product model.",
+              ].join(" "),
+            },
+            ...images.map((image) => ({
+              type: "input_image",
+              image_url: image,
+              detail: "high",
+            })),
+          ],
+        }],
+        text: {
+          format: {
+            type: "json_schema",
+            name: "manufacturer_mark_evidence",
+            strict: true,
+            schema: {
+              type: "object",
+              additionalProperties: false,
+              properties: {
+                readable: { type: "boolean" },
+                brand: { type: "string" },
+                evidence: { type: "string" },
+              },
+              required: ["readable", "brand", "evidence"],
+            },
+          },
+        },
+        max_output_tokens: 350,
+      }),
+    });
+
+    if (!response.ok) {
+      console.error("Manufacturer-mark review failed:", await readOpenAIError(response));
+      return null;
+    }
+
+    const body = await response.json() as any;
+    const outputText = body.output_text ?? body.output?.[0]?.content?.[0]?.text;
+    if (typeof outputText !== "string" || outputText.length === 0) return null;
+    const parsed = JSON.parse(outputText) as Record<string, unknown>;
+    const readable = parsed.readable === true;
+    const brand = typeof parsed.brand === "string" ? parsed.brand.trim() : "Unknown";
+    const evidence = typeof parsed.evidence === "string" ? parsed.evidence.trim() : "";
+    return readable && knownText(brand) ? { readable, brand, evidence } : null;
+  } catch (error) {
+    console.error("Manufacturer-mark review failed:", error instanceof Error ? error.message : error);
+    return null;
+  }
+}
+
 function rebuiltExplanation(
   result: InvestigationResult,
   verification: VerificationResult,
@@ -369,6 +447,7 @@ function rebuiltExplanation(
 function reconcileVerification(
   primary: InvestigationResult,
   verification: VerificationResult,
+  manufacturerEvidence: ManufacturerMarkEvidence | null = null,
 ): InvestigationResult {
   const result: InvestigationResult = { ...primary };
   const normalizeBrand = (value: string): string =>
@@ -381,6 +460,7 @@ function reconcileVerification(
     primary.explanation,
     primary.case_file_summary,
     verification.evidence,
+    manufacturerEvidence?.evidence ?? "",
   ].join(" ");
   const noReadableMakerMark =
     /\b(?:no|not|cannot|can't|unable to|unreadable|illegible)\b.{0,45}\b(?:brand(?: name)?|branding|logo|wordmark|manufacturer name|brand mark|maker mark)\b/i.test(evidenceText) ||
@@ -390,12 +470,13 @@ function reconcileVerification(
     /\b(?:logo|wordmark|lettering|branding|brand mark|maker mark)\b.{0,45}\b(?:faint(?:ly)?|ambiguous|uncertain|unreadable|illegible)\b/i.test(evidenceText) ||
     /\b(?:design|style|shape|appearance)\b.{0,80}\b(?:distinctive|consistent with|characteristic|typical of)\b/i.test(evidenceText);
   const readableBrandMatch = evidenceText.match(
-    /\b([A-Z][A-Za-z0-9&.'-]{1,30})\s+(?:brand(?: name)?|logo|wordmark|manufacturer mark)\s+(?:is\s+)?(?:clearly\s+)?(?:visible|readable|legible)\b/,
+    /\b([A-Z][A-Za-z0-9&.'-]{1,30})\s+(?:brand(?:ing| name)?|logo|wordmark|manufacturer mark)\s+(?:is\s+)?(?:clearly\s+)?(?:visible|readable|legible)\b/,
   );
   const reverseReadableBrandMatch = evidenceText.match(
-    /\b(?:brand(?: name)?|logo|wordmark)\s+(?:of\s+)?([A-Z][A-Za-z0-9&.'-]{1,30})\s+(?:is\s+)?(?:clearly\s+)?(?:visible|readable|legible)\b/,
+    /\b(?:brand(?:ing| name)?|logo|wordmark)\s+(?:of\s+)?([A-Z][A-Za-z0-9&.'-]{1,30})\s+(?:is\s+)?(?:clearly\s+)?(?:visible|readable|legible)\b/,
   );
-  const explicitReadableBrand = readableBrandMatch?.[1] || reverseReadableBrandMatch?.[1] || "";
+  const explicitReadableBrand = manufacturerEvidence?.brand ||
+    readableBrandMatch?.[1] || reverseReadableBrandMatch?.[1] || "";
   const brandDisagreement = primaryBrandKnown && verificationBrandKnown &&
     normalizeBrand(primary.brand) !== normalizeBrand(verification.brand);
   const anyBrandClaim = primaryBrandKnown || verificationBrandKnown;
@@ -479,7 +560,9 @@ function reconcileVerification(
     result.exact_match_status = "not_confirmed";
     result.confidence = Math.min(primary.confidence, 0.85);
     result.exact_match_confidence = Math.min(primary.exact_match_confidence, verification.exact_match_confidence, 0.45);
-    result.exact_match_evidence = `Readable ${explicitReadableBrand} maker text is reported in the photos; the exact model number is not readable.`;
+    result.exact_match_evidence = knownText(manufacturerEvidence?.evidence ?? "")
+      ? manufacturerEvidence!.evidence
+      : `Readable ${explicitReadableBrand} maker text is reported in the photos; the exact model number is not readable.`;
     result.next_photo = `Take a close-up of the case underside label and any model or serial text; the ${explicitReadableBrand} mark is already identified.`;
     result.case_file_summary = `Visible maker text supports ${explicitReadableBrand}; exact model remains unconfirmed.`;
     result.identifying_clues = "Unknown";
@@ -1033,7 +1116,12 @@ Deno.serve(async (request: Request): Promise<Response> => {
     const photoCount = images.length;
     const verification = await verifyIdentification(images, primaryResult, photoCount);
     if (verification) {
-      return jsonResponse(reconcileVerification(primaryResult, verification));
+      const primaryBrand = primaryResult.brand.trim().toLowerCase().replace(/[^a-z0-9]+/g, "");
+      const verifiedBrand = verification.brand.trim().toLowerCase().replace(/[^a-z0-9]+/g, "");
+      const brandConflict = knownText(primaryResult.brand) && knownText(verification.brand) &&
+        primaryBrand !== verifiedBrand;
+      const manufacturerEvidence = brandConflict ? await inspectManufacturerMark(images) : null;
+      return jsonResponse(reconcileVerification(primaryResult, verification, manufacturerEvidence));
     }
     return jsonResponse(conservativeFallback(primaryResult));
   } catch (error) {
