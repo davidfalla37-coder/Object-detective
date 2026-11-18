@@ -627,7 +627,7 @@ function usefulText(value){return typeof value==="string"&&value.trim()&&value.t
 function suggestedAskPrice(value){
   const text=usefulText(value);
   if(!text)return"";
-  const amounts=[...text.matchAll(/(?:£\s*)?(\\d[\\d,]*(?:\\.\\d{1,2})?)/g)].map(match=>Number(match[1].replace(/,/g,""))).filter(Number.isFinite);
+  const amounts=[...text.matchAll(/(?:£\s*)?(\d[\d,]*(?:\.\d{1,2})?)/g)].map(match=>Number(match[1].replace(/,/g,""))).filter(Number.isFinite);
   if(!amounts.length)return"";
   return"£"+Math.floor(Math.min(...amounts));
 }
@@ -642,8 +642,20 @@ function suggestedMarketplace(data){
   return{key:"ebay",name:"eBay",reason:"a broad marketplace for most second-hand items"};
 }
 function updateSellDraft(data){
-  const parts=[data.brand,data.model,data.model_number,data.variant,data.object].map(usefulText).filter((item,index,all)=>all.indexOf(item)===index);
-  const title=(parts.join(" ").replace(/\s+/g," ").trim()||"Item for sale").slice(0,80);
+  const identityParts=[data.brand,data.model,data.model_number,data.variant].map(usefulText).filter(Boolean);
+  const titleWords=[];
+  const seenTitleWords=new Set();
+  identityParts.forEach(part=>part.split(/\s+/).forEach(word=>{
+    const normalized=word.toLowerCase().replace(/[^a-z0-9]/g,"");
+    if(normalized&&!seenTitleWords.has(normalized)){seenTitleWords.add(normalized);titleWords.push(word)}
+  }));
+  if(!usefulText(data.model)&&!usefulText(data.model_number)&&!usefulText(data.variant)){
+    usefulText(data.object).split(/\s+/).forEach(word=>{
+      const normalized=word.toLowerCase().replace(/[^a-z0-9]/g,"");
+      if(normalized&&!seenTitleWords.has(normalized)){seenTitleWords.add(normalized);titleWords.push(word)}
+    });
+  }
+  const title=(titleWords.join(" ").trim()||"Item for sale").slice(0,80);
   const category=usefulText(data.category)||"General";
   const gradeMap={new_sealed:"New and sealed",like_new:"Like new",used:"Used — good condition",worn_damaged:"Used — fair condition"};
   const rawCondition=usefulText(data.condition);
@@ -663,7 +675,7 @@ function updateSellDraft(data){
   const conditionSelect=document.getElementById("sell-condition");
   const option=[...conditionSelect.options].find(item=>item.value===condition)||conditionSelect.options[0];
   conditionSelect.value=option.value;
-  document.getElementById("sell-description").value=lines.filter((line,index)=>line!==""||lines[index-1]!=="").join("\\n").trim();
+  document.getElementById("sell-description").value=lines.filter((line,index)=>line!==""||lines[index-1]!=="").join("\n").trim();
   const recommendation=suggestedMarketplace(data);
   document.getElementById("sell-recommendation").textContent="Suggested first choice: "+recommendation.name+" — "+recommendation.reason+". Compare its fees, audience and rules before listing.";
   document.querySelectorAll("#market-links a").forEach(link=>{
@@ -678,7 +690,7 @@ function fullListingText(){
   const price=document.getElementById("sell-price").value.trim();
   const condition=document.getElementById("sell-condition").value;
   const description=document.getElementById("sell-description").value.trim();
-  return[title,"Category: "+(category||"Please choose"),"Condition: "+condition,"Suggested asking price: "+(price||"Set before listing"),description].filter(Boolean).join("\\n\\n");
+  return[title,"Category: "+(category||"Please choose"),"Condition: "+condition,"Suggested asking price: "+(price||"Set before listing"),description].filter(Boolean).join("\n\n");
 }
 document.getElementById("copy-listing").onclick=async()=>{
   const button=document.getElementById("copy-listing");
