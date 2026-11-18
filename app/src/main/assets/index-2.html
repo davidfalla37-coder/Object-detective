@@ -647,7 +647,7 @@ function applyCorrection(data,correction){
   const corrected={...data};
   const brand=(correction.brand||'').trim();
   const typedObject=(correction.object||'').trim();
-  const existingObject=(corrected.object||'item').replace(/^(Nothing|SoundPEATS|Soundpeats|Sony|Samsung|Apple|Bose)\\s+/i,'');
+  const existingObject=(corrected.object||'item').replace(/^(Nothing|SoundPEATS|Soundpeats|Sony|Samsung|Apple|Bose)\s+/i,'');
   corrected.brand=brand||corrected.brand||'Unknown';
   corrected.object=typedObject||[brand,existingObject].filter(Boolean).join(' ');
   corrected.model='Unknown';corrected.model_number='Unknown';corrected.variant='Unknown';
@@ -671,7 +671,7 @@ document.getElementById('apply-correction').onclick=async()=>{
     try{localStorage.setItem(CORRECTIONS_KEY,JSON.stringify(saved))}catch{}
   }
   render(applyCorrection(currentFeedbackData||{},correction));
-  status.textContent=key?'Samsung correction applied and saved for these exact photos on this device.':'Correction applied to this result. Photo-set saving is unavailable on this device.';
+  status.textContent=key?`${brand||object} correction applied and saved for these exact photos on this device.`:'Correction applied to this result. Photo-set saving is unavailable on this device.';
 };
 function feedbackText(kind,details){const d=currentFeedbackData||{},score=Number(d.confidence);return ['Object Detective feedback','App version: 1.15','Feedback type: '+kind,d.object?'App identification: '+d.object:'',d.exact_match_status?'Exact match status: '+d.exact_match_status:'',Number.isFinite(score)?'Object-type confidence: '+Math.round(score<=1?score*100:score)+'%':'',details||'','No photos are included.'].filter(Boolean).join('\n')}
 async function shareFeedback(text,statusId){const status=document.getElementById(statusId),box=document.getElementById('feedback-export');try{if(navigator.share){await navigator.share({title:'Object Detective feedback',text});status.textContent='Feedback shared using the app you chose.';return}}catch(error){if(error&&error.name==='AbortError'){status.textContent='Sharing cancelled. Nothing was sent.';return}}try{if(navigator.clipboard&&navigator.clipboard.writeText){await navigator.clipboard.writeText(text);status.textContent='Feedback copied. Paste it into a message to share.';return}}catch{}box.value=text;box.classList.remove('hidden');box.focus();box.select();status.textContent='Feedback text is ready to copy and share. Nothing was sent automatically.'}
