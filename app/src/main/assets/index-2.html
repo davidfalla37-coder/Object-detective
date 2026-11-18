@@ -280,18 +280,17 @@ const HISTORY_KEY='object-detective-history-v1';
 let selectedFiles=[];
 let photoChecks=[];
 
-takePhoto.onclick=()=>{
+function openCamera(){
   if(selectedFiles.length>=5)return;
   cameraFile.value='';
   cameraFile.click();
-};
-photoArea.addEventListener('click',()=>{
-  if(selectedFiles.length<5)takePhoto.click();
-});
+}
+takePhoto.onclick=openCamera;
+photoArea.addEventListener('click',openCamera);
 photoArea.addEventListener('keydown',event=>{
   if((event.key==='Enter'||event.key===' ')&&selectedFiles.length<5){
     event.preventDefault();
-    takePhoto.click();
+    openCamera();
   }
 });
 chooseGallery.onclick=()=>{
