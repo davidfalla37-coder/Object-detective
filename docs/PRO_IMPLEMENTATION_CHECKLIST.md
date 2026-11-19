@@ -77,3 +77,15 @@ Do not claim "exact match", guaranteed identification, unlimited use, 3D analysi
 - [ ] Reject wrong explicit brands, invented exact models, unsupported safety/compatibility claims, and materially inflated values.
 - [ ] Record model request count and latency; do not add model calls without a measured benefit and approved cost budget.
 - [ ] Use mocked/offline tests first. Do not spend OpenAI API credits on live benchmark runs without an agreed request budget.
+
+
+### G. Security and privacy release gate
+
+- [ ] Resolve the public unauthenticated endpoint and API-cost abuse exposure with a versioned identity/rate-limit migration; do not simply enable JWT verification and break old app versions.
+- [ ] Review WebView permission handling and grant only the minimum trusted resource/origin required.
+- [ ] Verify Android backup/restore behavior for local investigation history and align privacy wording.
+- [ ] Preserve file-based WebView behavior only where required; keep file URL cross-origin access disabled and never load untrusted remote HTML.
+- [ ] Measure actual S25 photo sizes before tightening request limits.
+- [ ] Reconcile the privacy policy and Play Data safety answers with deployed provider settings and SDK inventory.
+- [ ] Run deletion, backup/restore, reinstall, camera, gallery, HEIC, and five-photo regression tests.
+- [ ] Review PRE_RELEASE_SECURITY_REVIEW.md before any wider public rollout.
