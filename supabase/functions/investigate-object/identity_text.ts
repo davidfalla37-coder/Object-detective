@@ -22,3 +22,24 @@ export function stripIdentityClaims(description: string, claims: string[]): stri
     .replace(/^[\s,;:–—-]+|[\s,;:–—-]+$/g, "")
     .trim() || "Unknown";
 }
+
+
+/**
+ * Choose the broadest usable object description after disputed identity claims
+ * are removed. This is deliberately category-neutral.
+ */
+export function resolveBroadObject(
+  primaryDescription: string,
+  verificationDescription: string,
+  claims: string[],
+  fallbackCategory: string,
+): string {
+  const primary = stripIdentityClaims(primaryDescription, claims);
+  if (primary !== "Unknown") return primary;
+
+  const verification = stripIdentityClaims(verificationDescription, claims);
+  if (verification !== "Unknown") return verification;
+
+  const category = fallbackCategory.trim();
+  return category.length > 0 && category.toLowerCase() !== "unknown" ? category : "Object";
+}
