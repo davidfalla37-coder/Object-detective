@@ -62,3 +62,28 @@ Do not promise exact-match identification, guaranteed valuations, 3D analysis, o
 - Is the app already configured for Google Play Billing or only the Play in-app update API?
 - What are the real per-investigation model/search costs and current usage?
 - Which proposed Pro features can be delivered without new paid third-party services?
+
+
+## Stage 0 audit — 19 November 2026
+
+Repository and hosted backend inspection found:
+- Android app is a Kotlin WebView wrapper; the visible app UI is `app/src/main/assets/index-2.html`.
+- Current Android Gradle configuration is version 1.19 / versionCode 20 on the inspected main branch.
+- The UI currently calls the Supabase Edge Function `investigate-object` for both image investigations and follow-up chat.
+- The hosted Supabase project is active and healthy in the EU region.
+- The Edge Function is deployed with `verify_jwt = false`. Its inspected implementation has no user authentication, user identifier, subscription/billing check, or usage ledger; it calls OpenAI directly.
+- The inspected public schema currently has no tables.
+- The Android Gradle dependencies inspected so far include the Play in-app update library, but no Google Play Billing library.
+- No subscription purchase verification or entitlement service is currently present.
+
+### Consequences
+- Do not add a client-side-only Pro flag or trust local storage as proof of payment.
+- Do not add a paid/unlimited toggle to the existing investigation endpoint until server-side entitlements and abuse/cost controls exist.
+- A secure Pro launch needs a trusted purchase-verification endpoint using Google Play Developer API, a minimal entitlement/purchase record, purchase-token replay protection, and correct handling of pending, expired, cancelled, refunded, and restored purchases.
+- The current unauthenticated endpoint and lack of per-user usage records mean usage limits and Pro entitlements cannot yet be enforced reliably. The existing investigation endpoint must remain unchanged while a safe identity/entitlement design is prepared.
+- The hosted database has no visible schema tables; do not make production database changes or create a paid Supabase branch during this planning stage.
+
+### Verified purchase handling reference
+Google Play's current guidance says to send the purchase token to a secure backend, verify it with the Play Developer API, and grant entitlement only for a verified `PURCHASED` state. For subscriptions, use `purchases.subscriptionsv2.get` as the current source of truth and handle subscription lifecycle notifications. See:
+- https://developer.android.com/google/play/billing/security
+- https://developer.android.com/google/play/billing/lifecycle/subscriptions
