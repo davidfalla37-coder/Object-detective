@@ -66,3 +66,14 @@ Do not claim "exact match", guaranteed identification, unlimited use, 3D analysi
 - Use existing GitHub and Supabase resources only for inspection and local/test development.
 - Do not create a paid Supabase branch, upgrade a plan, add paid third-party APIs, create live Play products, or start advertising.
 - Before any change that could incur a charge, stop and ask for approval.
+
+
+### F. Accuracy and cost regression gate
+
+- [ ] Run the fixed photo benchmark described in [ACCURACY_AND_COST_AUDIT.md](ACCURACY_AND_COST_AUDIT.md) using genuine, consented fixtures.
+- [ ] Include the reported Samsung earbuds, Febreze air freshener, Renault RS, watch strap, and TCL cases.
+- [ ] Score broad object, brand, exact model, evidence, condition, and valuation separately.
+- [ ] Repeat selected photo sets to check identity and valuation consistency.
+- [ ] Reject wrong explicit brands, invented exact models, unsupported safety/compatibility claims, and materially inflated values.
+- [ ] Record model request count and latency; do not add model calls without a measured benefit and approved cost budget.
+- [ ] Use mocked/offline tests first. Do not spend OpenAI API credits on live benchmark runs without an agreed request budget.
