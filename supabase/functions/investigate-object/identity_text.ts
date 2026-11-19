@@ -14,12 +14,18 @@ export function stripIdentityClaims(description: string, claims: string[]): stri
     const escaped = Array.from(claim, (character) =>
       "\\.^$|?*+()[]{}".includes(character) ? "\\" + character : character
     ).join("");
-    generic = generic.replace(new RegExp(escaped, "gi"), " ");
+    // Match complete words/phrases only. A short brand such as "TCL" must
+    // never be stripped from an unrelated word such as "spectacle".
+    const pattern = new RegExp(
+      `(^|[^\\p{L}\\p{N}])${escaped}(?=$|[^\\p{L}\\p{N}])`,
+      "giu",
+    );
+    generic = generic.replace(pattern, "$1 ");
   }
 
   return generic
-    .replace(/\s+/g, " ")
-    .replace(/^[\s,;:–—-]+|[\s,;:–—-]+$/g, "")
+    .replace(/\\s+/g, " ")
+    .replace(/^[\\s,;:–—-]+|[\\s,;:–—-]+$/g, "")
     .trim() || "Unknown";
 }
 
