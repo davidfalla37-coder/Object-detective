@@ -568,7 +568,17 @@ function reconcileVerification(
     (knownText(result.model_number) || knownText(result.model) || knownText(result.part_number));
 
   if (directBrandDisagreement) {
-    const genericObject = stripIdentityClaims(primary.object);
+    const genericObject = resolveBroadObject(primary.object, verification.object, [
+      primary.brand,
+      verification.brand,
+      explicitReadableBrand,
+      primary.model,
+      verification.model,
+      primary.model_number,
+      verification.model_number,
+      primary.variant,
+      verification.variant,
+    ], primary.category);
     result.brand = explicitReadableBrand;
     result.object = /\bearbud\b/i.test(genericObject)
       ? `${explicitReadableBrand} wireless earbuds with charging case`
@@ -582,9 +592,11 @@ function reconcileVerification(
     result.exact_match_evidence = knownText(manufacturerEvidence?.evidence ?? "")
       ? manufacturerEvidence!.evidence
       : `Readable ${explicitReadableBrand} maker text is reported in the photos; the exact model number is not readable.`;
-    result.next_photo = `Take a close-up of the case underside label and any model or serial text; the ${explicitReadableBrand} mark is already identified.`;
+    result.next_photo = `Take a close-up of the ${explicitReadableBrand} maker name and any model number or product label; the brand is already supported.`;
     result.case_file_summary = `Visible maker text supports ${explicitReadableBrand}; exact model remains unconfirmed.`;
-    result.identifying_clues = "Unknown";
+    result.identifying_clues = knownText(manufacturerEvidence?.evidence ?? "")
+      ? manufacturerEvidence!.evidence
+      : `Readable ${explicitReadableBrand} maker text is reported in the photos.`;
     result.warning = [
       result.warning,
       brandDisagreement
