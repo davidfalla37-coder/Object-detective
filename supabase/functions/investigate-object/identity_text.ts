@@ -11,7 +11,9 @@ export function stripIdentityClaims(description: string, claims: string[]): stri
     .sort((a, b) => b.length - a.length);
 
   for (const claim of claimedIdentity) {
-    const escaped = claim.replace(/[.*+?^()|[\]\\$]/g, "\\$&");
+    const escaped = Array.from(claim, (character) =>
+      "\\.^$|?*+()[]{}".includes(character) ? "\\" + character : character
+    ).join("");
     generic = generic.replace(new RegExp(escaped, "gi"), " ");
   }
 
