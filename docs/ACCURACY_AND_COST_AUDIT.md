@@ -64,3 +64,16 @@ These cases were reported during real app testing and should be retained as regr
 ## Immediate engineering conclusion
 
 The existing prompt already addresses several reported error types, but the production path is a multi-call model pipeline without user identity or usage controls. The next safe work is to extract and test deterministic reconciliation/validation logic with mocked responses, then design the authenticated endpoint migration so existing app versions keep working. Do not claim accuracy is fixed until the regression suite passes on real fixtures.
+
+
+## Branch-only deterministic correction — 19 November 2026
+
+A source review found that the deployed reconciliation logic contained two earbuds-specific assumptions inside generic manufacturer-conflict handling:
+- A general brand-conflict fallback replaced the object description with "Wireless earbuds with charging case", even when the photographed object was another category.
+- The explicit-readable-brand conflict path requested a close-up of a case underside, which is not appropriate for televisions, appliances, tools, or vehicle parts.
+
+The feature branch now uses a tested category-neutral helper to remove disputed brand/model claims while preserving the broad item description. The readable-brand path also requests a generic maker/model label close-up and preserves the visible maker evidence. Earbuds receive earbuds-specific wording only when the broad description actually identifies earbuds.
+
+The helper has offline regression coverage for earbuds, television remotes, air fresheners, vehicle parts, regex-special characters, empty claims, and safe fallback behavior. GitHub Actions run 97 reported the Edge Function type-check and all offline regression tests as successful. The Android debug build for that run was still in progress at the time of this note.
+
+This correction is committed only on `feature/pro-foundation`; it has not been deployed to the live Supabase function or included in a Play release.
