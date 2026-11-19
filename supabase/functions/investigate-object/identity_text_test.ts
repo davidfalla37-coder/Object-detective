@@ -1,5 +1,10 @@
-import { assertEquals } from "https://deno.land/std@0.224.0/assert/mod.ts";
 import { stripIdentityClaims } from "./identity_text.ts";
+
+function assertEquals(actual: string, expected: string): void {
+  if (actual !== expected) {
+    throw new Error("Expected " + JSON.stringify(expected) + " but received " + JSON.stringify(actual));
+  }
+}
 
 Deno.test("brand conflict keeps the broad earbuds identity", () => {
   assertEquals(
@@ -26,6 +31,13 @@ Deno.test("identity stripping does not erase unrelated words", () => {
   assertEquals(
     stripIdentityClaims("Renault Megane RS265 front bumper", ["Renault", "Megane RS265"]),
     "front bumper",
+  );
+});
+
+Deno.test("identity claims containing regular-expression characters are safe", () => {
+  assertEquals(
+    stripIdentityClaims("Acme (Model X) cordless drill", ["Acme", "(Model X)"]),
+    "cordless drill",
   );
 });
 
