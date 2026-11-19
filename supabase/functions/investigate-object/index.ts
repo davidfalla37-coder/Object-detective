@@ -1,3 +1,5 @@
+import { resolveBroadObject } from "./identity_text.ts";
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "content-type, authorization, apikey, x-client-info",
@@ -529,30 +531,6 @@ function reconcileVerification(
     noReadableMakerMark ||
     makerMarkIsTentative
   );
-  const stripIdentityClaims = (description: string): string => {
-    let generic = description;
-    const claimedIdentity = [
-      primary.brand,
-      verification.brand,
-      explicitReadableBrand,
-      primary.model,
-      verification.model,
-      primary.model_number,
-      verification.model_number,
-      primary.variant,
-      verification.variant,
-    ]
-      .filter(knownText)
-      .sort((a, b) => b.length - a.length);
-
-    for (const claim of claimedIdentity) {
-      const escaped = claim.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-      generic = generic.replace(new RegExp(escaped, "gi"), " ");
-    }
-
-    return generic.replace(/\\s+/g, " ").replace(/^[\\s,;:–—-]+|[\\s,;:–—-]+$/g, "").trim() || "Unknown";
-  };
-
   // Keep the independent used-value recalculation only when the identity checks
   // do not conflict on manufacturer.
   if (!brandConflict && verification.verdict !== "insufficient" && knownText(verification.value_estimate)) {
@@ -590,7 +568,17 @@ function reconcileVerification(
     (knownText(result.model_number) || knownText(result.model) || knownText(result.part_number));
 
   if (directBrandDisagreement) {
-    const genericObject = stripIdentityClaims(primary.object);
+    const genericObject = resolveBroadObject(primary.object, verification.object, [
+      primary.brand,
+      verification.brand,
+      explicitReadableBrand,
+      primary.model,
+      verification.model,
+      primary.model_number,
+      verification.model_number,
+      primary.variant,
+      verification.variant,
+    ], primary.category);
     result.brand = explicitReadableBrand;
     result.object = /\bearbud\b/i.test(genericObject)
       ? `${explicitReadableBrand} wireless earbuds with charging case`
@@ -604,9 +592,11 @@ function reconcileVerification(
     result.exact_match_evidence = knownText(manufacturerEvidence?.evidence ?? "")
       ? manufacturerEvidence!.evidence
       : `Readable ${explicitReadableBrand} maker text is reported in the photos; the exact model number is not readable.`;
-    result.next_photo = `Take a close-up of the case underside label and any model or serial text; the ${explicitReadableBrand} mark is already identified.`;
+    result.next_photo = `Take a close-up of the ${explicitReadableBrand} maker name and any model number or product label; the brand is already supported.`;
     result.case_file_summary = `Visible maker text supports ${explicitReadableBrand}; exact model remains unconfirmed.`;
-    result.identifying_clues = "Unknown";
+    result.identifying_clues = knownText(manufacturerEvidence?.evidence ?? "")
+      ? manufacturerEvidence!.evidence
+      : `Readable ${explicitReadableBrand} maker text is reported in the photos.`;
     result.warning = [
       result.warning,
       brandDisagreement
@@ -614,23 +604,42 @@ function reconcileVerification(
         : `Readable maker text supports ${explicitReadableBrand}; the exact model and value remain provisional.`,
     ].filter(Boolean).join(" ");
   } else if (brandConflict) {
-    result.object = "Wireless earbuds with charging case";
+    const disputedIdentityClaims = [
+      primary.brand,
+      verification.brand,
+      explicitReadableBrand,
+      primary.model,
+      verification.model,
+      primary.model_number,
+      verification.model_number,
+      primary.variant,
+      verification.variant,
+    ];
+    // Keep the photographed item's broad type. Never turn every brand conflict
+    // into earbuds: this branch also handles TVs, tools, appliances and parts.
+    const broadObject = resolveBroadObject(
+      primary.object,
+      verification.object,
+      disputedIdentityClaims,
+      primary.category,
+    );
+    result.object = broadObject;
     result.brand = "Unknown";
     result.model = "Unknown";
     result.model_number = "Unknown";
     result.variant = "Unknown";
     result.exact_match_evidence = "The manufacturer checks conflict or cannot confirm a readable brand; the exact model is unconfirmed.";
-    result.case_file_summary = "Wireless earbuds with charging case; manufacturer and exact model are unconfirmed.";
-    result.identifying_clues = "Wireless earbuds and a charging case.";
+    result.case_file_summary = `${broadObject}; manufacturer and exact model are unconfirmed.`;
+    result.identifying_clues = broadObject;
     result.confidence = brandDisagreement
       ? Math.min(primary.confidence, verification.confidence, 0.50)
       : Math.min(primary.confidence, verification.confidence, 0.80);
     result.exact_match_confidence = Math.min(primary.exact_match_confidence, verification.exact_match_confidence, 0.35);
     result.exact_match_status = "not_confirmed";
-    result.next_photo = "Take a sharp close-up of the maker's logo and model text on the case, including its underside and inside the lid.";
+    result.next_photo = "Take a clear close-up of the maker's name, logo, model number or product label.";
     result.warning = [
       result.warning,
-      "The identification checks named different manufacturers. The brand, exact model, and value estimate are unconfirmed; check the case markings before relying on the estimate.",
+      "The identification checks named different manufacturers. The broad object type is retained, but the brand, exact model and value estimate are unconfirmed. Check the maker's markings before relying on the result.",
     ].filter(Boolean).join(" ");
   } else if (verification.verdict === "agree") {
     result.exact_match_confidence = Math.min(primary.exact_match_confidence, verification.exact_match_confidence);
