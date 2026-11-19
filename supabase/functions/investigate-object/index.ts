@@ -347,10 +347,10 @@ async function inspectManufacturerMark(
             {
               type: "input_text",
               text: [
-                "You are a literal manufacturer-mark reader. Inspect the supplied product photos only for printed, embossed, or engraved maker names on the item, including inside lids, undersides, labels, and model plates.",
-                "Ignore earlier identity guesses and do not infer a maker from product shape, colour, design, or resemblance to a brand.",
-                "Read the actual letters. A faint mark still counts as readable if its letters can be made out on close inspection; transcribe only the text that is actually visible. If the exact maker name cannot be read, return Unknown.",
-                "If a readable maker name is present, transcribe it exactly and state where it appears. If not, set readable to false and brand to Unknown. Do not report the exact product model.",
+                "You are a literal manufacturer-name and matching-package-label reader. Inspect every supplied photo for printed, embossed, or engraved maker names on the item, case, inside lid, underside, attached labels, and retail packaging that clearly belongs to the photographed item.",
+                "Read the actual letters. Do not infer a maker from shape, colour, design, or resemblance. Clearly readable manufacturer text on matching packaging counts as brand evidence even if the logo on the device itself is faint.",
+                "Transcribe the exact visible words in the evidence field and state where they appear. For example, text reading 'Samsung Wireless Earbuds' on the matching box supports Samsung as the maker of wireless earbuds, but does not prove a Galaxy Buds model unless a model identifier is also readable.",
+                "If the maker name cannot be read or the packaging cannot confidently be linked to the pictured item, set readable to false and brand to Unknown. Never infer an exact product model from generic packaging or design.";
               ].join(" "),
             },
             ...images.map((image) => ({
@@ -506,8 +506,7 @@ function reconcileVerification(
     normalizedClaims.filter((candidate) => candidate === normalizeBrand(claim)).length >= 2
   ) ?? "";
   const explicitReadableBrand = manufacturerEvidence?.brand ?? "";
-  // A dedicated readable-mark pass can resolve disagreement between general visual checks.
-  const directBrandDisagreement = Boolean(explicitReadableBrand) && (brandDisagreement || !supportedBrand);
+  const explicitBrand = normalizeBrand(explicitReadableBrand);
   const labelTextClaims = [
     ...evidenceText.matchAll(/\\btext\\s+["'“‘]?([A-Z][A-Za-z0-9&.-]{1,30})["'”’]?\\s+(?:printed|shown|visible|on it)\\b/g),
     ...evidenceText.matchAll(/\\b([A-Z][A-Za-z0-9&.-]{1,30})\\s+text\\s+(?:is\\s+)?(?:partially\\s+|faintly\\s+|clearly\\s+)?visible\\b/g),
@@ -515,7 +514,15 @@ function reconcileVerification(
   const labelDisagreesWithConsensus = Boolean(supportedBrand) &&
     labelTextClaims.some((claim) => claim !== normalizeBrand(supportedBrand));
   const hasBrandClaim = brandClaims.length > 0 || labelTextClaims.length > 0;
-  const brandConflict = hasBrandClaim && (
+  // A transcribed maker name on the item or matching package can resolve
+  // disagreement between visual checks, but never confirms the exact model.
+  const directBrandDisagreement = Boolean(explicitReadableBrand) && (
+    distinctClaims.some((claim) => claim !== explicitBrand) ||
+    labelDisagreesWithConsensus ||
+    noReadableMakerMark ||
+    makerMarkIsTentative
+  );
+  const brandConflict = !directBrandDisagreement && hasBrandClaim && (
     distinctClaims.length > 1 ||
     !supportedBrand ||
     labelDisagreesWithConsensus ||
@@ -747,7 +754,7 @@ async function verifyIdentification(
                 "Independently inspect the supplied photograph(s) from scratch. There is no candidate answer; identify only the object and manufacturer supported by visible evidence.",
                 "Assess condition independently using the photographs. Cross-check condition and condition_evidence against the object and each other. Never describe the same component with conflicting materials, such as calling a watch strap silicone in object but leather in condition. If its material is uncertain, use neutral wording such as 'strap' and describe only visible wear; do not guess leather, silicone, rubber or another material.",
                 "Use visible evidence only. Never invent text, logos, model numbers, serial numbers, variants, dimensions or provenance.",
-                "Read visible logos and embossed words in every orientation, including upside down or rotated; do not replace an uncertain wordmark with a visually similar brand. Never identify a manufacturer from a faint/ambiguous logo or from design resemblance alone. If the evidence says no readable mark is visible, or any brand evidence is faint or uncertain, set brand to Unknown and describe only the broad object type.",
+                "Read visible logos and embossed words in every orientation, including upside down or rotated; do not replace an uncertain wordmark with a visually similar brand. Never identify a manufacturer from a faint/ambiguous logo or from design resemblance alone. Clearly readable manufacturer text on retail packaging that visibly belongs to the photographed item supports the brand even if the device logo is faint. If neither the item nor its matching packaging provides readable manufacturer evidence, set brand to Unknown and describe only the broad object type.",
                 "Distinguish electrical socket contact patterns from vents, refill wells, bottle ports, or other openings. A wall-plug fragrance warmer with refill wells is an air-freshener device, not a multi-socket power adapter; multiple refill openings are not electrical outlets. A clearly embossed Febreze logo must not be misread as Forza.",
                 "Describe the whole photographed item, not only a replaceable component. Keep any component model separate from the main object.",
                  "Do not infer a host device's model from a readable label on an attached component. A correct component label does not by itself confirm the complete device's model.",
@@ -1003,9 +1010,9 @@ Deno.serve(async (request: Request): Promise<Response> => {
                 "For example, if a vape tank is attached to a mod, describe the photographed object as the complete vape device with the identified tank; do not infer the mod's model from the tank's label.",
                 "General confidence is for identifying the complete photographed item. If only a component is identified or the host device remains unknown, lower confidence and explain the uncertainty. Confidence does not validate the value estimate, condition, completeness, or marketplace results.",
                 "Do not use exact-model uncertainty to depress general object confidence. A clear manufacturer-specific mark supports the broad object and brand even when the exact model is unknown; reserve exact_match_confidence for model-level certainty.",
-                "BRAND AND MODEL EVIDENCE FOR EVERY CATEGORY: Inspect all supplied angles, opened cases, undersides, labels, embossed words and logos. When a manufacturer name or logo is readable on the photographed item, set brand to that maker and include the brand in object even when the exact model is unknown. A readable brand alone is not an exact model match: leave model and model_number Unknown, keep exact_match_status not_confirmed, and explain which identifier is missing. If the label is too small or blurred to read, do not guess; request a close-up. A clear Samsung mark on an earbuds case supports Samsung wireless earbuds with charging case, but not a specific Galaxy Buds model without model evidence.",
+                BRAND AND MODEL EVIDENCE FOR EVERY CATEGORY: Inspect all supplied angles, opened cases, undersides, labels, packaging that clearly belongs to the photographed item, embossed words and logos. Readable maker text on matching packaging supports the brand and broad product type even if the device mark is faint. A readable brand alone is not an exact model match: leave model and model_number Unknown, keep exact_match_status not_confirmed, and explain which identifier is missing. If neither the item nor matching packaging has readable brand text, do not guess; request a close-up. A box reading 'Samsung Wireless Earbuds' supports Samsung wireless earbuds with charging case, but not a specific Galaxy Buds model without model evidence.",
                 "Use visible evidence only; do not invent details.",
-                "Read visible logos and embossed words in every orientation, including upside down or rotated; do not replace an uncertain wordmark with a visually similar brand. Never identify a manufacturer from a faint/ambiguous logo or from design resemblance alone. If the evidence says no readable mark is visible, or any brand evidence is faint or uncertain, set brand to Unknown and describe only the broad object type.",
+                "Read visible logos and embossed words in every orientation, including upside down or rotated; do not replace an uncertain wordmark with a visually similar brand. Never identify a manufacturer from a faint/ambiguous logo or from design resemblance alone. Clearly readable text on packaging that visibly belongs to the photographed item can establish its maker, even if the item logo is faint; do not use the box to infer an exact model unless a model identifier is readable. If neither the item nor matching packaging provides readable brand evidence, set brand to Unknown.",
                 "Distinguish electrical socket contact patterns from vents, refill wells, bottle ports, or other openings. A wall-plug fragrance warmer with refill wells is an air-freshener device, not a multi-socket power adapter; multiple refill openings are not electrical outlets. A clearly embossed Febreze logo must not be misread as Forza.",
                 "Estimate the current UK SECOND-HAND resale value for the photographed item AS SHOWN, not the new retail or replacement price. Start from a realistic used-market level for the identified model, then adjust downward for visible wear, damage, missing parts, missing accessories or packaging, age, uncertainty, and unverified working condition. Never assume an item is fully tested or working unless the photographs provide evidence. A Fair-condition or visibly heavily worn item should receive a materially lower range than a clean tested used example; Poor, damaged or incomplete items should be lower again. For a mixed-brand or incomplete bundle, value the photographed bundle as one used private-sale item; do not add the new replacement prices of its components. Do not award a branded-component premium when the exact model is unconfirmed. If there is heavy visible wear or working status is unverified, use the lower end of a realistic used range and describe functionality as untested. Never use a new-retail price range as the second-hand estimate. The value_estimate field must always use British pounds sterling (GBP) with the £ symbol and should be a cautious realistic range. If the exact identity or working status is too uncertain to support a useful resale price, return “Unknown (GBP)” rather than an inflated guess.",
                 "For compatibility, describe relevant standards, sizes, connectors, systems, or say that compatibility cannot be determined from the image.",
