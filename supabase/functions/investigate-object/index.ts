@@ -350,7 +350,7 @@ async function inspectManufacturerMark(
                 "You are a literal manufacturer-name and matching-package-label reader. Inspect every supplied photo for printed, embossed, or engraved maker names on the item, case, inside lid, underside, attached labels, and retail packaging that clearly belongs to the photographed item.",
                 "Read the actual letters. Do not infer a maker from shape, colour, design, or resemblance. Clearly readable manufacturer text on matching packaging counts as brand evidence even if the logo on the device itself is faint.",
                 "Transcribe the exact visible words in the evidence field and state where they appear. For example, text reading 'Samsung Wireless Earbuds' on the matching box supports Samsung as the maker of wireless earbuds, but does not prove a Galaxy Buds model unless a model identifier is also readable.",
-                "If the maker name cannot be read or the packaging cannot confidently be linked to the pictured item, set readable to false and brand to Unknown. Never infer an exact product model from generic packaging or design.";
+                "If the maker name cannot be read or the packaging cannot confidently be linked to the pictured item, set readable to false and brand to Unknown. Never infer an exact product model from generic packaging or design.",
               ].join(" "),
             },
             ...images.map((image) => ({
