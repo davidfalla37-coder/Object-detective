@@ -17,7 +17,7 @@ export function stripIdentityClaims(description: string, claims: string[]): stri
     // Match complete words/phrases only. A short brand such as "TCL" must
     // never be stripped from an unrelated word such as "spectacle".
     const pattern = new RegExp(
-      \`(^|[^\\p{L}\\p{N}])\${escaped}(?=$|[^\\p{L}\\p{N}])\`,
+      "(^|[^\\p{L}\\p{N}])" + escaped + "(?=$|[^\\p{L}\\p{N}])",
       "giu",
     );
     generic = generic.replace(pattern, "$1 ");
