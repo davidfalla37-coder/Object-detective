@@ -1,4 +1,4 @@
-import { stripIdentityClaims } from "./identity_text.ts";
+import { resolveBroadObject, stripIdentityClaims } from "./identity_text.ts";
 
 function assertEquals(actual: string, expected: string): void {
   if (actual !== expected) {
@@ -47,4 +47,31 @@ Deno.test("empty or unknown identity claims leave the description intact", () =>
 
 Deno.test("an empty result is reported as Unknown rather than an invented category", () => {
   assertEquals(stripIdentityClaims("Samsung", ["Samsung"]), "Unknown");
+});
+
+
+Deno.test("brand conflict fallback retains a television remote, not earbuds", () => {
+  assertEquals(
+    resolveBroadObject("TCL television remote control", "Samsung remote", ["TCL", "Samsung"], "Electronics"),
+    "television remote control",
+  );
+});
+
+Deno.test("brand conflict fallback retains an air freshener", () => {
+  assertEquals(
+    resolveBroadObject("Febreze wall-plug air freshener diffuser", "Generic plug-in device", ["Febreze"], "Home"),
+    "wall-plug air freshener diffuser",
+  );
+});
+
+Deno.test("brand conflict fallback uses the second description when the first is only a brand", () => {
+  assertEquals(
+    resolveBroadObject("Samsung", "wireless earbuds with charging case", ["Samsung"], "Electronics"),
+    "wireless earbuds with charging case",
+  );
+});
+
+Deno.test("brand conflict fallback uses category only when both descriptions are unusable", () => {
+  assertEquals(resolveBroadObject("Unknown", "Unknown", ["Unknown"], "Audio"), "Audio");
+  assertEquals(resolveBroadObject("Unknown", "Unknown", ["Unknown"], "Unknown"), "Object");
 });
