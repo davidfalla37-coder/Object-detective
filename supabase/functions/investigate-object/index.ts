@@ -1,4 +1,4 @@
-import { stripIdentityClaims } from "./identity_text.ts";
+import { resolveBroadObject } from "./identity_text.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -592,7 +592,7 @@ function reconcileVerification(
         : `Readable maker text supports ${explicitReadableBrand}; the exact model and value remain provisional.`,
     ].filter(Boolean).join(" ");
   } else if (brandConflict) {
-    const genericObject = stripIdentityClaims(primary.object, [
+    const disputedIdentityClaims = [
       primary.brand,
       verification.brand,
       explicitReadableBrand,
@@ -602,25 +602,15 @@ function reconcileVerification(
       verification.model_number,
       primary.variant,
       verification.variant,
-    ]);
-    const verificationGenericObject = stripIdentityClaims(verification.object, [
-      primary.brand,
-      verification.brand,
-      explicitReadableBrand,
-      primary.model,
-      verification.model,
-      primary.model_number,
-      verification.model_number,
-      primary.variant,
-      verification.variant,
-    ]);
+    ];
     // Keep the photographed item's broad type. Never turn every brand conflict
     // into earbuds: this branch also handles TVs, tools, appliances and parts.
-    const broadObject = genericObject !== "Unknown"
-      ? genericObject
-      : verificationGenericObject !== "Unknown"
-      ? verificationGenericObject
-      : knownText(primary.category) ? primary.category : "Object";
+    const broadObject = resolveBroadObject(
+      primary.object,
+      verification.object,
+      disputedIdentityClaims,
+      primary.category,
+    );
     result.object = broadObject;
     result.brand = "Unknown";
     result.model = "Unknown";
