@@ -43,7 +43,7 @@ Deno.test("identity claims containing regular-expression characters are safe", (
 
 Deno.test("brand names are removed as whole words, not substrings", () => {
   assertEquals(stripIdentityClaims("spectacle case", ["TCL"]), "spectacle case");
-  assertEquals(stripIdentityClaims("A brandless item", ["brand"]), "A less item");
+  assertEquals(stripIdentityClaims("A brandless item", ["brand"]), "A brandless item");
 });
 
 Deno.test("empty or unknown identity claims leave the description intact", () => {
