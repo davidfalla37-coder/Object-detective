@@ -45,4 +45,4 @@ jobs:
       - name: Type-check Supabase Edge Function
         run: deno check supabase/functions/investigate-object/index.ts
       - name: Run offline identity regression tests
-        run: deno test --no-check supabase/functions/investigate-object/identity_text_test.ts
+        run: deno test supabase/functions/investigate-object/identity_text_test.ts
