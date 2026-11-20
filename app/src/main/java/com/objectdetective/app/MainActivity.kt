@@ -56,6 +56,7 @@ class MainActivity : Activity() {
         appUpdateManager.registerListener(updateListener)
 
         webView = WebView(this)
+        webView.addJavascriptInterface(BarcodeScannerBridge(this, webView), "AndroidScanner")
         setContentView(webView)
 
         webView.setOnApplyWindowInsetsListener { view, insets ->

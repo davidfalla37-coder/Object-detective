@@ -1,0 +1,84 @@
+# Object Detective — pre-release security and privacy review
+
+Date: 19 November 2026
+Scope: repository inspection only. No live app, Supabase configuration, or Play Console setting changed.
+
+## Verified implementation facts
+
+### Android / WebView
+- The active Gradle module manifest is app/src/main/AndroidManifest.xml.
+- It sets android:allowBackup="true".
+- The app creates a WebView and loads the local asset file:///android_asset/index-2.html.
+- JavaScript and DOM storage are enabled because the app's UI is a local HTML/JavaScript application.
+- allowFileAccess and allowContentAccess are enabled.
+- The WebChromeClient currently grants every resource requested by a WebView PermissionRequest, without checking the origin or individual requested resources.
+- HTTP(S) navigation is handed to an external Android activity rather than loaded in the app WebView.
+- The repository root also contains a separate legacy AndroidManifest.xml with different settings. The app module manifest is the one used by the Gradle Android build; do not edit the root copy as if it were active configuration.
+
+### Backend / data flow
+- The current Edge Function is configured with verify_jwt = false.
+- CORS currently allows *.
+- There is no authenticated user identity or per-user usage ledger in the current handler.
+- The endpoint accepts up to five image data URLs, each up to 20 MiB, with a total request cap around 100 MiB plus overhead.
+- Image investigations normally issue two OpenAI requests and may issue a third manufacturer-mark request. Follow-up chat issues another request.
+- The current function does not write photo/chat content to an app-owned database and sets store: false in its OpenAI Responses API requests.
+- The privacy policy explains provider processing and notes that provider abuse-monitoring/technical logs may have separate retention.
+
+## Risks and decisions
+
+### 1. Public unauthenticated AI endpoint — high priority
+With JWT verification disabled and no application-level user identity or rate limit, the public endpoint can be called outside the app. Request-size limits protect against oversized requests but do not prevent repeated valid requests or unexpected API spend.
+
+Required before public growth or paid usage limits:
+- Add authenticated identity and server-side authorization in a versioned migration.
+- Preserve a compatibility route for already-installed app versions during rollout.
+- Add robust abuse controls and per-user usage accounting before enabling quotas or Pro.
+- Keep provider keys server-side.
+- Add monitoring and a documented emergency disable/rate-limit procedure.
+
+Do not simply switch verify_jwt to true: that would break older app versions that do not send a user access token.
+
+### 2. WebView permission grants — review before next app release
+The WebChromeClient grants all resources in any WebView permission request. Although the current app loads a local asset and sends HTTP(S) links to external apps, this is broader than necessary.
+
+Before changing it:
+- Confirm whether the current app requests any WebView camera/microphone/geolocation resources.
+- Prefer the native camera/gallery chooser already used by the app.
+- If WebView permissions remain necessary, allow only the exact required resource and trusted local origin.
+- Test camera, gallery, HEIC conversion, and all investigation flows on the Samsung Galaxy S25 after any change.
+
+Do not blindly grant every WebView resource in future features.
+
+### 3. Android backup and local investigation history — clarify
+The active app manifest enables Android backup. The privacy policy says investigation history is stored locally and can be removed by clearing app storage or uninstalling. Android backup/restore behavior for WebView DOM storage and local history must be verified so the wording does not imply that uninstall always destroys every backed-up copy.
+
+Before changing allowBackup:
+- Determine whether backup currently includes WebView local storage or any other app data.
+- Decide whether history should migrate to a new device or be excluded from backup.
+- Update Android backup/data-extraction rules and privacy wording together, then test upgrade, backup/restore, clear-history, clear-storage, and uninstall/reinstall.
+- Do not change this setting without regression testing because it can affect user expectations and data recovery.
+
+### 4. File access in the local WebView — preserve current behavior carefully
+allowFileAccess is enabled for the local HTML app. This may be part of the file-based WebView setup. Do not disable it casually; first test whether gallery/camera selection, local assets, and image previews continue to work. Keep file-URL cross-origin access disabled and never load untrusted remote HTML into this WebView.
+
+### 5. Request size and cost exposure
+The current request ceiling permits very large image payloads and does not enforce a usage budget. Before changing limits, measure the actual compressed photo sizes generated by the Android UI and test all supported photo formats. A lower cap could break legitimate five-photo investigations; a higher cap increases exposure.
+
+Required:
+- Add user/account-aware request budgets once identity exists.
+- Apply sensible per-image and total limits after measuring real S25 requests.
+- Add safe timeouts and concurrency controls without silently truncating user images.
+- Track request count, latency, model path, and errors without logging image content or sensitive prompt payloads.
+
+## Pre-release checklist
+- [ ] Decide and test Android backup behavior for local history.
+- [ ] Narrow WebView permission grants to the minimum required.
+- [ ] Confirm file URL cross-origin protections remain disabled.
+- [ ] Add authenticated identity, server-side rate limits, and usage accounting without breaking old app versions.
+- [ ] Confirm request-size limits against real S25 camera/gallery images.
+- [ ] Reconcile privacy policy, Play Data safety answers, SDK inventory, and actual deployed provider settings.
+- [ ] Test clear history, app-data deletion, backup/restore, reinstall, camera, gallery, HEIC, and five-photo investigations.
+- [ ] Keep all provider/service secrets out of the APK and repository.
+
+## Release decision
+This is a review document, not a security certification. The unauthenticated endpoint and broad WebView permission callback are known issues to resolve or explicitly accept before a wider public rollout. No live settings were changed as part of this review.

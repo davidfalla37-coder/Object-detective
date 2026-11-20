@@ -1,6 +1,15 @@
 name: Verify Object Detective Android pull requests
 
 on:
+  push:
+    branches:
+      - identification-research-pro-foundation
+    paths:
+      - 'app/**'
+      - 'supabase/functions/investigate-object/**'
+      - 'build.gradle'
+      - 'settings.gradle'
+      - '.github/workflows/verify-pr.yml'
   pull_request:
     branches:
       - main
@@ -44,3 +53,5 @@ jobs:
           deno-version: v2.x
       - name: Type-check Supabase Edge Function
         run: deno check supabase/functions/investigate-object/index.ts
+      - name: Run offline identity regression tests
+        run: deno test supabase/functions/investigate-object/identity_text_test.ts
