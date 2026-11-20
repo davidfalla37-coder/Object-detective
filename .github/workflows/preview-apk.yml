@@ -5,6 +5,7 @@ on:
   push:
     branches:
       - visual-refresh-prototype
+      - qr-barcode-scanner-prototype
 
 permissions:
   contents: read
