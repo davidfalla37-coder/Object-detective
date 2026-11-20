@@ -1,6 +1,15 @@
 name: Verify Object Detective Android pull requests
 
 on:
+  push:
+    branches:
+      - identification-research-pro-foundation
+    paths:
+      - 'app/**'
+      - 'supabase/functions/investigate-object/**'
+      - 'build.gradle'
+      - 'settings.gradle'
+      - '.github/workflows/verify-pr.yml'
   pull_request:
     branches:
       - main
