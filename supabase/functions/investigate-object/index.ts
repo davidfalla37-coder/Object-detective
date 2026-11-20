@@ -738,7 +738,7 @@ async function researchAndVerifyIdentification(
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "gpt-5.4",
+        model: "gpt-5.4-mini",
         reasoning: { effort: "low" },
         store: false,
         tools: [{ type: "web_search", search_context_size: "low" }],
@@ -837,17 +837,17 @@ function shouldRunIdentificationResearch(
   primary: InvestigationResult,
   verification: VerificationResult | null,
 ): boolean {
-  if (!verification) return true;
+  // Keep paid web research exceptional: an unconfirmed exact model is normal
+  // for photos without a readable model label and must not trigger a search.
+  if (!verification) return false;
   const normalize = (value: string): string => value.trim().toLowerCase().replace(/[^a-z0-9]+/g, "");
   const brandConflict = knownText(primary.brand) && knownText(verification.brand) &&
     normalize(primary.brand) !== normalize(verification.brand);
+  const bothLowConfidence = primary.confidence < 0.55 && verification.confidence < 0.55;
   return brandConflict ||
     verification.verdict === "disagree" ||
     verification.verdict === "insufficient" ||
-    primary.exact_match_status === "not_confirmed" ||
-    verification.exact_match_status === "not_confirmed" ||
-    !knownText(primary.brand) ||
-    !knownText(primary.model) && !knownText(primary.model_number);
+    bothLowConfidence;
 }
 
 function conservativeFallback(result: InvestigationResult): InvestigationResult {
