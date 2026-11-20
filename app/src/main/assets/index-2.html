@@ -60,14 +60,85 @@
     :root[data-theme="light"] .market-links a.recommended{background:#e1f4e9;border-color:#9ac9aa;color:#174a2e}:root[data-theme="light"] .vehicle-card{background:linear-gradient(145deg,#fff8df,#fff 55%);border-color:#d8bd72}
     :root[data-theme="light"] .safety{background:#fff0ed;color:#7b3024;border-color:#e4b6ac}
     @media(prefers-color-scheme:light){:root[data-theme="system"]{color-scheme:light;--bg:#f3f6fb;--bg-alt:#e7eef7;--panel:#fff;--line:#cbd5e1;--text:#17243a;--muted:#536176;--accent:#006b91;--danger:#9d2626;--field:#f8fafc;--border:#b9c7d8;--secondary:#e5edf7}:root[data-theme="system"] .card{background:#fff}:root[data-theme="system"] .camera-action{background:#075f80!important;color:#fff!important;border-color:#075f80!important}:root[data-theme="system"] .photo{background:#f8fafc;border-color:#8ba0b8;color:#526176}:root[data-theme="system"] .tip{background:#eef5ff;border-color:#c6d7ec;color:#26384f}:root[data-theme="system"] .explain{color:#344257}:root[data-theme="system"] button.secondary,:root[data-theme="system"] .link-button,:root[data-theme="system"] #shops a,:root[data-theme="system"] #vehicle-shops a,:root[data-theme="system"] .market-links a{background:#e5edf7;color:#17243a;border-color:#c3cfdd}:root[data-theme="system"] .history-item,:root[data-theme="system"] .chat-thread,:root[data-theme="system"] .match-fields input,:root[data-theme="system"] .sell-card textarea,:root[data-theme="system"] .sell-card input,:root[data-theme="system"] .sell-card select,:root[data-theme="system"] .chat-input{background:#f4f7fb;color:#17243a;border-color:#c3cfdd}:root[data-theme="system"] .chat-message.assistant{background:#e4ebf4;color:#17243a}:root[data-theme="system"] .chat-message.user{background:#d9f0f7;color:#17394b}:root[data-theme="system"] .vehicle-card{background:linear-gradient(145deg,#fff8df,#fff 55%);border-color:#d8bd72}:root[data-theme="system"] .safety{background:#fff0ed;color:#7b3024;border-color:#e4b6ac}}
+
+    /* Home-screen visual refresh: presentation only; investigation controls and IDs stay unchanged. */
+    :root{--accent:#55cfff;--bg:#050c19;--bg-alt:#102747;--panel:#0d1b31;--line:#254465;--text:#f5f9ff;--muted:#a9bdd4}
+    body{background:radial-gradient(ellipse at 82% 0%,#164b79 0,transparent 34%),linear-gradient(155deg,#0b1b34 0,#050c19 55%);letter-spacing:.005em}
+    main{padding-top:17px}
+    .brandbar{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:0 2px 18px}
+    .brand-lockup{display:flex;align-items:center;gap:11px;min-width:0}
+    .brand-mark{width:48px;height:48px;flex:0 0 48px;display:grid;place-items:center;border-radius:15px;color:#061426;background:linear-gradient(145deg,#b8f1ff,#42bfff 60%,#1686df);box-shadow:0 8px 24px #168bdf55,inset 0 1px 0 #fff9}
+    .brand-mark svg{width:35px;height:35px}
+    .brand-name{font-size:14px;font-weight:850;letter-spacing:.12em;line-height:1.2;color:#f8fbff}
+    .brand-name strong{color:#71d7ff}
+    .brand-name span{display:block;font-size:9px;letter-spacing:.16em;font-weight:700;color:#8da9c7;margin-top:5px}
+    .brand-status{display:flex;align-items:center;gap:6px;padding:7px 9px;border:1px solid #3b6688;border-radius:999px;background:#0c2942;color:#b8eaff;font-size:9px;font-weight:850;letter-spacing:.09em;white-space:nowrap}
+    .brand-status i{width:6px;height:6px;border-radius:50%;background:#52e3b0;box-shadow:0 0 9px #52e3b0}
+    .brand-hero{position:relative;isolation:isolate;overflow:hidden;padding:25px 22px 21px;margin:0 0 16px;border:1px solid #2d6790;border-radius:25px;background:linear-gradient(125deg,#123d66 0%,#102a4b 48%,#101b34 100%);box-shadow:0 18px 42px #0005,inset 0 1px 0 #ffffff18}
+    .hero-kicker,.section-kicker{display:flex;align-items:center;gap:9px;color:#9be5ff;font-size:10px;font-weight:900;letter-spacing:.16em}
+    .kicker-line{width:22px;height:2px;border-radius:2px;background:#58d2ff;box-shadow:0 0 10px #58d2ff}
+    .brand-hero h1{position:relative;z-index:2;margin:16px 0 11px;font-size:clamp(36px,10vw,48px);line-height:.99;letter-spacing:-.055em;font-weight:900}
+    .brand-hero h1 span{color:#75d9ff}
+    .brand-hero>p{position:relative;z-index:2;max-width:340px;margin:0;color:#c1d5e9;font-size:14px;line-height:1.55}
+    .hero-points{position:relative;z-index:2;display:flex;flex-wrap:wrap;gap:8px;margin-top:19px}
+    .hero-points span{padding:8px 10px;border:1px solid #ffffff24;border-radius:999px;background:#061a30a8;color:#d8efff;font-size:11px;font-weight:750}
+    .hero-points b{color:#70dbff;margin-right:4px}
+    .hero-orbit{position:absolute;z-index:-1;border:1px solid #8bdfff24;border-radius:50%;pointer-events:none}
+    .hero-orbit-one{width:230px;height:230px;right:-86px;top:-110px;box-shadow:0 0 0 22px #8bdfff08,0 0 0 48px #8bdfff06}
+    .hero-orbit-two{width:145px;height:145px;right:-42px;top:-67px;border-color:#8bdfff38}
+    .hero-glow{position:absolute;z-index:-1;width:170px;height:170px;right:-65px;bottom:-110px;border-radius:50%;background:#28b9ff55;filter:blur(34px)}
+    .capture-card{margin-top:0;border-color:#315577;background:linear-gradient(155deg,#10223b,#0a172a 75%);box-shadow:0 18px 44px #0006}
+    .section-kicker{margin:0 0 14px;color:#a6c8e5}
+    .section-kicker span{display:grid;place-items:center;width:23px;height:23px;border-radius:7px;background:#143f60;color:#8fe2ff;font-size:10px}
+    .photo{border-color:#3f7198;background:radial-gradient(ellipse at center,#112c49,#081629 75%);border-style:dashed}
+    .photo:active{border-color:#69d7ff;background:#102d4b}
+    button.primary{background:linear-gradient(110deg,#a8edff,#55cfff 55%,#2a9de9);color:#061629;box-shadow:0 8px 22px #168bdf38}
+    .camera-action{background:linear-gradient(110deg,#b8f1ff,#55cfff 60%,#2a9de9)!important;border-color:#b7f1ff!important;color:#061629!important}
+    button.secondary{background:#142b47;border-color:#315273}
+    .card{border-radius:21px}
+    @media(max-width:380px){.brand-status{font-size:8px;padding:6px 7px}.brand-name{font-size:12px}.brand-mark{width:43px;height:43px;flex-basis:43px}.brand-hero{padding:22px 18px}.brand-hero h1{font-size:36px}}
+    :root[data-theme="light"] body{background:radial-gradient(ellipse at 82% 0%,#d5efff 0,transparent 34%),linear-gradient(155deg,#edf6ff,#f4f7fb 60%)}
+    :root[data-theme="light"] .brand-hero{background:linear-gradient(125deg,#164d7a,#15385f 55%,#1c3150);border-color:#36739f}
+    :root[data-theme="light"] .brand-name{color:#17243a}
+    :root[data-theme="light"] .brand-name strong{color:#087fb6}
+    :root[data-theme="light"] .brand-status{background:#e3f5ff;color:#07577d;border-color:#a7d8ef}
+    :root[data-theme="light"] .capture-card{background:#fff;border-color:#cbd9e8}
+    :root[data-theme="light"] .section-kicker{color:#45627f}
+    :root[data-theme="light"] .section-kicker span{background:#e1f4ff;color:#087fb6}
+    @media(prefers-color-scheme:light){:root[data-theme="system"] body{background:linear-gradient(155deg,#edf6ff,#f4f7fb 60%)}:root[data-theme="system"] .brand-hero{background:linear-gradient(125deg,#164d7a,#15385f 55%,#1c3150);border-color:#36739f}:root[data-theme="system"] .capture-card{background:#fff;border-color:#cbd9e8}}
+
   </style>
 </head>
 <body>
 <main>
-  <h1>🔎 Object Detective</h1>
-  <p>Take or choose a clear photo and discover what the object is, what it does, and what it may be worth.</p>
+  <header class="brandbar">
+    <div class="brand-lockup">
+      <div class="brand-mark" aria-hidden="true">
+        <svg viewBox="0 0 48 48" role="presentation">
+          <circle cx="20" cy="19" r="11.5" fill="none" stroke="currentColor" stroke-width="4"/>
+          <path d="M28.5 27.5 40 39" fill="none" stroke="currentColor" stroke-width="5" stroke-linecap="round"/>
+          <path d="m34 7 1.8 4.2L40 13l-4.2 1.8L34 19l-1.8-4.2L28 13l4.2-1.8L34 7Z" fill="#9cecff"/>
+        </svg>
+      </div>
+      <div class="brand-name">OBJECT <strong>DETECTIVE</strong><span>THE SMARTER WAY TO IDENTIFY</span></div>
+    </div>
+    <span class="brand-status"><i></i> AI INVESTIGATION</span>
+  </header>
 
-  <section class="card">
+  <section class="brand-hero" aria-labelledby="welcome-title">
+    <div class="hero-orbit hero-orbit-one"></div><div class="hero-orbit hero-orbit-two"></div>
+    <div class="hero-kicker"><span class="kicker-line"></span> EVERY OBJECT HAS A STORY</div>
+    <h1 id="welcome-title">Not sure what<br><span>you've found?</span></h1>
+    <p>Let Object Detective investigate it. Discover what it is, what it does and what it could be worth.</p>
+    <div class="hero-points">
+      <span><b>✦</b> AI-powered insights</span>
+      <span><b>✦</b> Up to 5 photos</span>
+    </div>
+    <div class="hero-glow" aria-hidden="true"></div>
+  </section>
+
+  <section class="card capture-card">
+    <div class="section-kicker"><span>01</span> START YOUR INVESTIGATION</div>
     <div class="photo" id="photo-area" role="button" tabindex="0" aria-label="Take a photo with the camera"><div id="placeholder"><span class="emoji">📷</span><span id="photo-prompt">Tap here to take a photo</span></div><img id="preview" alt="Selected object"></div>
     <p class="photo-guide"><span class="photo-count" id="photo-count">0 of 5 photos</span> — <span id="photo-step">Start with the whole item; add a close-up of its brand or model label if present.</span></p>
     <div class="thumbs hidden" id="thumbs" aria-label="Selected photographs"></div>
