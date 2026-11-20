@@ -3,7 +3,7 @@ package com.objectdetective.app
 import android.app.Activity
 import android.webkit.JavascriptInterface
 import android.webkit.WebView
-import com.google.android.gms.mlkit.codescanner.GmsBarcodeScanning
+import com.google.mlkit.vision.codescanner.GmsBarcodeScanning
 import com.google.android.gms.mlkit.codescanner.GmsBarcodeScannerOptions
 import com.google.mlkit.vision.barcode.common.Barcode
 import org.json.JSONObject
