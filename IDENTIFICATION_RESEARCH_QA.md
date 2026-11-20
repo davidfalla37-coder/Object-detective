@@ -13,6 +13,7 @@ Run this checklist against the deployed test function and the same photo sets be
 - [ ] Research output does not override the photographed object's identity merely because a marketplace title ranks highly.
 - [ ] Research does not upgrade an exact match without unique model/part evidence.
 - [ ] Research does not change second-hand values using asking prices or new-retail prices.
+- [ ] A brand disagreement on a non-earbud category (for example a TV, air freshener, watch, or vehicle part) retains a generic description of that photographed category and is never rewritten as wireless earbuds.
 - [ ] Vehicle fitment remains unconfirmed without OEM/part-number and vehicle-specific evidence.
 - [ ] The chat, camera, gallery, five-photo upload, buying/selling, navigation, and appearance settings remain unchanged.
 
