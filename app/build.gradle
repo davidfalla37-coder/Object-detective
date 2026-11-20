@@ -13,6 +13,8 @@ android {
 
     defaultConfig {
         applicationId "com.objectdetective.app"
+        applicationIdSuffix ".preview"
+        versionNameSuffix "-preview"
         minSdk 26
         targetSdk 36
         versionCode 20
