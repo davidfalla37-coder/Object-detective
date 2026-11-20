@@ -196,6 +196,8 @@
       :root[data-theme="system"] .chat-message.user{background:#d8f0fa;color:#17394b}
     }
 
+  
+    #scanner-card .match-fields{align-items:end}#scanner-card .match-fields label{min-width:0}#scanner-card .match-fields input{min-height:50px}#scanner-result{margin-top:14px}#scanner-result button{width:100%;margin-top:8px}#scanner-result-value{font-weight:750;color:var(--text)}
   </style>
 </head>
 <body>
@@ -243,6 +245,26 @@
     <button class="secondary hidden" id="clear" style="width:100%;margin-top:10px">Start again</button>
     <div id="status" class="hidden">Examining the photograph…</div>
     <div id="error" class="hidden"></div>
+  </section>
+
+  <section class="card" id="scanner-card">
+    <h2>Scan a QR code or barcode</h2>
+    <p>Scan a product barcode to search for a match, or read a QR code safely. QR links are shown for you to review before opening.</p>
+    <button class="primary" id="open-scanner" type="button" style="width:100%">▦ Scan QR code or barcode</button>
+    <div class="match-fields" style="margin-top:10px">
+      <label for="manual-code">Enter a code manually
+        <input id="manual-code" inputmode="numeric" autocomplete="off" maxlength="120" placeholder="Enter barcode number">
+      </label>
+      <button class="secondary" id="manual-code-submit" type="button">Look up code</button>
+    </div>
+    <div id="scanner-result" class="tip hidden" aria-live="polite">
+      <strong id="scanner-result-type"></strong>
+      <p id="scanner-result-value" style="overflow-wrap:anywhere"></p>
+      <button class="secondary hidden" id="scanner-open-qr" type="button">Open this QR link</button>
+      <button class="secondary hidden" id="scanner-search-product" type="button">Search for this product</button>
+      <p id="scanner-safety-note" class="match-note"></p>
+    </div>
+    <p id="scanner-status" class="match-note" aria-live="polite"></p>
   </section>
 
   <section class="card" id="history-card">
@@ -1028,6 +1050,50 @@ document.getElementById("chat-form").onsubmit=async(event)=>{
   }catch(error){status.textContent=error.message||"Please try again in a moment.";}
   finally{button.disabled=false;input.disabled=false;input.focus();}
 };
+
+const scannerResultState={value:"",format:"",isQr:false,isUrl:false};
+function onNativeBarcodeScanned(value,format){
+  scannerResultState.value=String(value||"");
+  scannerResultState.format=String(format||"Code");
+  scannerResultState.isQr=scannerResultState.format==="QR_CODE";
+  scannerResultState.isUrl=scannerResultState.isQr&&/^https?:\\/\\//i.test(scannerResultState.value);
+  document.getElementById("scanner-result").classList.remove("hidden");
+  document.getElementById("scanner-result-type").textContent=scannerResultState.isQr?"QR code detected":"Barcode detected ("+scannerResultState.format+")";
+  document.getElementById("scanner-result-value").textContent=scannerResultState.value;
+  document.getElementById("scanner-open-qr").classList.toggle("hidden",!scannerResultState.isUrl);
+  document.getElementById("scanner-search-product").classList.toggle("hidden",scannerResultState.isQr);
+  document.getElementById("scanner-safety-note").textContent=scannerResultState.isQr?(scannerResultState.isUrl?"Check the website address carefully before opening it.":"This QR content is displayed as text; it has not been opened."):"The barcode number is a lookup clue, not proof of the exact product. Check the search results against the item and its packaging.";
+  document.getElementById("scanner-status").textContent="Scan complete.";
+}
+function onNativeBarcodeError(message){document.getElementById("scanner-status").textContent=String(message||"Scanner unavailable. Please try again.");}
+document.getElementById("open-scanner").addEventListener("click",()=>{
+  const status=document.getElementById("scanner-status");
+  if(window.AndroidScanner&&typeof AndroidScanner.startScan==="function"){status.textContent="Opening secure scanner…";AndroidScanner.startScan();}
+  else status.textContent="The scanner is available in the Android app, not in this browser preview.";
+});
+document.getElementById("scanner-open-qr").addEventListener("click",()=>{
+  if(scannerResultState.isUrl&&scannerResultState.isQr){window.location.href=scannerResultState.value;}
+});
+function searchBarcode(value){
+  const code=String(value||"").trim();
+  if(!code){document.getElementById("scanner-status").textContent="Enter a barcode number first.";return;}
+  if(!/^[0-9A-Za-z-]{4,120}$/.test(code)){document.getElementById("scanner-status").textContent="Please enter a valid-looking barcode or product code.";return;}
+  scannerResultState.value=code;scannerResultState.format="Manual entry";scannerResultState.isQr=false;
+  document.getElementById("scanner-result").classList.remove("hidden");
+  document.getElementById("scanner-result-type").textContent="Product code entered";
+  document.getElementById("scanner-result-value").textContent=code;
+  document.getElementById("scanner-open-qr").classList.add("hidden");
+  document.getElementById("scanner-search-product").classList.remove("hidden");
+  document.getElementById("scanner-safety-note").textContent="Search results may include similar products. Verify the brand, model and code before relying on a match.";
+  document.getElementById("scanner-status").textContent="Code ready to search.";
+}
+document.getElementById("manual-code-submit").addEventListener("click",()=>searchBarcode(document.getElementById("manual-code").value));
+document.getElementById("scanner-search-product").addEventListener("click",()=>{
+  if(!scannerResultState.value)return;
+  const query=encodeURIComponent('"'+scannerResultState.value+'" barcode product');
+  window.location.href="https://www.google.com/search?q="+query;
+});
+
 </script>
 </body>
 </html>
