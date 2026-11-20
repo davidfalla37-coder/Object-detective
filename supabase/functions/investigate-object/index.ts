@@ -614,20 +614,21 @@ function reconcileVerification(
         : `Readable maker text supports ${explicitReadableBrand}; the exact model and value remain provisional.`,
     ].filter(Boolean).join(" ");
   } else if (brandConflict) {
-    result.object = "Wireless earbuds with charging case";
+    const genericObject = stripIdentityClaims(primary.object);
+    result.object = genericObject;
     result.brand = "Unknown";
     result.model = "Unknown";
     result.model_number = "Unknown";
     result.variant = "Unknown";
     result.exact_match_evidence = "The manufacturer checks conflict or cannot confirm a readable brand; the exact model is unconfirmed.";
-    result.case_file_summary = "Wireless earbuds with charging case; manufacturer and exact model are unconfirmed.";
+    result.case_file_summary = `${genericObject}; manufacturer and exact model are unconfirmed.`;
     result.identifying_clues = "Wireless earbuds and a charging case.";
     result.confidence = brandDisagreement
       ? Math.min(primary.confidence, verification.confidence, 0.50)
       : Math.min(primary.confidence, verification.confidence, 0.80);
     result.exact_match_confidence = Math.min(primary.exact_match_confidence, verification.exact_match_confidence, 0.35);
     result.exact_match_status = "not_confirmed";
-    result.next_photo = "Take a sharp close-up of the maker's logo and model text on the case, including its underside and inside the lid.";
+    result.next_photo = "Take a sharp close-up of the maker's logo, label, and model text on the item, including its underside and any identification plate.";
     result.warning = [
       result.warning,
       "The identification checks named different manufacturers. The brand, exact model, and value estimate are unconfirmed; check the case markings before relying on the estimate.",
@@ -731,6 +732,7 @@ async function researchAndVerifyIdentification(
       },
       body: JSON.stringify({
         model: "gpt-5.4",
+        reasoning: { effort: "low" },
         store: false,
         tools: [{ type: "web_search", search_context_size: "low" }],
         tool_choice: "required",
