@@ -13,7 +13,7 @@ Improve identification accuracy without replacing the existing AI analysis. The 
 - The current function does not perform online product research.
 - The Android shell loads `app/src/main/assets/index-2.html`; the existing app UI and Android camera/gallery code are outside the scope of this work.
 
-## Proposed investigation pipeline
+## Implementation status (feature branch only)\n\n- A conditional research-assisted third verification pass has been added to `supabase/functions/investigate-object/index.ts` on `detective-research-verification`.\n- It uses the Responses API `web_search` tool with `gpt-5.4` and low search context, only when the first two checks leave identity unresolved, disagree, or lack brand/model evidence.\n- It receives the original photographs plus both AI assessments; photographs remain primary evidence.\n- Search failures return `null`, preserving the existing visual-verification/conservative-fallback path.\n- A manual regression checklist is in `IDENTIFICATION_RESEARCH_QA.md`.\n- Draft review: https://github.com/davidfalla37-coder/Object-detective/pull/25\n- This is not deployed. API-account model availability, API schema compatibility, usage cost, latency and photo-based accuracy still need testing.\n\n## Proposed investigation pipeline
 
 1. **Visual AI candidate** — retain the current first-pass AI and its structured result.
 2. **Evidence extraction** — retain the current multi-photo visual review and manufacturer text/mark reading. Never treat a guessed logo or an unrelated package as proof.
