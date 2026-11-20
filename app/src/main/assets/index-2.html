@@ -107,6 +107,95 @@
     :root[data-theme="light"] .section-kicker span{background:#e1f4ff;color:#087fb6}
     @media(prefers-color-scheme:light){:root[data-theme="system"] body{background:linear-gradient(155deg,#edf6ff,#f4f7fb 60%)}:root[data-theme="system"] .brand-hero{background:linear-gradient(125deg,#164d7a,#15385f 55%,#1c3150);border-color:#36739f}:root[data-theme="system"] .capture-card{background:#fff;border-color:#cbd9e8}}
 
+  
+    /* Full-app visual finish: results, saved work, marketplace, assistant and settings. */
+    h2{font-size:21px;letter-spacing:-.025em;font-weight:850}
+    h3{font-size:16px;letter-spacing:-.01em;font-weight:800}
+    .card{border-color:#294663;background:linear-gradient(155deg,#10223a,#0b1729 78%);box-shadow:0 14px 36px #0004}
+    #history-card,.chat-card,#app-settings,#app-feedback{position:relative;overflow:hidden}
+    #history-card>h2,.history-head h2,#app-settings>h2,#app-feedback>h2,.chat-card>h2{display:flex;align-items:center;gap:9px}
+    #history-card>h2:before,.history-head h2:before,#app-settings>h2:before,#app-feedback>h2:before,.chat-card>h2:before{content:"";display:inline-block;width:5px;height:21px;border-radius:5px;background:linear-gradient(#8be8ff,#258fdf);box-shadow:0 0 12px #35baff55}
+    #result{border-color:#36729b;background:linear-gradient(150deg,#102a47,#0b1729 65%);box-shadow:0 20px 48px #0006}
+    #result>h2{font-size:25px;margin:0 0 14px}
+    #result>.row{padding:15px 0;border-bottom-color:#2b4662}
+    #result>.row:first-of-type{border-top:1px solid #2b4662}
+    #result .label{font-size:12px;text-transform:uppercase;letter-spacing:.09em;font-weight:800;color:#91b2ce}
+    #result .value{font-size:18px;font-weight:800;color:#f4f9ff}
+    #result .explain{font-size:14px;line-height:1.6;color:#c0d2e4}
+    #result .warning{border:1px solid #80652b;box-shadow:inset 3px 0 #f1c45c}
+    #result .feedback-card,#result .match-helper{background:#0b1b30;border-color:#315477}
+    #result .feedback-card h3{margin:0}
+    .condition-badge{font-weight:850;letter-spacing:.02em}
+    .history-head{padding-bottom:4px}
+    .history-item{background:linear-gradient(110deg,#11243c,#0b1729);border-color:#2b4866;min-height:84px;transition:border-color .15s,transform .15s}
+    .history-item:active{border-color:#63d3ff;transform:scale(.99)}
+    .history-image{border:1px solid #3c6285}
+    .history-name{font-size:14px}
+    .history-meta{line-height:1.4}
+    .empty-history{padding:15px;border:1px dashed #365574;border-radius:13px;text-align:center;background:#0a192c}
+    #shops h2,.vehicle-card h2,.sell-card h2{margin-bottom:9px}
+    #shops>p,.sell-card>p,.chat-card>p{font-size:14px;line-height:1.6}
+    #shops a,.vehicle-card a,.market-links a,.link-button{box-shadow:0 5px 14px #0002;transition:transform .15s,border-color .15s}
+    #shops a:active,.vehicle-card a:active,.market-links a:active,.link-button:active{transform:scale(.98)}
+    .sell-card{border-color:#315577;background:linear-gradient(155deg,#10233c,#0b1729 75%)}
+    .sell-card .draft-label{font-size:12px;font-weight:800;letter-spacing:.045em;text-transform:uppercase;color:#9bb9d3}
+    .sell-card textarea,.sell-card input,.sell-card select,.chat-input,.setting-select,.feedback-text,.match-fields input{border-color:#365573;background:#081629;border-radius:13px;box-shadow:inset 0 1px 3px #0003}
+    .sell-card textarea:focus,.sell-card input:focus,.sell-card select:focus,.chat-input:focus,.setting-select:focus,.feedback-text:focus,.match-fields input:focus{outline:2px solid #4bcaff;outline-offset:1px;border-color:#70d8ff}
+    .sell-card textarea{min-height:64px}
+    .sell-recommendation{border-color:#34749a;background:linear-gradient(110deg,#0c2b45,#10233a);line-height:1.5}
+    .market-links a.recommended{box-shadow:0 0 0 2px #58d4a044,0 7px 18px #0003}
+    .draft-caution{border:1px solid #725a2b;line-height:1.5}
+    .chat-card{border-color:#315577;background:linear-gradient(155deg,#10233c,#0b1729 75%)}
+    .chat-thread{border-color:#2d4d6c;background:#071426;min-height:96px}
+    .chat-message{font-size:14px;border:1px solid #ffffff0c}
+    .chat-message.assistant{background:#172d49;color:#e8f4ff}
+    .chat-message.user{background:#10435b;color:#e5f8ff}
+    .chat-form{align-items:stretch}
+    .chat-send{min-width:76px}
+    #app-settings .setting-row{font-size:13px;font-weight:800;color:#9bb9d3}
+    #app-settings .link-button{background:linear-gradient(110deg,#123d60,#174c70);border-color:#36769c;color:#dff6ff}
+    #app-feedback{border-color:#315577}
+    #app-feedback .feedback-text{margin-top:6px}
+    #app-feedback .feedback-status{padding-top:5px}
+    #payment-promise-title{color:#a9e8ff}
+    #app-settings .photo-guide,#app-feedback p{font-size:13px;line-height:1.55}
+    button{cursor:pointer;transition:filter .15s,transform .15s,box-shadow .15s}
+    button:not(:disabled):active{transform:scale(.985);filter:brightness(1.08)}
+    button:focus-visible,a:focus-visible{outline:3px solid #65d7ff;outline-offset:3px}
+    .modal-backdrop{backdrop-filter:blur(9px)}
+    .guide-dialog{border-color:#39749c;background:linear-gradient(155deg,#132c49,#0b1729)}
+    .guide-dialog h2{font-size:24px}
+    .guide-step-count{letter-spacing:.08em;text-transform:uppercase}
+    :root[data-theme="light"] .card{background:linear-gradient(155deg,#fff,#f3f7fc);border-color:#c7d7e7;box-shadow:0 12px 30px #17395a12}
+    :root[data-theme="light"] #result{background:linear-gradient(150deg,#fff,#eef6fd);border-color:#a8cce2}
+    :root[data-theme="light"] #result .value{color:#17243a}
+    :root[data-theme="light"] #result .label{color:#526b84}
+    :root[data-theme="light"] #result .explain{color:#40556c}
+    :root[data-theme="light"] #result .feedback-card,:root[data-theme="light"] #result .match-helper{background:#f4f8fc}
+    :root[data-theme="light"] .history-item{background:linear-gradient(110deg,#fff,#f1f6fb);border-color:#c5d6e6;color:#17243a}
+    :root[data-theme="light"] .empty-history{background:#f5f9fd;border-color:#b6cde0}
+    :root[data-theme="light"] .sell-card,:root[data-theme="light"] .chat-card{background:linear-gradient(155deg,#fff,#f2f7fc)}
+    :root[data-theme="light"] .sell-card .draft-label,:root[data-theme="light"] #app-settings .setting-row{color:#526b84}
+    :root[data-theme="light"] .sell-card textarea,:root[data-theme="light"] .sell-card input,:root[data-theme="light"] .sell-card select,:root[data-theme="light"] .chat-input,:root[data-theme="light"] .setting-select,:root[data-theme="light"] .feedback-text,:root[data-theme="light"] .match-fields input{background:#f7fafd;border-color:#c1d1e0;color:#17243a}
+    :root[data-theme="light"] .sell-recommendation{background:#eaf6fc;color:#17415b;border-color:#acd4e8}
+    :root[data-theme="light"] .chat-thread{background:#f1f6fb;border-color:#c5d6e6}
+    :root[data-theme="light"] .chat-message.assistant{background:#e2edf7;color:#17243a}
+    :root[data-theme="light"] .chat-message.user{background:#d8f0fa;color:#17394b}
+    :root[data-theme="light"] #app-settings .link-button{background:linear-gradient(110deg,#e2f4ff,#d8edfb);border-color:#9bcce5;color:#17415b}
+    :root[data-theme="light"] .guide-dialog{background:linear-gradient(155deg,#fff,#eff6fc);border-color:#b4d1e4}
+    @media(prefers-color-scheme:light){
+      :root[data-theme="system"] .card{background:linear-gradient(155deg,#fff,#f3f7fc);border-color:#c7d7e7}
+      :root[data-theme="system"] #result{background:linear-gradient(150deg,#fff,#eef6fd);border-color:#a8cce2}
+      :root[data-theme="system"] #result .value{color:#17243a}
+      :root[data-theme="system"] #result .label{color:#526b84}
+      :root[data-theme="system"] #result .explain{color:#40556c}
+      :root[data-theme="system"] .history-item{background:linear-gradient(110deg,#fff,#f1f6fb);color:#17243a}
+      :root[data-theme="system"] .sell-card,:root[data-theme="system"] .chat-card{background:linear-gradient(155deg,#fff,#f2f7fc)}
+      :root[data-theme="system"] .chat-thread{background:#f1f6fb}
+      :root[data-theme="system"] .chat-message.assistant{background:#e2edf7;color:#17243a}
+      :root[data-theme="system"] .chat-message.user{background:#d8f0fa;color:#17394b}
+    }
+
   </style>
 </head>
 <body>
