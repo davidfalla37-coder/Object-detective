@@ -19,6 +19,13 @@ android {
         versionName "1.19"
     }
 
+    buildTypes {
+        debug {
+            applicationIdSuffix ".preview"
+            versionNameSuffix "-preview"
+        }
+    }
+
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_17
         targetCompatibility JavaVersion.VERSION_17
