@@ -81,7 +81,7 @@ Deno.serve(async (req: Request) => {
         type: type || "",
         quantity: quantity || "",
       },
-      source: new URL(response.url).hostname.replace(/^world\\./, "").replace(/\\.org$/, "").replace(/-/g, " ").replace(/\\b\\w/g, (letter) => letter.toUpperCase()),
+      source: new URL(response.url).hostname.replace(/^world\./, "").replace(/\.org$/, "").replace(/-/g, " ").replace(/\b\w/g, (letter) => letter.toUpperCase()),
       sourceUrl: new URL(response.url).origin,
       disclaimer: "Catalogue information may be incomplete or user-contributed. Verify the packaging and model.",
     });
