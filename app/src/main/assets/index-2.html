@@ -1129,6 +1129,23 @@ document.getElementById("scanner-search-product").addEventListener("click",async
       const note=document.createElement("p");
       note.textContent="Check the product name and packaging against the item in front of you. A barcode match is not proof of authenticity or exact variant.";
       details.appendChild(note);
+      if(data.sourceUrl){
+        const attribution=document.createElement("p");
+        const sourceLink=document.createElement("a");
+        sourceLink.href=data.sourceUrl;
+        sourceLink.target="_blank";
+        sourceLink.rel="noopener noreferrer";
+        sourceLink.textContent="Catalogue source: "+(data.source||"Open Facts database");
+        attribution.appendChild(sourceLink);
+        attribution.appendChild(document.createTextNode(" · "));
+        const licenceLink=document.createElement("a");
+        licenceLink.href="https://opendatacommons.org/licenses/odbl/1-0/";
+        licenceLink.target="_blank";
+        licenceLink.rel="noopener noreferrer";
+        licenceLink.textContent="ODbL licence";
+        attribution.appendChild(licenceLink);
+        details.appendChild(attribution);
+      }
       status.textContent="Product details retrieved.";
     }else{
       details.textContent=data.message||"No matching product was found in the connected product catalogue. The barcode was read, but the item is not identified yet.";
