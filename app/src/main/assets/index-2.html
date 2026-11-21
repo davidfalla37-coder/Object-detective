@@ -1139,7 +1139,7 @@ document.getElementById("scanner-search-product").addEventListener("click",()=>{
   const capture=pick('.capture-card'),scanner=pick('#scanner-card'),history=pick('#history-card');
   const result=pick('#result'),settings=pick('#app-settings'),feedback=pick('#app-feedback');
   const payment=pick('#payment-promise-title')?.closest('section');
-  const guide=pick('.guide-dialog');
+  const guide=pick('#welcome-guide');
   const screens={};
   function makeScreen(name){const node=document.createElement('div');node.className='od-screen';node.id='od-screen-'+name;main.appendChild(node);screens[name]=node;return node;}
   const home=makeScreen('home'),investigate=makeScreen('investigate'),investigations=makeScreen('investigations'),saved=makeScreen('saved'),resultScreen=makeScreen('result'),settingsScreen=makeScreen('settings');
