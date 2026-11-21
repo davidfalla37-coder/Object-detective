@@ -646,6 +646,8 @@ function reconcileVerification(
       "The identification checks named different manufacturers. The broad object type is retained, but the brand, exact model and value estimate are unconfirmed. Check the maker's markings before relying on the result.",
     ].filter(Boolean).join(" ");
   } else if (verification.verdict === "agree") {
+    if (knownText(verification.category)) result.category = verification.category;
+    if (knownText(verification.purpose)) result.purpose = verification.purpose;
     result.exact_match_confidence = Math.min(primary.exact_match_confidence, verification.exact_match_confidence);
     result.exact_match_status = verification.exact_match_status === "exact" && strongIdentifier
       ? "exact"
