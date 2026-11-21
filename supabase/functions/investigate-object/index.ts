@@ -256,6 +256,8 @@ if (!OPENAI_API_KEY) {
 interface VerificationResult {
   verdict: "agree" | "partial" | "disagree" | "insufficient";
   object: string;
+  category: string;
+  purpose: string;
   brand: string;
   model: string;
   model_number: string;
@@ -310,6 +312,8 @@ function normalizeVerification(value: unknown): VerificationResult {
   return {
     verdict,
     object: textValue("object"),
+    category: textValue("category"),
+    purpose: textValue("purpose"),
     brand: textValue("brand"),
     model: textValue("model"),
     model_number: textValue("model_number"),
@@ -459,8 +463,8 @@ function deriveVerificationVerdict(primary: InvestigationResult, verification: V
       .map((word) => word.length > 3 && word.endsWith("s") ? word.slice(0, -1) : word)
       .filter((word) => word.length > 2 && !ignored.has(word)),
   );
-  const primaryTerms = terms(primary.object + " " + primary.category);
-  const verificationTerms = terms(verification.object);
+  const primaryTerms = terms(primary.object + " " + primary.category + " " + primary.purpose);
+  const verificationTerms = terms(verification.object + " " + verification.category + " " + verification.purpose);
   const shared = [...primaryTerms].filter((word) => verificationTerms.has(word)).length;
   if (shared > 0) return primaryBrand && verificationBrand === primaryBrand ? "agree" : "partial";
   if (primaryBrand && verificationBrand === primaryBrand) return "partial";
@@ -770,7 +774,7 @@ async function researchAndVerifyIdentification(
                 "If web results are weak, ambiguous, unavailable or conflict with the images, keep the broadest reliable object identification, lower confidence, set exact_match_status to not_confirmed, and ask for the single most useful close-up.",
                 "Do not use asking prices as completed-sale evidence and do not change the resale estimate based on web search. Keep value_estimate as Unknown (GBP) unless the visual checks already support a reliable identity and valuation.",
                 "In evidence, briefly state what the photos show, what the research corroborates or contradicts, and cite up to three source titles with their full URLs. Never claim a source says something unless it was actually found.",
-                "Return one final independent verification result using the required JSON schema. General confidence measures the broad object and brand; exact_match_confidence measures the exact model only.",
+                "Return one final independent verification result using the required JSON schema. General confidence measures the broad object and brand; exact_match_confidence measures the exact model only. Ensure object, category and purpose are mutually consistent and describe the same photographed item."
                 "Do not let the initial AI candidate anchor you: if the images and reliable research disprove it, reject it.",
               ].join("\n\n"),
             },
@@ -792,6 +796,8 @@ async function researchAndVerifyIdentification(
               properties: {
                 verdict: { type: "string", enum: ["agree", "partial", "disagree", "insufficient"] },
                 object: { type: "string" },
+                category: { type: "string" },
+                purpose: { type: "string" },
                 brand: { type: "string" },
                 model: { type: "string" },
                 model_number: { type: "string" },
@@ -807,7 +813,7 @@ async function researchAndVerifyIdentification(
                 next_photo: { type: "string" },
               },
               required: [
-                "verdict", "object", "brand", "model", "model_number", "variant",
+                "verdict", "object", "category", "purpose", "brand", "model", "model_number", "variant",
                 "value_estimate", "confidence", "exact_match_status",
                 "exact_match_confidence", "condition", "condition_grade",
                 "condition_evidence", "evidence", "next_photo",
@@ -885,7 +891,9 @@ async function verifyIdentification(
               type: "input_text",
               text: [
                 "Act as an independent forensic product-identification verifier.",
-                "Independently inspect the supplied photograph(s) from scratch. There is no candidate answer; identify only the object and manufacturer supported by visible evidence.",
+                "Independently inspect the supplied photograph(s) from scratch. There is no candidate answer; identify only the complete object, category, purpose and manufacturer supported by visible evidence.",
+                "Return category and purpose as independent cross-checks of the whole photographed object. The object name, category and purpose MUST describe the same item. If the image shows a complete vaping device with tank, do not call it wireless earbuds or a charging case; use a vaping-device category and a purpose involving e-liquid vaporisation. If uncertain, use a broad object name and lower confidence rather than copying an incompatible candidate.",
+                "Do not confuse visually unrelated product classes. Check the whole silhouette and attached components before deciding: tank/reservoir plus mouthpiece plus powered mod is a vaping device; two small in-ear pieces plus a charging case is wireless earbuds. These examples are category checks, not assumptions: only apply them when those visible features are actually present."
                 "Assess condition independently using the photographs. Cross-check condition and condition_evidence against the object and each other. Never describe the same component with conflicting materials, such as calling a watch strap silicone in object but leather in condition. If its material is uncertain, use neutral wording such as 'strap' and describe only visible wear; do not guess leather, silicone, rubber or another material.",
                 "Use visible evidence only. Never invent text, logos, model numbers, serial numbers, variants, dimensions or provenance.",
                 "Read visible logos and embossed words in every orientation, including upside down or rotated; do not replace an uncertain wordmark with a visually similar brand. Never identify a manufacturer from a faint/ambiguous logo or from design resemblance alone. Clearly readable manufacturer text on retail packaging that visibly belongs to the photographed item supports the brand even if the device logo is faint. If neither the item nor its matching packaging provides readable manufacturer evidence, set brand to Unknown and describe only the broad object type.",
@@ -1140,6 +1148,7 @@ Deno.serve(async (request: Request): Promise<Response> => {
               type: "input_text",
               text: [
                 "Identify the whole item shown in the photograph as accurately as possible, including how its visible major components fit together.",
+                "CONSISTENCY GATE: object, category and purpose must all describe the same complete photographed item. Before returning, compare them explicitly. If the object says one product class (for example wireless earbuds) while category or purpose indicates a different class (for example a personal vapourizer used to vaporise e-liquid), do not return that contradiction: re-inspect the image, choose the best-supported whole-object identity, and align all three fields. When the exact product class is uncertain, use a broader neutral object description and lower confidence instead of mixing incompatible guesses."
                 "Do not name a replaceable part as if it were the complete photographed item. If a larger host device or assembly is visible, describe the whole item in object and identify a component model separately in model or variant.",
                 "For example, if a vape tank is attached to a mod, describe the photographed object as the complete vape device with the identified tank; do not infer the mod's model from the tank's label.",
                 "General confidence is for identifying the complete photographed item. If only a component is identified or the host device remains unknown, lower confidence and explain the uncertainty. Confidence does not validate the value estimate, condition, completeness, or marketplace results.",
