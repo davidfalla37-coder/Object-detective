@@ -1056,7 +1056,7 @@ function onNativeBarcodeScanned(value,format){
   scannerResultState.value=String(value||"");
   scannerResultState.format=String(format||"Code");
   scannerResultState.isQr=scannerResultState.format==="QR_CODE";
-  scannerResultState.isUrl=scannerResultState.isQr&&/^https?:\\/\\//i.test(scannerResultState.value);
+  scannerResultState.isUrl=scannerResultState.isQr&&/^https?:\/\//i.test(scannerResultState.value);
   document.getElementById("scanner-result").classList.remove("hidden");
   document.getElementById("scanner-result-type").textContent=scannerResultState.isQr?"QR code detected":"Barcode detected ("+scannerResultState.format+")";
   document.getElementById("scanner-result-value").textContent=scannerResultState.value;
