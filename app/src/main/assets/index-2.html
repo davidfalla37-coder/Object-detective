@@ -1095,5 +1095,114 @@ document.getElementById("scanner-search-product").addEventListener("click",()=>{
 });
 
 </script>
+
+<style id="od-app-navigation">
+  body{background:radial-gradient(ellipse at 80% 0%,#164c76 0%,transparent 36%),linear-gradient(155deg,#0b1b32 0%,#06101f 62%,#08172a 100%);font-size:15px}
+  main{max-width:560px;padding:18px 16px calc(104px + env(safe-area-inset-bottom));}
+  .od-screen{display:none;min-height:60vh}.od-screen.od-active{display:block}
+  .brandbar{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:4px 2px 18px}
+  .brand-lockup{gap:11px}.brand-mark{width:54px;height:54px;border-radius:17px;background:linear-gradient(145deg,#91e8ff,#1598ec);color:#08213a;box-shadow:0 8px 24px #008de755}
+  .brand-name{font-size:17px;line-height:1.05;letter-spacing:1.8px}.brand-name strong{color:#66d8ff}.brand-name span{font-size:9px;letter-spacing:2px;margin-top:6px}
+  .brand-status{font-size:10px;padding:8px 10px;white-space:nowrap}
+  .brand-hero{position:relative;overflow:hidden;padding:22px 20px 20px;margin:0 0 16px;border-radius:26px;background:linear-gradient(145deg,#17395d 0%,#102947 58%,#164e70 100%);border:1px solid #39729a;box-shadow:0 14px 34px #0005}
+  .hero-kicker{font-size:11px;letter-spacing:2px;margin-bottom:14px}.brand-hero h1{font-size:clamp(29px,8vw,38px);line-height:1.05;margin:10px 0 12px;letter-spacing:-1px}.brand-hero p{font-size:15px;line-height:1.5;margin:0 0 16px;max-width:34ch}
+  .hero-points{gap:8px}.hero-points span{font-size:12px;padding:8px 11px}
+  .od-home-actions{background:linear-gradient(145deg,#102a48,#0c1c32);border:1px solid #315779;border-radius:24px;padding:17px;margin:0 0 16px;box-shadow:0 14px 32px #0004}
+  .od-home-actions h2{font-size:17px;margin:0 0 12px}.od-start{width:100%;min-height:56px;font-size:17px!important;font-weight:800}
+  .od-quick-actions{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:10px}.od-quick-actions button{min-height:48px;font-size:14px!important}
+  .card{border-radius:22px;padding:17px;margin-top:14px;background:linear-gradient(155deg,rgba(18,39,64,.98),rgba(10,25,44,.98));border:1px solid #294968;box-shadow:0 12px 30px #0004}
+  .section-kicker{font-size:11px;letter-spacing:1.5px;margin-bottom:14px}.section-kicker span{padding:7px 9px}
+  h2{font-size:20px;line-height:1.2}p{font-size:14px;line-height:1.5}
+  .photo{aspect-ratio:16/10;max-height:270px;border-radius:18px}
+  .photo .emoji{font-size:42px}.photo-guide{font-size:13px}
+  .tip{font-size:13px;line-height:1.45;padding:13px}
+  button.primary,button.secondary{min-height:48px;border-radius:15px;font-size:14px;padding:12px 14px}
+  .buttons.photo-actions{display:grid;grid-template-columns:1fr 1fr;gap:9px}.buttons.photo-actions button{margin:0}
+  #identify{font-size:16px!important;min-height:54px}
+  #scanner-card h2{margin-top:0}
+  #history-card .history-item{padding:10px}
+  #result h2{font-size:22px}
+  .od-bottom-nav{position:fixed;z-index:9999;left:0;right:0;bottom:0;display:grid;grid-template-columns:repeat(4,1fr);gap:3px;padding:8px 8px calc(8px + env(safe-area-inset-bottom));background:rgba(5,15,29,.94);border-top:1px solid #31506e;backdrop-filter:blur(16px);box-shadow:0 -10px 28px #0005}
+  .od-nav-button{border:0;background:transparent;color:#9db2c9;min-height:54px;border-radius:13px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;font-size:10px;font-weight:650;padding:4px 2px}
+  .od-nav-button .od-nav-icon{font-size:19px;line-height:1.1}.od-nav-button.od-selected{color:#70dcff;background:linear-gradient(180deg,#123b5c,#102a43);box-shadow:inset 0 0 0 1px #27638a}
+  .od-empty-saved{border:1px dashed #3b5d7c;border-radius:18px;padding:24px 16px;text-align:center;color:#b7c9dc}
+  .od-saved-item{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:13px;border:1px solid #2d4b69;border-radius:15px;margin-top:10px}
+  .od-saved-item strong{display:block;font-size:14px}.od-saved-item small{display:block;color:#9db2c9;margin-top:4px}
+  @media(max-width:380px){main{padding-left:12px;padding-right:12px}.brand-status{font-size:9px}.brand-name{font-size:15px}.brand-mark{width:48px;height:48px}}
+</style>
+<script id="od-app-navigation-script">
+(function(){
+  const main=document.querySelector('main');
+  if(!main)return;
+  const pick=(selector)=>document.querySelector(selector);
+  const header=pick('.brandbar'),hero=pick('.brand-hero');
+  const capture=pick('.capture-card'),scanner=pick('#scanner-card'),history=pick('#history-card');
+  const result=pick('#result'),settings=pick('#app-settings'),feedback=pick('#app-feedback');
+  const payment=pick('#payment-promise-title')?.closest('section');
+  const guide=pick('.guide-dialog');
+  const screens={};
+  function makeScreen(name){const node=document.createElement('div');node.className='od-screen';node.id='od-screen-'+name;main.appendChild(node);screens[name]=node;return node;}
+  const home=makeScreen('home'),investigate=makeScreen('investigate'),investigations=makeScreen('investigations'),saved=makeScreen('saved'),resultScreen=makeScreen('result'),settingsScreen=makeScreen('settings');
+  if(header)home.appendChild(header);
+  if(hero)home.appendChild(hero);
+  const homeActions=document.createElement('section');
+  homeActions.className='od-home-actions';
+  homeActions.innerHTML='<h2>Ready to investigate?</h2><button class="primary od-start" id="od-start-investigation" type="button">⌕ &nbsp; Start an investigation</button><div class="od-quick-actions"><button class="secondary" id="od-home-camera" type="button">▣ &nbsp; Camera</button><button class="secondary" id="od-home-gallery" type="button">▧ &nbsp; Gallery</button><button class="secondary" id="od-home-scan" type="button" style="grid-column:1/-1">▦ &nbsp; Scan QR code / barcode</button></div>';
+  home.appendChild(homeActions);
+  if(capture)investigate.appendChild(capture);
+  if(scanner)investigate.appendChild(scanner);
+  if(history)investigations.appendChild(history);
+  const savedHeading=document.createElement('section');savedHeading.className='card';savedHeading.innerHTML='<h2>Saved items</h2><p>Keep useful identifications here so you can find them again.</p><div id="od-saved-list"><div class="od-empty-saved">No saved items yet. Save an investigation result to see it here.</div></div>';
+  saved.appendChild(savedHeading);
+  if(result)resultScreen.appendChild(result);
+  if(settings)settingsScreen.appendChild(settings);
+  if(feedback)settingsScreen.appendChild(feedback);
+  if(payment)settingsScreen.appendChild(payment);
+  if(guide)main.appendChild(guide);
+  const nav=document.createElement('nav');nav.className='od-bottom-nav';nav.setAttribute('aria-label','Main navigation');
+  const navItems=[['home','⌂','Home'],['investigations','◷','My Investigations'],['saved','☆','Saved'],['settings','⚙','Settings']];
+  navItems.forEach(([key,icon,label])=>{const b=document.createElement('button');b.type='button';b.className='od-nav-button';b.dataset.screen=key;b.innerHTML='<span class="od-nav-icon">'+icon+'</span><span>'+label+'</span>';b.addEventListener('click',()=>showScreen(key));nav.appendChild(b);});
+  document.body.appendChild(nav);
+  function showScreen(name){
+    Object.keys(screens).forEach(key=>screens[key].classList.toggle('od-active',key===name));
+    nav.querySelectorAll('button').forEach(b=>b.classList.toggle('od-selected',b.dataset.screen===name));
+    window.scrollTo(0,0);
+  }
+  document.getElementById('od-start-investigation').addEventListener('click',()=>showScreen('investigate'));
+  document.getElementById('od-home-camera').addEventListener('click',()=>{showScreen('investigate');pick('#take-photo')?.click();});
+  document.getElementById('od-home-gallery').addEventListener('click',()=>{showScreen('investigate');pick('#choose-gallery')?.click();});
+  document.getElementById('od-home-scan').addEventListener('click',()=>{showScreen('investigate');pick('#open-scanner')?.click();});
+  const savedKey='object-detective-saved-items-v1';
+  function readSaved(){try{const v=JSON.parse(localStorage.getItem(savedKey)||'[]');return Array.isArray(v)?v:[]}catch(_){return[]}}
+  function writeSaved(items){try{localStorage.setItem(savedKey,JSON.stringify(items));return true}catch(_){return false}}
+  function renderSaved(){
+    const list=pick('#od-saved-list');if(!list)return;
+    const items=readSaved();list.innerHTML='';
+    if(!items.length){list.innerHTML='<div class="od-empty-saved">No saved items yet. Open an investigation result and tap “Save result”.</div>';return;}
+    items.forEach(item=>{
+      const row=document.createElement('div');row.className='od-saved-item';
+      const info=document.createElement('div');const title=document.createElement('strong');title.textContent=item.data?.object||'Saved investigation';
+      const meta=document.createElement('small');meta.textContent=(item.data?.value_estimate||'Value not estimated')+' · '+new Date(item.date).toLocaleDateString();
+      info.append(title,meta);const open=document.createElement('button');open.className='secondary';open.type='button';open.textContent='Open';
+      open.addEventListener('click',()=>{if(typeof window.render==='function')window.render(item.data,false);});
+      const remove=document.createElement('button');remove.className='secondary';remove.type='button';remove.textContent='Remove';remove.addEventListener('click',()=>{writeSaved(readSaved().filter(x=>x.id!==item.id));renderSaved();});
+      const actions=document.createElement('div');actions.style.display='flex';actions.style.gap='6px';actions.append(open,remove);row.append(info,actions);list.appendChild(row);
+    });
+  }
+  if(result){
+    const title=result.querySelector('h2');
+    if(title){const save=document.createElement('button');save.type='button';save.className='secondary';save.id='od-save-result';save.textContent='☆ Save result';save.style.width='100%';save.style.margin='8px 0 14px';title.insertAdjacentElement('afterend',save);
+      save.addEventListener('click',()=>{const data=window.currentFeedbackData;if(!data){save.textContent='No result to save';return;}const items=readSaved();const signature=String(data.object||'')+'|'+String(data.value_estimate||'');if(items.some(x=>x.signature===signature)){save.textContent='Already saved';return;}items.unshift({id:Date.now(),date:new Date().toISOString(),signature,data});if(writeSaved(items.slice(0,30))){save.textContent='✓ Saved';renderSaved();}else save.textContent='Could not save';});
+    }
+  }
+  const originalRender=window.render;
+  if(typeof originalRender==='function'){
+    window.render=function(){const output=originalRender.apply(this,arguments);showScreen('result');return output;};
+  }
+  renderSaved();
+  showScreen('home');
+})();
+</script>
+
 </body>
 </html>
