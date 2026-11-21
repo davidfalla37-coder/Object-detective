@@ -38,13 +38,20 @@ Deno.serve(async (req: Request) => {
       redirect: "follow",
       signal: AbortSignal.timeout(9000),
     });
+    if (response.status === 404) {
+      return json({
+        found: false,
+        message: "No matching product was found in the connected open product catalogue. The barcode was read, but this item has not been identified.",
+      });
+    }
     if (!response.ok) {
       console.error("Barcode catalogue response:", response.status);
       return json({ found: false, message: "The product catalogue is temporarily unavailable. Please try again shortly." }, 502);
     }
 
     const payload = await response.json() as {
-      status?: number;
+      status?: number | string;
+      result?: { id?: string };
       product?: {
         product_name?: string;
         product_name_en?: string;
@@ -54,7 +61,11 @@ Deno.serve(async (req: Request) => {
         categories?: string;
       };
     };
-    if (payload.status !== 1 || !payload.product) {
+    const productFound = payload.status === 1 ||
+      payload.status === "success" ||
+      payload.status === "success_with_errors" ||
+      payload.result?.id === "product_found";
+    if (!productFound || !payload.product) {
       return json({
         found: false,
         message: "No matching product was found in the connected open product catalogue. The barcode was read, but this item has not been identified.",
