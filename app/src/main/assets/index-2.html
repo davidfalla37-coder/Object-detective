@@ -261,8 +261,9 @@
       <strong id="scanner-result-type"></strong>
       <p id="scanner-result-value" style="overflow-wrap:anywhere"></p>
       <button class="secondary hidden" id="scanner-open-qr" type="button">Open this QR link</button>
-      <button class="secondary hidden" id="scanner-search-product" type="button">Search for this product</button>
+      <button class="secondary hidden" id="scanner-search-product" type="button">Identify product from barcode</button>
       <p id="scanner-safety-note" class="match-note"></p>
+      <div id="scanner-product-details" class="match-note hidden" aria-live="polite"></div>
     </div>
     <p id="scanner-status" class="match-note" aria-live="polite"></p>
   </section>
@@ -449,7 +450,8 @@
   </section>
 </div>
 <script>
-const FUNCTION_URL='https://gboyflbwcobhzbvpdtat.supabase.co/functions/v1/investigate-object';
+const FUNCTION_URL='https://kscnivjkldtssskwhsfk.supabase.co/functions/v1/investigate-object';
+const BARCODE_LOOKUP_URL='https://kscnivjkldtssskwhsfk.supabase.co/functions/v1/lookup-barcode';
 const AMAZON_ASSOCIATE_TAG='';
 const AMAZON_APP_LINKS_APPROVED=false;
 const cameraFile=document.getElementById('camera-file');
@@ -1088,10 +1090,57 @@ function searchBarcode(value){
   document.getElementById("scanner-status").textContent="Code ready to search.";
 }
 document.getElementById("manual-code-submit").addEventListener("click",()=>searchBarcode(document.getElementById("manual-code").value));
-document.getElementById("scanner-search-product").addEventListener("click",()=>{
-  if(!scannerResultState.value)return;
-  const query=encodeURIComponent('"'+scannerResultState.value+'" barcode product');
-  window.location.href="https://www.google.com/search?q="+query;
+document.getElementById("scanner-search-product").addEventListener("click",async()=>{
+  const code=String(scannerResultState.value||"").trim();
+  if(!code)return;
+  const status=document.getElementById("scanner-status");
+  const details=document.getElementById("scanner-product-details");
+  const button=document.getElementById("scanner-search-product");
+  details.classList.add("hidden");
+  details.textContent="";
+  button.disabled=true;
+  status.textContent="Checking product catalogues…";
+  try{
+    const response=await fetch(BARCODE_LOOKUP_URL,{
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({code})
+    });
+    const data=await response.json().catch(()=>({}));
+    if(!response.ok)throw new Error(data?.error||"The product lookup service is unavailable. Please try again.");
+    details.classList.remove("hidden");
+    if(data.found&&data.product){
+      const p=data.product;
+      const rows=[
+        ["Product",p.name],
+        ["Brand",p.brand],
+        ["Type",p.type],
+        ["Quantity",p.quantity]
+      ].filter(([,value])=>value);
+      details.replaceChildren();
+      const heading=document.createElement("strong");
+      heading.textContent="Catalogue match found";
+      details.appendChild(heading);
+      rows.forEach(([label,value])=>{
+        const line=document.createElement("p");
+        line.textContent=label+": "+value;
+        details.appendChild(line);
+      });
+      const note=document.createElement("p");
+      note.textContent="Check the product name and packaging against the item in front of you. A barcode match is not proof of authenticity or exact variant.";
+      details.appendChild(note);
+      status.textContent="Product details retrieved.";
+    }else{
+      details.textContent=data.message||"No matching product was found in the connected product catalogue. The barcode was read, but the item is not identified yet.";
+      status.textContent="No catalogue match.";
+    }
+  }catch(error){
+    details.classList.remove("hidden");
+    details.textContent=error.message||"Product lookup failed. Please try again.";
+    status.textContent="Lookup could not be completed.";
+  }finally{
+    button.disabled=false;
+  }
 });
 
 </script>
