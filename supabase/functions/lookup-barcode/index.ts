@@ -92,7 +92,12 @@ Deno.serve(async (req: Request) => {
         type: type || "",
         quantity: quantity || "",
       },
-      source: new URL(response.url).hostname.replace(/^world\./, "").replace(/\.org$/, "").replace(/-/g, " ").replace(/\b\w/g, (letter) => letter.toUpperCase()),
+      source: ({
+        "world.openfoodfacts.org": "Open Food Facts",
+        "world.openproductsfacts.org": "Open Products Facts",
+        "world.openbeautyfacts.org": "Open Beauty Facts",
+        "world.openpetfoodfacts.org": "Open Pet Food Facts",
+      } as Record<string, string>)[new URL(response.url).hostname] || "Open Facts database",
       sourceUrl: new URL(response.url).origin,
       disclaimer: "Catalogue information may be incomplete or user-contributed. Verify the packaging and model.",
     });
