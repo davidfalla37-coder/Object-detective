@@ -1098,7 +1098,7 @@ document.getElementById("scanner-search-product").addEventListener("click",()=>{
 
 <style id="od-app-navigation">
   body{background:radial-gradient(ellipse at 80% 0%,#164c76 0%,transparent 36%),linear-gradient(155deg,#0b1b32 0%,#06101f 62%,#08172a 100%);font-size:15px}
-  main{max-width:560px;padding:18px 16px calc(104px + env(safe-area-inset-bottom));}
+  main{max-width:560px;padding:18px 16px calc(160px + env(safe-area-inset-bottom));}
   .od-screen{display:none;min-height:60vh}.od-screen.od-active{display:block}
   .brandbar{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:4px 2px 18px}
   .brand-lockup{gap:11px}.brand-mark{width:54px;height:54px;border-radius:17px;background:linear-gradient(145deg,#91e8ff,#1598ec);color:#08213a;box-shadow:0 8px 24px #008de755}
@@ -1122,7 +1122,7 @@ document.getElementById("scanner-search-product").addEventListener("click",()=>{
   #scanner-card h2{margin-top:0}
   #history-card .history-item{padding:10px}
   #result h2{font-size:22px}
-  .od-bottom-nav{position:fixed;z-index:9999;left:0;right:0;bottom:0;display:grid;grid-template-columns:repeat(4,1fr);gap:3px;padding:8px 8px calc(8px + env(safe-area-inset-bottom));background:rgba(5,15,29,.94);border-top:1px solid #31506e;backdrop-filter:blur(16px);box-shadow:0 -10px 28px #0005}
+  .od-bottom-nav{position:fixed;z-index:9999;left:0;right:0;bottom:calc(56px + env(safe-area-inset-bottom));display:grid;grid-template-columns:repeat(4,1fr);gap:3px;padding:8px 8px calc(8px + env(safe-area-inset-bottom));background:rgba(5,15,29,.94);border-top:1px solid #31506e;backdrop-filter:blur(16px);box-shadow:0 -10px 28px #0005}
   .od-nav-button{border:0;background:transparent;color:#9db2c9;min-height:54px;border-radius:13px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;font-size:10px;font-weight:650;padding:4px 2px}
   .od-nav-button .od-nav-icon{font-size:19px;line-height:1.1}.od-nav-button.od-selected{color:#70dcff;background:linear-gradient(180deg,#123b5c,#102a43);box-shadow:inset 0 0 0 1px #27638a}
   .od-empty-saved{border:1px dashed #3b5d7c;border-radius:18px;padding:24px 16px;text-align:center;color:#b7c9dc}
