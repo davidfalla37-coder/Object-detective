@@ -776,7 +776,7 @@ async function researchAndVerifyIdentification(
                 "If web results are weak, ambiguous, unavailable or conflict with the images, keep the broadest reliable object identification, lower confidence, set exact_match_status to not_confirmed, and ask for the single most useful close-up.",
                 "Do not use asking prices as completed-sale evidence and do not change the resale estimate based on web search. Keep value_estimate as Unknown (GBP) unless the visual checks already support a reliable identity and valuation.",
                 "In evidence, briefly state what the photos show, what the research corroborates or contradicts, and cite up to three source titles with their full URLs. Never claim a source says something unless it was actually found.",
-                "Return one final independent verification result using the required JSON schema. General confidence measures the broad object and brand; exact_match_confidence measures the exact model only. Ensure object, category and purpose are mutually consistent and describe the same photographed item."
+                "Return one final independent verification result using the required JSON schema. General confidence measures the broad object and brand; exact_match_confidence measures the exact model only. Ensure object, category and purpose are mutually consistent and describe the same photographed item.",
                 "Do not let the initial AI candidate anchor you: if the images and reliable research disprove it, reject it.",
               ].join("\n\n"),
             },
