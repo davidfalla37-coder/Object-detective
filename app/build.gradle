@@ -5,6 +5,7 @@ plugins {
 
 dependencies {
     implementation 'com.google.android.play:app-update:2.1.0'
+    implementation 'com.google.android.gms:play-services-code-scanner:16.1.0'
 }
 
 android {
@@ -13,10 +14,12 @@ android {
 
     defaultConfig {
         applicationId "com.objectdetective.app"
+        applicationIdSuffix ".preview"
+        versionNameSuffix "-preview"
         minSdk 26
         targetSdk 36
-        versionCode 20
-        versionName "1.19"
+        versionCode 21
+        versionName "1.20"
     }
 
     compileOptions {
