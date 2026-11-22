@@ -98,6 +98,64 @@ async function lookupBook(isbn: string) {
   return null;
 }
 
+
+async function lookupProductGuru(gtin: string) {
+  const url = "https://myproduct.guru/lookup/" + encodeURIComponent(gtin) + ".json";
+  const { response, data } = await fetchJson(url, "ObjectDetective/1.21 (barcode product lookup; source attribution enabled)");
+  if (!response.ok || !data || typeof data !== "object") return null;
+
+  // Provider response fields may be nested; inspect only likely product containers.
+  const roots = [data.product, data.item, data.result, data.data, data];
+  const records: Record<string, unknown>[] = [];
+  const seen = new Set<unknown>();
+  const visit = (value: unknown, depth: number) => {
+    if (!value || typeof value !== "object" || depth > 3 || seen.has(value)) return;
+    seen.add(value);
+    if (Array.isArray(value)) {
+      for (const item of value.slice(0, 5)) visit(item, depth + 1);
+      return;
+    }
+    const record = value as Record<string, unknown>;
+    records.push(record);
+    for (const key of ["product", "item", "result", "data", "attributes"]) visit(record[key], depth + 1);
+  };
+  for (const root of roots) visit(root, 0);
+
+  const pick = (...keys: string[]) => {
+    for (const record of records) {
+      for (const key of keys) {
+        const value = record[key];
+        if (typeof value === "string" && value.trim()) return value.trim();
+        if (typeof value === "number" && Number.isFinite(value)) return String(value);
+      }
+    }
+    return "";
+  };
+  const name = pick("name", "title", "product_name", "productName", "display_name", "label");
+  const brand = pick("brand", "brands", "manufacturer", "maker", "brand_name");
+  const category = pick("category", "categories", "product_type", "type", "family");
+  const model = pick("model", "model_number", "mpn", "manufacturer_part_number");
+  const score = pick("certaScore", "certa_score", "confidence", "confidence_score");
+  const notFound = data.found === false || data.status === "not_found" ||
+    data.status === "not found" || data.error === "not_found";
+  if (notFound || !name) return null;
+
+  const numericScore = score && Number.isFinite(Number(score)) ? Number(score) : null;
+  return {
+    found: true,
+    product: {
+      name,
+      brand,
+      type: [category, model && model !== name ? "Model " + model : ""].filter(Boolean).join(" · "),
+      quantity: "",
+    },
+    source: "ProductGuru",
+    sourceUrl: "https://myproduct.guru/p/" + encodeURIComponent(gtin),
+    ...(numericScore !== null ? { sourceConfidence: numericScore } : {}),
+    disclaimer: "Barcode catalogue match from ProductGuru. Compare the brand, model and physical item before relying on it; a barcode match does not prove authenticity.",
+  };
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   if (req.method !== "POST") return json({ error: "Use POST for barcode lookup." }, 405);
@@ -167,6 +225,15 @@ Deno.serve(async (req: Request) => {
           disclaimer: "Catalogue information may be incomplete or user-contributed. Compare the brand, model and packaging before relying on the match.",
         });
       }
+    }
+
+    // Wider multi-category catalogue fallback: electronics, auto/moto, tools, home,
+    // industrial and other families. Free public API; no key. Attribute the source.
+    try {
+      const widerMatch = await lookupProductGuru(gtin);
+      if (widerMatch) return json(widerMatch);
+    } catch (error) {
+      console.error("ProductGuru lookup unavailable:", error instanceof Error ? error.message : error);
     }
 
     // Optional commercial catalogue adapter. It stays dormant unless an API key
