@@ -320,7 +320,7 @@ window.onBarcodeScanned=async(value,formatName)=>{
   barcodeResult.classList.remove('hidden');
   barcodeStatus.textContent='Barcode read. Checking for a verified catalogue record…';
   try{
-    const response=await fetch(BARCODE_LOOKUP_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code})});
+    const response=await fetch(BARCODE_LOOKUP_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code,format:formatName||''})});
     const payload=await response.json();
     if(!response.ok) throw new Error(payload.message||payload.error||'Product catalogue request failed.');
     if(payload.found&&payload.product){
