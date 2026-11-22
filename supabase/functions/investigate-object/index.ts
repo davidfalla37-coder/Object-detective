@@ -508,8 +508,8 @@ function reconcileVerification(
   const explicitReadableBrand = manufacturerEvidence?.brand ?? "";
   const explicitBrand = normalizeBrand(explicitReadableBrand);
   const labelTextClaims = [
-    ...evidenceText.matchAll(/\\btext\\s+["'“‘]?([A-Z][A-Za-z0-9&.-]{1,30})["'”’]?\\s+(?:printed|shown|visible|on it)\\b/g),
-    ...evidenceText.matchAll(/\\b([A-Z][A-Za-z0-9&.-]{1,30})\\s+text\\s+(?:is\\s+)?(?:partially\\s+|faintly\\s+|clearly\\s+)?visible\\b/g),
+    ...evidenceText.matchAll(/\btext\s+["'“‘]?([A-Z][A-Za-z0-9&.-]{1,30})["'”’]?\s+(?:printed|shown|visible|on it)\b/g),
+    ...evidenceText.matchAll(/\b([A-Z][A-Za-z0-9&.-]{1,30})\s+text\s+(?:is\s+)?(?:partially\s+|faintly\s+|clearly\s+)?visible\b/g),
   ].map((match) => normalizeBrand(match[1]));
   const labelDisagreesWithConsensus = Boolean(supportedBrand) &&
     labelTextClaims.some((claim) => claim !== normalizeBrand(supportedBrand));
@@ -550,7 +550,7 @@ function reconcileVerification(
       generic = generic.replace(new RegExp(escaped, "gi"), " ");
     }
 
-    return generic.replace(/\\s+/g, " ").replace(/^[\\s,;:–—-]+|[\\s,;:–—-]+$/g, "").trim() || "Unknown";
+    return generic.replace(/\s+/g, " ").replace(/^[\s,;:–—-]+|[\s,;:–—-]+$/g, "").trim() || "Unknown";
   };
 
   // Keep the independent used-value recalculation only when the identity checks
@@ -1176,7 +1176,7 @@ Deno.serve(async (request: Request): Promise<Response> => {
       const brandMissing = !primaryBrandKnown || !verifiedBrandKnown;
       const exactIdentityUnclear = primaryResult.exact_match_status === "not_confirmed" ||
         verification.exact_match_status === "not_confirmed";
-      const manufacturerEvidence = brandConflict || (brandMissing && exactIdentityUnclear)
+      const manufacturerEvidence = brandConflict || exactIdentityUnclear
         ? await inspectManufacturerMark(images)
         : null;
       return jsonResponse(reconcileVerification(primaryResult, verification, manufacturerEvidence));
