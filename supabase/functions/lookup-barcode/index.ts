@@ -197,14 +197,14 @@ Deno.serve(async (req: Request) => {
     url.searchParams.set("fields", "code,product_name,product_name_en,brands,product_type,quantity,categories,image_front_url");
     const { response, data } = await fetchJson(url.toString(), "ObjectDetective/1.20 (https://play.google.com/apps/testing/com.objectdetective.app)");
     if (!response.ok) {
+      // Keep trying the wider catalogue if this source is unavailable.
       console.error("Open Facts lookup response:", response.status);
-      return json({ found: false, code: gtin, message: "The barcode was read, but the product catalogues are temporarily unavailable. Please try again shortly." }, 502);
     }
 
     const productFound = data?.status === 1 || data?.status === "success" ||
       data?.status === "success_with_errors" || data?.result?.id === "product_found";
     const product = data?.product;
-    if (productFound && product) {
+    if (response.ok && productFound && product) {
       const name = String(product.product_name || product.product_name_en || "").trim();
       const brand = String(product.brands || "").split(",")[0].trim();
       const type = String(product.product_type || product.categories || "").trim();
