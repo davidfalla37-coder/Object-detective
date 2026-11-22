@@ -28,6 +28,8 @@ import com.google.android.play.core.install.InstallStateUpdatedListener
 import com.google.android.play.core.install.model.AppUpdateType
 import com.google.android.play.core.install.model.InstallStatus
 import com.google.android.play.core.install.model.UpdateAvailability
+import com.google.mlkit.vision.codescanner.GmsBarcodeScanning
+import com.google.mlkit.vision.codescanner.GmsBarcodeScannerOptions
 import java.io.IOException
 
 class MainActivity : Activity() {
@@ -74,6 +76,8 @@ class MainActivity : Activity() {
             insets
         }
         webView.requestApplyInsets()
+
+        webView.addJavascriptInterface(WebAppInterface(this, webView), "ObjectDetectiveAndroid")
 
         webView.settings.apply {
             javaScriptEnabled = true
