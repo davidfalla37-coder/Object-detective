@@ -20,7 +20,7 @@ async function fetchJson(url: string, userAgent: string): Promise<{ response: Re
 }
 
 function expandUpcE(value: string): string | null {
-  if (!/^\\d{8}$/.test(value)) return null;
+  if (!/^\d{8}$/.test(value)) return null;
   const ns = value[0], d = value.slice(1, 7), check = value[7];
   const a = d[0], b = d[1], c = d[2], e = d[3], f = d[4], last = d[5];
   let body = "";
@@ -35,19 +35,19 @@ function extractGtin(raw: string): string | null {
   const value = raw.trim();
   // GS1 Digital Link URL: /01/{GTIN}; also accept parenthesised and scanner AIM prefixes.
   try {
-    if (/^https?:\\/\\//i.test(value)) {
+    if (/^https?:\/\//i.test(value)) {
       const parts = new URL(value).pathname.split("/").filter(Boolean);
       for (let i = 0; i < parts.length - 1; i++) {
-        if (parts[i] === "01" && /^\\d{14}$/.test(parts[i + 1])) return parts[i + 1];
+        if (parts[i] === "01" && /^\d{14}$/.test(parts[i + 1])) return parts[i + 1];
       }
     }
   } catch { /* Continue with plain-text parsing. */ }
-  const cleaned = value.replace(/^\\][A-Za-z]\\d/, "").replace(/\\s/g, "");
-  const parenthesised = cleaned.match(/\\(01\\)(\\d{14})/);
+  const cleaned = value.replace(/^\][A-Za-z]\d/, "").replace(/\s/g, "");
+  const parenthesised = cleaned.match(/\(01\)(\d{14})/);
   if (parenthesised) return parenthesised[1];
-  const gs1 = cleaned.match(/(?:^|[^0-9])01(\\d{14})(?:21|10|17|$)/);
+  const gs1 = cleaned.match(/(?:^|[^0-9])01(\d{14})(?:21|10|17|$)/);
   if (gs1) return gs1[1];
-  if (/^\\d{8}$|^\\d{12}$|^\\d{13}$|^\\d{14}$/.test(cleaned)) return cleaned;
+  if (/^\d{8}$|^\d{12}$|^\d{13}$|^\d{14}$/.test(cleaned)) return cleaned;
   return null;
 }
 
@@ -60,7 +60,7 @@ async function lookupBook(isbn: string) {
   for (const item of items) {
     const info = item.volumeInfo || {};
     const identifiers = Array.isArray(info.industryIdentifiers) ? info.industryIdentifiers : [];
-    const exact = identifiers.some((entry: any) => String(entry.identifier || "").replace(/[-\\s]/g, "") === isbn);
+    const exact = identifiers.some((entry: any) => String(entry.identifier || "").replace(/[-\s]/g, "") === isbn);
     if (exact && info.title) {
       return {
         found: true,
@@ -111,13 +111,13 @@ Deno.serve(async (req: Request) => {
     }
 
     // UPC-E is an 8-digit compressed UPC, not an EAN-8 GTIN. Expand it before lookup.
-    const digitsOnly = rawCode.replace(/\\s/g, "");
+    const digitsOnly = rawCode.replace(/\s/g, "");
     const upcA = format.toUpperCase().includes("UPC-E") ? expandUpcE(digitsOnly) : null;
     const gtin = upcA || extractGtin(rawCode);
 
     // ISBN-13 book barcodes use the 978/979 prefixes. ISBN-10 is accepted if a scanner returns it.
-    const isbn = gtin && /^97[89]\\d{10}$/.test(gtin) ? gtin :
-      (/^(?:\\d{9}[\\dX])$/.test(digitsOnly) ? digitsOnly : null);
+    const isbn = gtin && /^97[89]\d{10}$/.test(gtin) ? gtin :
+      (/^(?:\d{9}[\dX])$/.test(digitsOnly) ? digitsOnly : null);
     if (isbn) {
       const book = await lookupBook(isbn);
       if (book) return json(book);
