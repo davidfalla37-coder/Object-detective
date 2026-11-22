@@ -59,7 +59,7 @@
     :root[data-theme="light"] #shops a,:root[data-theme="light"] #vehicle-shops a,:root[data-theme="light"] .market-links a{background:#e5edf7;border-color:#c3cfdd;color:#17243a}
     :root[data-theme="light"] .market-links a.recommended{background:#e1f4e9;border-color:#9ac9aa;color:#174a2e}:root[data-theme="light"] .vehicle-card{background:linear-gradient(145deg,#fff8df,#fff 55%);border-color:#d8bd72}
     :root[data-theme="light"] .safety{background:#fff0ed;color:#7b3024;border-color:#e4b6ac}
-    @media(prefers-color-scheme:light){:root[data-theme="system"]{color-scheme:light;--bg:#f3f6fb;--bg-alt:#e7eef7;--panel:#fff;--line:#cbd5e1;--text:#17243a;--muted:#536176;--accent:#006b91;--danger:#9d2626;--field:#f8fafc;--border:#b9c7d8;--secondary:#e5edf7}:root[data-theme="system"] .card{background:#fff}:root[data-theme="system"] .camera-action{background:#075f80!important;color:#fff!important;border-color:#075f80!important}:root[data-theme="system"] .photo{background:#f8fafc;border-color:#8ba0b8;color:#526176}:root[data-theme="system"] .tip{background:#eef5ff;border-color:#c6d7ec;color:#26384f}:root[data-theme="system"] .explain{color:#344257}:root[data-theme="system"] button.secondary,:root[data-theme="system"] .link-button,:root[data-theme="system"] #shops a,:root[data-theme="system"] #vehicle-shops a,:root[data-theme="system"] .market-links a{background:#e5edf7;color:#17243a;border-color:#c3cfdd}:root[data-theme="system"] .history-item,:root[data-theme="system"] .chat-thread,:root[data-theme="system"] .match-fields input,:root[data-theme="system"] .sell-card textarea,:root[data-theme="system"] .sell-card input,:root[data-theme="system"] .sell-card select,:root[data-theme="system"] .chat-input{background:#f4f7fb;color:#17243a;border-color:#c3cfdd}:root[data-theme="system"] .chat-message.assistant{background:#e4ebf4;color:#17243a}:root[data-theme="system"] .chat-message.user{background:#d9f0f7;color:#17394b}:root[data-theme="system"] .vehicle-card{background:linear-gradient(145deg,#fff8df,#fff 55%);border-color:#d8bd72}:root[data-theme="system"] .safety{background:#fff0ed;color:#7b3024;border-color:#e4b6ac}}
+    @media(prefers-color-scheme:light){:root[data-theme="system"]{color-scheme:light;--bg:#f3f6fb;--bg-alt:#e7eef7;--panel:#fff;--line:#cbd5e1;--text:#17243a;--muted:#536176;--accent:#006b91;--danger:#9d2626;--field:#f8fafc;--border:#b9c7d8;--secondary:#e5edf7}:root[data-theme="system"] .card{background:#fff}:root[data-theme="system"] .camera-action{background:#075f80!important;color:#fff!important;border-color:#075f80!important}:root[data-theme="system"] .setting-select{background:#f8fafc;color:#17243a;border-color:#b9c7d8}:root[data-theme="system"] .setting-select option{background:#fff;color:#17243a}:root[data-theme="system"] .photo{background:#f8fafc;border-color:#8ba0b8;color:#526176}:root[data-theme="system"] .tip{background:#eef5ff;border-color:#c6d7ec;color:#26384f}:root[data-theme="system"] .explain{color:#344257}:root[data-theme="system"] button.secondary,:root[data-theme="system"] .link-button,:root[data-theme="system"] #shops a,:root[data-theme="system"] #vehicle-shops a,:root[data-theme="system"] .market-links a{background:#e5edf7;color:#17243a;border-color:#c3cfdd}:root[data-theme="system"] .history-item,:root[data-theme="system"] .chat-thread,:root[data-theme="system"] .match-fields input,:root[data-theme="system"] .sell-card textarea,:root[data-theme="system"] .sell-card input,:root[data-theme="system"] .sell-card select,:root[data-theme="system"] .chat-input{background:#f4f7fb;color:#17243a;border-color:#c3cfdd}:root[data-theme="system"] .chat-message.assistant{background:#e4ebf4;color:#17243a}:root[data-theme="system"] .chat-message.user{background:#d9f0f7;color:#17394b}:root[data-theme="system"] .vehicle-card{background:linear-gradient(145deg,#fff8df,#fff 55%);border-color:#d8bd72}:root[data-theme="system"] .safety{background:#fff0ed;color:#7b3024;border-color:#e4b6ac}}
   </style>
 </head>
 <body>
@@ -407,10 +407,14 @@ identify.onclick=async()=>{
     if(savedCorrection)data=applyCorrection(data,savedCorrection);
     render(data);
   }catch(error){
-    errorBox.textContent=error.message||'The investigation failed. Please try again.';
+    const message=error&&typeof error.message==='string'?error.message:'';
+    const networkFailure=error instanceof TypeError||/failed to fetch|networkerror|load failed/i.test(message);
+    errorBox.textContent=networkFailure
+      ?'Object Detective could not reach the investigation service. Your selected photos are still here. Check your internet connection, then tap Identify object to try again.'
+      :message||'The investigation failed. Your selected photos are still here; please try again.';
     errorBox.classList.remove('hidden');
   }finally{
-    statusBox.classList.add('hidden');updatePhotoGuide();identify.disabled=false;
+    statusBox.classList.add('hidden');updatePhotoGuide();identify.disabled=selectedFiles.length===0;
   }
 };
 
