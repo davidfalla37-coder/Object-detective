@@ -38,6 +38,8 @@
     .chat-form{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px}
     .chat-input{min-height:50px}.chat-send{min-height:50px;padding:10px 14px}
     .chat-status{min-height:22px;color:var(--muted);font-size:13px;margin-top:7px}
+    .barcode-links{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
+    .barcode-links a{display:grid;place-items:center;min-height:48px;padding:10px;border-radius:12px;background:var(--secondary);border:1px solid var(--border);color:var(--text);font-weight:750;text-align:center;text-decoration:none}
     @media(max-width:480px){.buttons{grid-template-columns:1fr}h1{font-size:32px}}
     :root{--bg-alt:#15233d;--panel:#111c30;--field:#091426;--border:#354b6c;--secondary:#1b2a44}
     :root[data-theme="light"]{color-scheme:light;--bg:#f3f6fb;--bg-alt:#e7eef7;--panel:#fff;--line:#cbd5e1;--text:#17243a;--muted:#536176;--accent:#006b91;--danger:#9d2626;--field:#f8fafc;--border:#b9c7d8;--secondary:#e5edf7}
@@ -83,6 +85,21 @@
     <button class="secondary hidden" id="clear" style="width:100%;margin-top:10px">Start again</button>
     <div id="status" class="hidden">Examining the photograph…</div>
     <div id="error" class="hidden"></div>
+  </section>
+
+  <section class="card" id="barcode-scanner-card">
+    <h2>Barcode & QR scanner</h2>
+    <p>Scan a product barcode or QR code. Scanning is handled on your device; the code is shown below so you can search for the matching product.</p>
+    <button class="primary" type="button" id="scan-barcode" style="width:100%">▦ Scan barcode / QR code</button>
+    <div id="barcode-status" class="chat-status" role="status" aria-live="polite"></div>
+    <div id="barcode-result" class="hidden">
+      <div class="row"><span class="label">Scanned code</span><span class="value" id="barcode-value"></span></div>
+      <p class="photo-guide">These are searches using the code, not guaranteed product matches. Check the brand, model and listing details before relying on a result.</p>
+      <div class="barcode-links">
+        <a id="barcode-ebay" href="#" target="_blank" rel="noopener">Search eBay</a>
+        <a id="barcode-google" href="#" target="_blank" rel="noopener">Search Google</a>
+      </div>
+    </div>
   </section>
 
   <section class="card" id="history-card">
@@ -270,6 +287,41 @@
 const FUNCTION_URL='https://gboyflbwcobhzbvpdtat.supabase.co/functions/v1/investigate-object';
 const AMAZON_ASSOCIATE_TAG='';
 const AMAZON_APP_LINKS_APPROVED=false;
+const scanBarcodeButton=document.getElementById('scan-barcode');
+const barcodeStatus=document.getElementById('barcode-status');
+const barcodeResult=document.getElementById('barcode-result');
+const barcodeValue=document.getElementById('barcode-value');
+scanBarcodeButton.onclick=()=>{
+  barcodeStatus.textContent='';
+  barcodeResult.classList.add('hidden');
+  if(!window.ObjectDetectiveAndroid||typeof window.ObjectDetectiveAndroid.scanBarcode!=='function'){
+    barcodeStatus.textContent='The barcode scanner is not available in this build. Please install the latest test APK.';
+    return;
+  }
+  scanBarcodeButton.disabled=true;
+  barcodeStatus.textContent='Opening secure on-device scanner…';
+  window.ObjectDetectiveAndroid.scanBarcode();
+};
+window.onBarcodeScanned=(value)=>{
+  const code=String(value||'').trim();
+  scanBarcodeButton.disabled=false;
+  if(!code){window.onBarcodeScanError('No readable code was returned.');return;}
+  barcodeValue.textContent=code;
+  const query=encodeURIComponent(code);
+  document.getElementById('barcode-ebay').href='https://www.ebay.co.uk/sch/i.html?_nkw='+query;
+  document.getElementById('barcode-google').href='https://www.google.com/search?q='+query;
+  barcodeStatus.textContent='Code scanned successfully.';
+  barcodeResult.classList.remove('hidden');
+};
+window.onBarcodeScanCancelled=()=>{
+  scanBarcodeButton.disabled=false;
+  barcodeStatus.textContent='Scan cancelled. Nothing was changed.';
+};
+window.onBarcodeScanError=(message)=>{
+  scanBarcodeButton.disabled=false;
+  barcodeStatus.textContent=String(message||'The barcode scanner could not complete the scan. Please try again.');
+};
+
 const cameraFile=document.getElementById('camera-file');
 const galleryFile=document.getElementById('gallery-file');
 const takePhoto=document.getElementById('take-photo');
