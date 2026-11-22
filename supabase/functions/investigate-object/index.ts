@@ -508,7 +508,7 @@ function reconcileVerification(
   const explicitReadableBrand = manufacturerEvidence?.brand ?? "";
   const explicitBrand = normalizeBrand(explicitReadableBrand);
   const labelTextClaims = [
-    ...evidenceText.matchAll(/\btext\s+["'“‘]?([A-Z][A-Za-z0-9&.-]{1,30})["'”’]?\s+(?:printed|shown|visible|on it)\b/g),
+    ...evidenceText.matchAll(/\btext\s+["'“‘]?([A-Z][A-Za-z0-9&.-]{1,30})["'”’]?\s+(?:is\s+)?(?:printed|shown|visible|on it)\b/g),
     ...evidenceText.matchAll(/\b([A-Z][A-Za-z0-9&.-]{1,30})\s+text\s+(?:is\s+)?(?:partially\s+|faintly\s+|clearly\s+)?visible\b/g),
   ].map((match) => normalizeBrand(match[1]));
   const labelDisagreesWithConsensus = Boolean(supportedBrand) &&
