@@ -89,11 +89,12 @@
 
   <section class="card" id="barcode-scanner-card">
     <h2>Barcode & QR scanner</h2>
-    <p>Scan a product barcode or QR code. Scanning is handled on your device; the code is shown below so you can search for the matching product.</p>
+    <p>Scan a product barcode or QR code. Retail product barcodes are checked against the connected product catalogue; unsupported or missing records are clearly reported.</p>
     <button class="primary" type="button" id="scan-barcode" style="width:100%">▦ Scan barcode / QR code</button>
     <div id="barcode-status" class="chat-status" role="status" aria-live="polite"></div>
     <div id="barcode-result" class="hidden">
       <div class="row"><span class="label">Scanned code</span><span class="value" id="barcode-value"></span></div>
+      <div class="row"><span class="label">Catalogue result</span><span class="value" id="barcode-product">Checking…</span></div>
       <p class="photo-guide">These are searches using the code, not guaranteed product matches. Check the brand, model and listing details before relying on a result.</p>
       <div class="barcode-links">
         <a id="barcode-ebay" href="#" target="_blank" rel="noopener">Search eBay</a>
@@ -284,7 +285,7 @@
   </section>
 </div>
 <script>
-const FUNCTION_URL='https://gboyflbwcobhzbvpdtat.supabase.co/functions/v1/investigate-object';
+// Development-only endpoints: never point this preview build at production.\nconst FUNCTION_URL='https://kscnivjkldtssskwhsfk.supabase.co/functions/v1/investigate-object';\nconst BARCODE_LOOKUP_URL='https://kscnivjkldtssskwhsfk.supabase.co/functions/v1/lookup-barcode';
 const AMAZON_ASSOCIATE_TAG='';
 const AMAZON_APP_LINKS_APPROVED=false;
 const scanBarcodeButton=document.getElementById('scan-barcode');
@@ -302,16 +303,34 @@ scanBarcodeButton.onclick=()=>{
   barcodeStatus.textContent='Opening secure on-device scanner…';
   window.ObjectDetectiveAndroid.scanBarcode();
 };
-window.onBarcodeScanned=(value)=>{
+window.onBarcodeScanned=async(value)=>{
   const code=String(value||'').trim();
   scanBarcodeButton.disabled=false;
   if(!code){window.onBarcodeScanError('No readable code was returned.');return;}
   barcodeValue.textContent=code;
+  const productLabel=document.getElementById('barcode-product');
+  productLabel.textContent='Checking product catalogue…';
   const query=encodeURIComponent(code);
   document.getElementById('barcode-ebay').href='https://www.ebay.co.uk/sch/i.html?_nkw='+query;
   document.getElementById('barcode-google').href='https://www.google.com/search?q='+query;
-  barcodeStatus.textContent='Code scanned successfully.';
   barcodeResult.classList.remove('hidden');
+  barcodeStatus.textContent='Barcode read. Checking for a verified catalogue record…';
+  try{
+    const response=await fetch(BARCODE_LOOKUP_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code})});
+    const payload=await response.json();
+    if(!response.ok) throw new Error(payload.message||payload.error||'Product catalogue request failed.');
+    if(payload.found&&payload.product){
+      const p=payload.product;
+      productLabel.textContent=[p.brand,p.name,p.type,p.quantity].filter(Boolean).join(' · ')+' ('+(payload.source||'product catalogue')+')';
+      barcodeStatus.textContent='A catalogue record was found. Check the product details against the item before relying on the match.';
+    }else{
+      productLabel.textContent='No confirmed product match';
+      barcodeStatus.textContent=payload.message||'The barcode was read, but the catalogue did not confirm the product.';
+    }
+  }catch(error){
+    productLabel.textContent='Lookup unavailable';
+    barcodeStatus.textContent='The barcode was read, but product lookup failed: '+String(error&&error.message||error);
+  }
 };
 window.onBarcodeScanCancelled=()=>{
   scanBarcodeButton.disabled=false;
