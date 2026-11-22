@@ -134,7 +134,7 @@ Deno.serve(async (req: Request) => {
 
     // Open Facts' product_type=all endpoint checks Food, Beauty, Pet Food and general Products Facts.
     // It follows redirects to the correct database when a record belongs to another catalogue.
-    const url = new URL(`https://world.openfoodfacts.org/api/v3/product/${encodeURIComponent(gtin)}.json`);
+    const url = new URL(`https://world.openfoodfacts.org/api/v3/product/${encodeURIComponent(gtin)}`);
     url.searchParams.set("product_type", "all");
     url.searchParams.set("fields", "code,product_name,product_name_en,brands,product_type,quantity,categories,image_front_url");
     const { response, data } = await fetchJson(url.toString(), "ObjectDetective/1.20 (https://play.google.com/apps/testing/com.objectdetective.app)");
@@ -169,11 +169,38 @@ Deno.serve(async (req: Request) => {
       }
     }
 
+    // Optional commercial catalogue adapter. It stays dormant unless an API key
+    // is explicitly configured as a server-side Supabase secret; no paid calls by default.
+    const commercialKey = Deno.env.get("BARCODE_LOOKUP_API_KEY");
+    if (commercialKey) {
+      const commercialUrl = new URL("https://api.barcodelookup.com/v3/products");
+      commercialUrl.searchParams.set("barcode", gtin);
+      commercialUrl.searchParams.set("formatted", "y");
+      commercialUrl.searchParams.set("key", commercialKey);
+      const commercial = await fetchJson(commercialUrl.toString(), "ObjectDetective/1.20 (barcode catalogue)");
+      const first = Array.isArray(commercial.data?.products) ? commercial.data.products[0] : null;
+      if (commercial.response.ok && first) {
+        const name = String(first.title || first.product_name || first.name || "").trim();
+        const brand = String(first.brand || first.manufacturer || "").trim();
+        const model = String(first.model || first.mpn || "").trim();
+        const category = String(first.category || "").trim();
+        if (name || brand || model) {
+          return json({
+            found: true,
+            product: { name: name || model, brand, type: [category, model && model !== name ? "Model " + model : ""].filter(Boolean).join(" · "), quantity: "" },
+            source: "Barcode Lookup",
+            sourceUrl: "https://www.barcodelookup.com/",
+            disclaimer: "Commercial catalogue match. Compare the model and product details against the item before relying on it.",
+          });
+        }
+      }
+    }
+
     return json({
       found: false,
       code: gtin,
       format,
-      message: "The barcode was read, but no product record was found in the connected open catalogues (Food, Beauty, Pet Food and general Products Facts). Electronics and specialist parts may need a manufacturer or commercial catalogue record.",
+      message: "The barcode was read, but no product record was found in the connected open catalogues (Food, Beauty, Pet Food and general Products Facts). A wider commercial barcode catalogue can be enabled separately; manufacturer model/serial labels can also be checked using Object Detective's photo and text identification.",
     });
   } catch (error) {
     console.error("Barcode lookup failed:", error instanceof Error ? error.message : error);
