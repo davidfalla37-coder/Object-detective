@@ -40,10 +40,30 @@ jobs:
       - name: Build isolated preview debug APK
         run: gradle --no-daemon assembleDebug
 
-      - name: Upload isolated preview APK
+      - name: Launch preview on Android 16 emulator and capture screen
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 36
+          target: google_apis
+          arch: x86_64
+          profile: pixel_2
+          disable-animations: true
+          script: |
+            adb install -r app/build/outputs/apk/debug/app-debug.apk
+            adb shell am start -n com.objectdetective.app.preview/com.objectdetective.app.MainActivity
+            sleep 8
+            adb shell input tap 540 1550 || true
+            sleep 2
+            adb shell screencap -p /sdcard/object-detective-preview.png
+            adb pull /sdcard/object-detective-preview.png object-detective-preview.png
+            test -s object-detective-preview.png
+
+      - name: Upload isolated preview APK and emulator screenshot
         uses: actions/upload-artifact@v4
         with:
           name: Object-Detective-Isolated-Preview-APK
-          path: app/build/outputs/apk/debug/app-debug.apk
+          path: |
+            app/build/outputs/apk/debug/app-debug.apk
+            object-detective-preview.png
           if-no-files-found: error
           retention-days: 14
