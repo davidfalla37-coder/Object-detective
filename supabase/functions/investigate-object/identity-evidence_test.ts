@@ -60,3 +60,14 @@ Deno.test("empty descriptions remain insufficient", () => {
     "empty evidence",
   );
 });
+
+Deno.test("vehicle and individual part descriptions remain partial", () => {
+  assertEqual(
+    deriveVerificationVerdict(
+      { object: "Renault Megane RS265 hatchback", category: "car", brand: "Renault" },
+      { object: "Renault RS265 brake caliper", brand: "Renault", verdict: "agree" },
+    ),
+    "partial",
+    "whole vehicle versus component",
+  );
+});
