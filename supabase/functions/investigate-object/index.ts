@@ -1,3 +1,5 @@
+import { deriveVerificationVerdict } from "./identity-evidence.ts";
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "content-type, authorization, apikey, x-client-info",
@@ -444,28 +446,6 @@ function rebuiltExplanation(
   return parts.join(" ");
 }
 
-function deriveVerificationVerdict(primary: InvestigationResult, verification: VerificationResult): VerificationResult["verdict"] {
-  const normalize = (value: string): string => value.trim().toLowerCase().replace(/[^a-z0-9]+/g, "");
-  const primaryBrand = knownText(primary.brand) ? normalize(primary.brand) : "";
-  const verificationBrand = knownText(verification.brand) ? normalize(verification.brand) : "";
-  if (primaryBrand && verificationBrand && primaryBrand !== verificationBrand) return "disagree";
-  if (verification.verdict === "insufficient") return "insufficient";
-
-  const ignored = new Set(["the", "and", "with", "from", "used", "item", "device", "product", "this", "that"]);
-  const terms = (value: string): Set<string> => new Set(
-    value.toLowerCase().replace(/[^a-z0-9]+/g, " ").split(/\s+/)
-      .map((word) => word.length > 3 && word.endsWith("s") ? word.slice(0, -1) : word)
-      .filter((word) => word.length > 2 && !ignored.has(word)),
-  );
-  const primaryTerms = terms(primary.object + " " + primary.category);
-  const verificationTerms = terms(verification.object);
-  const shared = [...primaryTerms].filter((word) => verificationTerms.has(word)).length;
-  if (shared > 0) return primaryBrand && verificationBrand === primaryBrand ? "agree" : "partial";
-  if (primaryBrand && verificationBrand === primaryBrand) return "partial";
-  if (primaryTerms.size === 0 || verificationTerms.size === 0) return "insufficient";
-  return "disagree";
-}
-
 function reconcileVerification(
   primary: InvestigationResult,
   verification: VerificationResult,
@@ -508,8 +488,8 @@ function reconcileVerification(
   const explicitReadableBrand = manufacturerEvidence?.brand ?? "";
   const explicitBrand = normalizeBrand(explicitReadableBrand);
   const labelTextClaims = [
-    ...evidenceText.matchAll(/\\btext\\s+["'“‘]?([A-Z][A-Za-z0-9&.-]{1,30})["'”’]?\\s+(?:printed|shown|visible|on it)\\b/g),
-    ...evidenceText.matchAll(/\\b([A-Z][A-Za-z0-9&.-]{1,30})\\s+text\\s+(?:is\\s+)?(?:partially\\s+|faintly\\s+|clearly\\s+)?visible\\b/g),
+    ...evidenceText.matchAll(/\btext\s+["'“‘]?([A-Z][A-Za-z0-9&.-]{1,30})["'”’]?\s+(?:printed|shown|visible|on it)\b/g),
+    ...evidenceText.matchAll(/\b([A-Z][A-Za-z0-9&.-]{1,30})\s+text\s+(?:is\s+)?(?:partially\s+|faintly\s+|clearly\s+)?visible\b/g),
   ].map((match) => normalizeBrand(match[1]));
   const labelDisagreesWithConsensus = Boolean(supportedBrand) &&
     labelTextClaims.some((claim) => claim !== normalizeBrand(supportedBrand));
@@ -550,7 +530,7 @@ function reconcileVerification(
       generic = generic.replace(new RegExp(escaped, "gi"), " ");
     }
 
-    return generic.replace(/\\s+/g, " ").replace(/^[\\s,;:–—-]+|[\\s,;:–—-]+$/g, "").trim() || "Unknown";
+    return generic.replace(/\s+/g, " ").replace(/^[\s,;:–—-]+|[\s,;:–—-]+$/g, "").trim() || "Unknown";
   };
 
   // Keep the independent used-value recalculation only when the identity checks
@@ -592,9 +572,9 @@ function reconcileVerification(
   if (directBrandDisagreement) {
     const genericObject = stripIdentityClaims(primary.object);
     result.brand = explicitReadableBrand;
-    result.object = /\bearbud\b/i.test(genericObject)
-      ? `${explicitReadableBrand} wireless earbuds with charging case`
-      : `${explicitReadableBrand} ${genericObject}`;
+    result.object = genericObject !== "Unknown"
+      ? `${explicitReadableBrand} ${genericObject}`
+      : `${explicitReadableBrand} item`;
     result.model = "Unknown";
     result.model_number = "Unknown";
     result.variant = "Unknown";
@@ -604,7 +584,7 @@ function reconcileVerification(
     result.exact_match_evidence = knownText(manufacturerEvidence?.evidence ?? "")
       ? manufacturerEvidence!.evidence
       : `Readable ${explicitReadableBrand} maker text is reported in the photos; the exact model number is not readable.`;
-    result.next_photo = `Take a close-up of the case underside label and any model or serial text; the ${explicitReadableBrand} mark is already identified.`;
+    result.next_photo = `Take a clear close-up of any manufacturer label, model plate, underside or rear markings; the ${explicitReadableBrand} maker mark is already identified.`;
     result.case_file_summary = `Visible maker text supports ${explicitReadableBrand}; exact model remains unconfirmed.`;
     result.identifying_clues = "Unknown";
     result.warning = [
@@ -614,23 +594,27 @@ function reconcileVerification(
         : `Readable maker text supports ${explicitReadableBrand}; the exact model and value remain provisional.`,
     ].filter(Boolean).join(" ");
   } else if (brandConflict) {
-    result.object = "Wireless earbuds with charging case";
+    const genericObject = stripIdentityClaims(primary.object);
+    const broadObject = genericObject !== "Unknown"
+      ? genericObject
+      : knownText(primary.category) ? primary.category : "Object";
+    result.object = broadObject;
     result.brand = "Unknown";
     result.model = "Unknown";
     result.model_number = "Unknown";
     result.variant = "Unknown";
     result.exact_match_evidence = "The manufacturer checks conflict or cannot confirm a readable brand; the exact model is unconfirmed.";
-    result.case_file_summary = "Wireless earbuds with charging case; manufacturer and exact model are unconfirmed.";
-    result.identifying_clues = "Wireless earbuds and a charging case.";
+    result.case_file_summary = `${broadObject}; manufacturer and exact model are unconfirmed.`;
+    result.identifying_clues = broadObject;
     result.confidence = brandDisagreement
       ? Math.min(primary.confidence, verification.confidence, 0.50)
       : Math.min(primary.confidence, verification.confidence, 0.80);
     result.exact_match_confidence = Math.min(primary.exact_match_confidence, verification.exact_match_confidence, 0.35);
     result.exact_match_status = "not_confirmed";
-    result.next_photo = "Take a sharp close-up of the maker's logo and model text on the case, including its underside and inside the lid.";
+    result.next_photo = "Take a sharp close-up of the manufacturer's label, model plate, underside or rear markings.";
     result.warning = [
       result.warning,
-      "The identification checks named different manufacturers. The brand, exact model, and value estimate are unconfirmed; check the case markings before relying on the estimate.",
+      "The identification checks named different manufacturers. The brand, exact model, and value estimate are unconfirmed; check the manufacturer label or model markings before relying on the estimate.",
     ].filter(Boolean).join(" ");
   } else if (verification.verdict === "agree") {
     result.exact_match_confidence = Math.min(primary.exact_match_confidence, verification.exact_match_confidence);

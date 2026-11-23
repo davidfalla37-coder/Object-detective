@@ -32,6 +32,12 @@ jobs:
           cp ic_launcher.webp app/src/main/res/drawable-nodpi/ic_launcher.webp
       - name: Build debug APK
         run: gradle --no-daemon assembleDebug
+      - name: Upload development APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: Object-Detective-Dev-Debug-APK
+          path: app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
 
   check-edge-function:
     runs-on: ubuntu-latest
@@ -44,3 +50,5 @@ jobs:
           deno-version: v2.x
       - name: Type-check Supabase Edge Function
         run: deno check supabase/functions/investigate-object/index.ts
+      - name: Run identification regression tests
+        run: deno test supabase/functions/investigate-object/identity-evidence_test.ts
