@@ -1090,8 +1090,11 @@ document.getElementById("chat-form").onsubmit=async(event)=>{
     const node=document.getElementById(id);
     if(node)destination.appendChild(node);
   };
-  move("brand-hero",screens.home);
-  move("capture-card",screens.identify);
+  const moveNode=(node,destination)=>{
+    if(node)destination.appendChild(node);
+  };
+  moveNode(document.querySelector(".brand-hero"),screens.home);
+  moveNode(document.querySelector(".capture-card"),screens.identify);
   move("result",screens.identify);
   const toolsIntro=document.createElement("section");
   toolsIntro.className="card";
