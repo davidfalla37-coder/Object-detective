@@ -196,6 +196,23 @@
       :root[data-theme="system"] .chat-message.assistant{background:#e2edf7;color:#17243a}
       :root[data-theme="system"] .chat-message.user{background:#d8f0fa;color:#17394b}
     }
+  
+    html{scroll-behavior:smooth}main{padding-bottom:calc(104px + env(safe-area-inset-bottom))}
+    .app-screen{display:none;min-height:55vh}.app-screen.active{display:block;animation:screen-enter .18s ease-out}
+    @keyframes screen-enter{from{opacity:.65;transform:translateY(5px)}to{opacity:1;transform:translateY(0)}}
+    .screen-heading{margin:8px 2px 16px}.screen-heading h1{font-size:clamp(27px,8vw,34px);margin:0 0 6px;letter-spacing:-.04em}.screen-heading p{margin:0;font-size:14px}
+    .screen-empty{padding:22px;border:1px dashed #426080;border-radius:18px;background:#0b1930;color:var(--muted);text-align:center}.screen-empty strong{display:block;color:var(--text);font-size:17px;margin-bottom:6px}
+    .bottom-nav{position:fixed;z-index:100;left:50%;bottom:0;transform:translateX(-50%);width:min(100%,620px);display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:3px;padding:7px 7px calc(7px + env(safe-area-inset-bottom));background:rgba(7,16,31,.96);border-top:1px solid #29415f;box-shadow:0 -12px 32px #0006;backdrop-filter:blur(16px)}
+    .nav-button{min-width:0;min-height:56px;padding:5px 1px;border:1px solid transparent;border-radius:12px;background:transparent;color:#9fb2ca;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;font-size:10px;line-height:1.1;font-weight:750;white-space:nowrap}
+    .nav-button .nav-icon{font-size:18px;line-height:1}.nav-button.active{color:#9cecff;background:#12304a;border-color:#2c6689}
+    .history-actions{display:flex;align-items:center;gap:5px}.history-save,.history-delete{width:34px;height:34px;min-height:34px;padding:0;border-radius:10px;font-size:18px}
+    .history-save{background:#18344c;color:#9cecff;border:1px solid #315577}.history-save.is-saved{background:#26351d;color:#ffe08a;border-color:#806b32}.history-delete{background:#321b22;color:#ffb4b4}
+    .help-steps{display:grid;gap:12px;margin:16px 0}.help-step{display:grid;grid-template-columns:34px 1fr;gap:11px;align-items:start;padding:12px;border:1px solid var(--line);border-radius:14px;background:#0b1930}
+    .help-step b{display:grid;place-items:center;width:30px;height:30px;border-radius:50%;background:#16486a;color:#b9edff}.help-step strong{display:block;color:var(--text);margin-bottom:3px}
+    @media(prefers-color-scheme:light){:root[data-theme="system"] .bottom-nav{background:rgba(245,249,253,.97);border-color:#cbd9e8}:root[data-theme="system"] .nav-button{color:#526b84}:root[data-theme="system"] .nav-button.active{background:#e0f3fc;color:#075b83;border-color:#9bcce5}:root[data-theme="system"] .screen-empty,:root[data-theme="system"] .help-step{background:#f4f8fc}}
+    :root[data-theme="light"] .bottom-nav{background:rgba(245,249,253,.97);border-color:#cbd9e8}:root[data-theme="light"] .nav-button{color:#526b84}:root[data-theme="light"] .nav-button.active{background:#e0f3fc;color:#075b83;border-color:#9bcce5}:root[data-theme="light"] .screen-empty,:root[data-theme="light"] .help-step{background:#f4f8fc}
+    @media(max-width:360px){.nav-button{font-size:9px}.nav-button .nav-icon{font-size:17px}}
+
   </style>
 </head>
 <body>
@@ -264,7 +281,7 @@
 
   <section class="card" id="history-card">
     <div class="history-head"><h2>Recent investigations</h2><button class="secondary hidden" id="clear-history" type="button">Clear</button></div>
-    <p class="empty-history" id="empty-history">No saved investigations yet.</p>
+    <p class="empty-history" id="empty-history">Your recent investigations will appear here.</p>
     <div class="history-list" id="history-list"></div>
   </section>
 
@@ -444,6 +461,26 @@
   </section>
 </div>
 <script>
+
+(function initialiseAppScreens(){
+ const appMain=document.querySelector("main");
+ const makeScreen=(id,title,copy)=>{const el=document.createElement("section");el.className="app-screen";el.id=id;if(title){const head=document.createElement("div");head.className="screen-heading";const h=document.createElement("h1");h.textContent=title;const p=document.createElement("p");p.textContent=copy||"";head.append(h,p);el.appendChild(head)}appMain.appendChild(el);return el};
+ const home=makeScreen("screen-home"),results=makeScreen("screen-results","Investigation results","Your identification, evidence, value estimate and next steps."),history=makeScreen("screen-history","My investigations","Reopen your recent investigations saved on this device."),saved=makeScreen("screen-saved","Saved items","Keep the investigations you want to come back to."),settings=makeScreen("screen-settings","Settings","Control the app and share feedback."),help=makeScreen("screen-help","How to use Object Detective","A quick guide to getting the best result.");
+ const move=(selector,target)=>{const node=appMain.querySelector(selector);if(node)target.appendChild(node);else console.warn("Missing screen element:",selector)};
+ move(".brand-hero",home);move(".capture-card",home);move("#barcode-scanner-card",home);move("#history-card",history);
+ const empty=document.createElement("div");empty.id="result-empty";empty.className="screen-empty";empty.innerHTML="<strong>No investigation yet</strong>Start with a photo or scan a barcode. Your results will appear here.";results.appendChild(empty);move("#result",results);
+ move("#app-settings",settings);move("#app-feedback",settings);
+ const payment=Array.from(appMain.children).find(el=>el.matches("section.card[aria-labelledby='payment-promise-title']"));if(payment)settings.appendChild(payment);
+ const savedCard=document.createElement("section");savedCard.className="card";savedCard.innerHTML='<p id="empty-saved" class="empty-history">Nothing saved yet. Open My Investigations and tap the star beside an item to save it here.</p><div id="saved-list" class="history-list"></div>';saved.appendChild(savedCard);
+ const helpCard=document.createElement("section");helpCard.className="card";helpCard.innerHTML='<div class="help-steps"><div class="help-step"><b>1</b><div><strong>Photograph the whole object</strong>Take a clear overall photo, then add close-ups of logos, labels, model numbers or connectors. You can add up to five photos.</div></div><div class="help-step"><b>2</b><div><strong>Let Detective investigate</strong>Choose Identify object. The app reports what the photo evidence supports; an exact model may remain unconfirmed.</div></div><div class="help-step"><b>3</b><div><strong>Check the result carefully</strong>Confidence and second-hand values are estimates. Verify model numbers, compatibility, condition and safety before buying, selling or fitting anything.</div></div><div class="help-step"><b>4</b><div><strong>Use the barcode scanner</strong>Scan supported QR codes and product barcodes. A catalogue search may not find every product or guarantee an exact match.</div></div></div><button class="primary" id="help-open-guide" type="button" style="width:100%">Open step-by-step guide</button>';help.appendChild(helpCard);
+ const nav=document.createElement("nav");nav.className="bottom-nav";nav.setAttribute("aria-label","Main navigation");
+ const navItems=[["home","⌂","Start"],["results","◈","Results"],["history","▤","History"],["saved","★","Saved"],["settings","⚙","Settings"],["help","?","Help"]];
+ navItems.forEach(([id,icon,label])=>{const b=document.createElement("button");b.type="button";b.className="nav-button";b.dataset.screen=id;b.innerHTML='<span class="nav-icon" aria-hidden="true">'+icon+'</span><span>'+label+'</span>';b.addEventListener("click",()=>showScreen(id));nav.appendChild(b)});
+ appMain.appendChild(nav);
+ window.showScreen=function(name){const target=document.getElementById("screen-"+name);if(!target)return;appMain.querySelectorAll(".app-screen").forEach(el=>el.classList.toggle("active",el===target));nav.querySelectorAll(".nav-button").forEach(b=>{const active=b.dataset.screen===name;b.classList.toggle("active",active);if(active)b.setAttribute("aria-current","page");else b.removeAttribute("aria-current")});window.scrollTo(0,0)};
+ showScreen("home");
+})();
+
 // Development-only endpoints: never point this preview build at production.
 const FUNCTION_URL='https://kscnivjkldtssskwhsfk.supabase.co/functions/v1/investigate-object';
 const BARCODE_LOOKUP_URL='https://kscnivjkldtssskwhsfk.supabase.co/functions/v1/lookup-barcode';
@@ -578,7 +615,7 @@ clear.onclick=()=>{
   photoChecks=[];
   preview.removeAttribute('src');preview.style.display='none';
   placeholder.classList.remove('hidden');
-  identify.disabled=true;result.classList.add('hidden');errorBox.classList.add('hidden');
+  identify.disabled=true;result.classList.add('hidden');document.getElementById('result-empty')?.classList.remove('hidden');errorBox.classList.add('hidden');showScreen('home');
   updatePhotoGuide();
 };
 
@@ -780,7 +817,7 @@ function render(data,saveResult=true){
   }
   document.getElementById('shops').classList.toggle('hidden',!query&&!isWholeVehicle);
   updateSellDraft(data);resetChat(data);
-  result.classList.remove('hidden');result.scrollIntoView({behavior:'smooth',block:'start'});
+  result.classList.remove('hidden');document.getElementById('result-empty')?.classList.add('hidden');showScreen('results');result.scrollIntoView({behavior:'smooth',block:'start'});
   if(saveResult)saveInvestigation(data).catch(()=>{});
 }
 
@@ -873,7 +910,7 @@ async function makeHistoryThumbnail(input){
 async function saveInvestigation(data){
   const thumbnail=await makeHistoryThumbnail(selectedFiles[0]).catch(()=>'');
   const items=readHistory();
-  items.unshift({id:Date.now(),date:new Date().toISOString(),thumbnail,data});
+  items.unshift({id:Date.now(),date:new Date().toISOString(),thumbnail,data,saved:false});
   if(writeHistory(items.slice(0,10)))renderHistory();
 }
 
@@ -888,7 +925,7 @@ function updateGuide(){const step=guideSteps[guideIndex];document.getElementById
 function openGuide(){guideIndex=0;updateGuide();document.getElementById('welcome-guide').classList.remove('hidden');document.getElementById('guide-next').focus()}
 function closeGuide(){document.getElementById('welcome-guide').classList.add('hidden');try{localStorage.setItem(GUIDE_KEY,'yes')}catch{}}
 document.getElementById('guide-next').onclick=()=>{if(guideIndex<guideSteps.length-1){guideIndex++;updateGuide()}else closeGuide()};
-document.getElementById('guide-skip').onclick=closeGuide;document.getElementById('replay-guide').onclick=openGuide;
+document.getElementById('guide-skip').onclick=closeGuide;document.getElementById('replay-guide').onclick=openGuide;document.getElementById('help-open-guide').onclick=openGuide;
 try{if(!localStorage.getItem(GUIDE_KEY))setTimeout(openGuide,350)}catch{}
 const themeSelect=document.getElementById('theme-select');
 function applyTheme(theme){const allowed=['system','light','dark'].includes(theme)?theme:'system';document.documentElement.setAttribute('data-theme',allowed);themeSelect.value=allowed}
@@ -966,23 +1003,26 @@ function confidenceLabel(value){
   return Number.isFinite(percent)?`${Math.round(percent)}%`:'Unknown';
 }
 
-function renderHistory(){
-  const items=readHistory();historyList.innerHTML='';
-  emptyHistory.classList.toggle('hidden',items.length>0);clearHistory.classList.toggle('hidden',items.length===0);
+function renderHistoryItems(container,empty,items,showSave){
+  container.innerHTML='';empty.classList.toggle('hidden',items.length>0);
   items.forEach(item=>{
     const row=document.createElement('div');row.className='history-item';row.setAttribute('role','button');row.tabIndex=0;
-    const image=document.createElement('img');image.className='history-image';image.alt='';
-    if(item.thumbnail)image.src=item.thumbnail;
+    const image=document.createElement('img');image.className='history-image';image.alt='';if(item.thumbnail)image.src=item.thumbnail;
     const info=document.createElement('div');info.className='history-info';
     const name=document.createElement('div');name.className='history-name';name.textContent=item.data?.object||'Unknown object';
-    const meta=document.createElement('div');meta.className='history-meta';
-    meta.textContent=`${new Date(item.date).toLocaleDateString()} · ${item.data?.value_estimate||'Value unknown'} · ${confidenceLabel(item.data?.confidence)}`;
-    info.append(name,meta);
-    const remove=document.createElement('button');remove.type='button';remove.className='history-delete';remove.textContent='×';remove.setAttribute('aria-label','Delete saved investigation');
-    remove.onclick=event=>{event.stopPropagation();writeHistory(readHistory().filter(entry=>entry.id!==item.id));renderHistory()};
-    const openItem=()=>render({...item.data,history_item_id:item.id,history_thumbnail:item.thumbnail||''},false);
-    row.onclick=openItem;row.onkeydown=event=>{if(event.key==='Enter'||event.key===' '){event.preventDefault();openItem()}};row.append(image,info,remove);historyList.appendChild(row);
+    const meta=document.createElement('div');meta.className='history-meta';meta.textContent=new Date(item.date).toLocaleDateString()+' · '+(item.data?.value_estimate||'Value unknown')+' · '+confidenceLabel(item.data?.confidence);info.append(name,meta);
+    const actions=document.createElement('div');actions.className='history-actions';
+    if(showSave){const save=document.createElement('button');save.type='button';save.className='history-save'+(item.saved?' is-saved':'');save.textContent=item.saved?'★':'☆';save.setAttribute('aria-label',item.saved?'Remove from Saved Items':'Save item');save.onclick=event=>{event.stopPropagation();const updated=readHistory().map(entry=>entry.id===item.id?{...entry,saved:!entry.saved}:entry);writeHistory(updated);renderHistory()};actions.appendChild(save)}
+    const remove=document.createElement('button');remove.type='button';remove.className='history-delete';remove.textContent='×';remove.setAttribute('aria-label','Delete investigation');remove.onclick=event=>{event.stopPropagation();writeHistory(readHistory().filter(entry=>entry.id!==item.id));renderHistory()};actions.appendChild(remove);
+    const openItem=()=>{showScreen('results');render({...item.data,history_item_id:item.id,history_thumbnail:item.thumbnail||''},false)};
+    row.onclick=openItem;row.onkeydown=event=>{if(event.key==='Enter'||event.key===' '){event.preventDefault();openItem()}};row.append(image,info,actions);container.appendChild(row);
   });
+}
+function renderHistory(){
+ const items=readHistory();renderHistoryItems(historyList,emptyHistory,items,true);
+ const savedList=document.getElementById('saved-list'),emptySaved=document.getElementById('empty-saved');
+ if(savedList&&emptySaved)renderHistoryItems(savedList,emptySaved,items.filter(item=>item.saved===true),false);
+ clearHistory.classList.toggle('hidden',items.length===0);
 }
 
 clearHistory.onclick=()=>{if(confirm('Delete all saved investigations?')){writeHistory([]);renderHistory()}};
