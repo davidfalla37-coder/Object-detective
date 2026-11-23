@@ -623,7 +623,7 @@ function reconcileVerification(
     result.model = "Unknown";
     result.model_number = "Unknown";
     result.variant = "Unknown";
-    result.exact_match_evidence = "The manufacturer checks conflict or cannot confirm a readable brand; the exact model is unconfirmed."; 
+    result.exact_match_evidence = "The manufacturer checks conflict or cannot confirm a readable brand; the exact model is unconfirmed.";
     result.case_file_summary = `${broadObject}; manufacturer and exact model are unconfirmed.`;
     result.identifying_clues = broadObject;
     result.confidence = brandDisagreement
@@ -634,7 +634,7 @@ function reconcileVerification(
     result.next_photo = "Take a sharp close-up of the manufacturer's label, model plate, underside or rear markings.";
     result.warning = [
       result.warning,
-      "The identification checks named different manufacturers. The brand, exact model, and value estimate are unconfirmed; check the case markings before relying on the estimate.",
+      "The identification checks named different manufacturers. The brand, exact model, and value estimate are unconfirmed; check the manufacturer label or model markings before relying on the estimate.",
     ].filter(Boolean).join(" ");
   } else if (verification.verdict === "agree") {
     result.exact_match_confidence = Math.min(primary.exact_match_confidence, verification.exact_match_confidence);
