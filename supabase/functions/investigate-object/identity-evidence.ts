@@ -21,6 +21,7 @@ function normalize(value: string): string {
 }
 
 function terms(value: string): Set<string> {
+  if (!known(value)) return new Set();
   return new Set(
     value.toLowerCase().replace(/[^a-z0-9]+/g, " ").split(/\s+/)
       .map((word) => word.length > 3 && word.endsWith("s") ? word.slice(0, -1) : word)
