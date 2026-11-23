@@ -8,7 +8,7 @@ export type VerificationVerdict = "agree" | "partial" | "disagree" | "insufficie
 
 const IGNORED_TERMS = new Set([
   "the", "and", "with", "from", "used", "item", "device", "product",
-  "this", "that", "for", "into", "its", "part",
+  "this", "that", "for", "into", "its", "part", "unknown",
 ]);
 
 function known(value: string): boolean {
