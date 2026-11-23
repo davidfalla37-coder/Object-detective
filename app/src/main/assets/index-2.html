@@ -210,7 +210,17 @@ html{scroll-padding-top:18px;scroll-padding-bottom:120px}
 @media(prefers-color-scheme:light){:root[data-theme="system"] #od-bottom-nav{background:rgba(10,31,52,.97);border-color:#47718f}}
 :root[data-theme="light"] #od-bottom-nav{background:rgba(10,31,52,.97);border-color:#47718f}
 
-  </style>
+  
+/* True screen navigation for the refreshed app */
+.od-screen{display:none;min-width:0;animation:odScreenIn .18s ease-out}
+.od-screen.active{display:block}
+@keyframes odScreenIn{from{opacity:.65;transform:translateY(5px)}to{opacity:1;transform:translateY(0)}}
+.od-home-actions{display:grid;gap:10px;margin-top:18px}
+.od-home-actions button{width:100%}
+#od-bottom-nav button[aria-current="page"]{color:#9cecff;background:rgba(89,190,230,.16);border-color:rgba(156,236,255,.45)}
+@media(prefers-reduced-motion:reduce){.od-screen{animation:none}}
+
+</style>
 </head>
 <body>
 <main>
@@ -1053,16 +1063,70 @@ document.getElementById("chat-form").onsubmit=async(event)=>{
   finally{button.disabled=false;input.disabled=false;input.focus();}
 };
 
-/* Bottom navigation: scroll to existing app sections without changing their behaviour. */
-document.querySelectorAll("#od-bottom-nav button[data-target]").forEach(button=>{
-  button.addEventListener("click",()=>{
-    const target=document.getElementById(button.dataset.target);
-    if(!target)return;
-    target.scrollIntoView({behavior:"smooth",block:"start"});
-    document.querySelectorAll("#od-bottom-nav button").forEach(item=>item.removeAttribute("aria-current"));
-    button.setAttribute("aria-current","page");
+/* Organise the existing working app into real, switchable screens.
+   Moving nodes preserves their IDs, form controls and already-bound event handlers. */
+(()=>{
+  const main=document.querySelector("main");
+  const nav=document.getElementById("od-bottom-nav");
+  if(!main||!nav)return;
+  const makeScreen=(id,label)=>{
+    const el=document.createElement("section");
+    el.className="od-screen";
+    el.id="od-screen-"+id;
+    el.dataset.screen=id;
+    el.setAttribute("aria-label",label);
+    main.insertBefore(el,nav);
+    return el;
+  };
+  const screens={
+    home:makeScreen("home","Home"),
+    identify:makeScreen("identify","Identify"),
+    history:makeScreen("history","History"),
+    settings:makeScreen("settings","Settings"),
+    help:makeScreen("help","Help")
+  };
+  const move=(id,destination)=>{
+    const node=document.getElementById(id);
+    if(node)destination.appendChild(node);
+  };
+  move("brand-hero",screens.home);
+  move("capture-card",screens.identify);
+  move("result",screens.identify);
+  move("history-card",screens.history);
+  move("app-settings",screens.settings);
+  move("app-feedback",screens.help);
+  const payment=document.getElementById("payment-promise-title");
+  if(payment&&payment.closest("section"))screens.help.appendChild(payment.closest("section"));
+  const hero=document.getElementById("welcome-title");
+  if(hero){
+    const actions=document.createElement("div");
+    actions.className="od-home-actions";
+    actions.innerHTML='<button class="primary" type="button" id="od-start-investigation">Start an investigation</button><p class="photo-guide">Take a photo, add close-ups of labels or model numbers, then review the evidence.</p>';
+    hero.closest(".brand-hero").appendChild(actions);
+    document.getElementById("od-start-investigation").addEventListener("click",()=>showScreen("identify"));
+  }
+  function showScreen(name){
+    const selected=name==="tools"?"identify":name;
+    Object.values(screens).forEach(screen=>screen.classList.toggle("active",screen.dataset.screen===selected));
+    nav.querySelectorAll("button[data-page]").forEach(button=>{
+      if(button.dataset.page===name)button.setAttribute("aria-current","page");
+      else button.removeAttribute("aria-current");
+    });
+    if(name==="tools"){
+      const helper=document.getElementById("match-helper");
+      if(helper&&!helper.classList.contains("hidden"))helper.scrollIntoView({behavior:"smooth",block:"start"});
+    }
+    window.scrollTo({top:0,behavior:"instant"});
+  }
+  nav.querySelectorAll("button").forEach(button=>{
+    const label=(button.textContent||"").trim().toLowerCase();
+    const page=label.includes("home")?"home":label.includes("identify")?"identify":label.includes("history")?"history":label.includes("tools")?"tools":label.includes("settings")?"settings":"help";
+    button.dataset.page=page;
+    button.removeAttribute("data-target");
+    button.addEventListener("click",()=>showScreen(page));
   });
-});
+  showScreen("home");
+})();
 
 </script>
 </body>
