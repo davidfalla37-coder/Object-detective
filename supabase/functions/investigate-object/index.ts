@@ -1,3 +1,5 @@
+import { deriveVerificationVerdict } from "./identity-evidence.ts";
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "content-type, authorization, apikey, x-client-info",
@@ -442,28 +444,6 @@ function rebuiltExplanation(
   }
 
   return parts.join(" ");
-}
-
-function deriveVerificationVerdict(primary: InvestigationResult, verification: VerificationResult): VerificationResult["verdict"] {
-  const normalize = (value: string): string => value.trim().toLowerCase().replace(/[^a-z0-9]+/g, "");
-  const primaryBrand = knownText(primary.brand) ? normalize(primary.brand) : "";
-  const verificationBrand = knownText(verification.brand) ? normalize(verification.brand) : "";
-  if (primaryBrand && verificationBrand && primaryBrand !== verificationBrand) return "disagree";
-  if (verification.verdict === "insufficient") return "insufficient";
-
-  const ignored = new Set(["the", "and", "with", "from", "used", "item", "device", "product", "this", "that"]);
-  const terms = (value: string): Set<string> => new Set(
-    value.toLowerCase().replace(/[^a-z0-9]+/g, " ").split(/\s+/)
-      .map((word) => word.length > 3 && word.endsWith("s") ? word.slice(0, -1) : word)
-      .filter((word) => word.length > 2 && !ignored.has(word)),
-  );
-  const primaryTerms = terms(primary.object + " " + primary.category);
-  const verificationTerms = terms(verification.object);
-  const shared = [...primaryTerms].filter((word) => verificationTerms.has(word)).length;
-  if (shared > 0) return primaryBrand && verificationBrand === primaryBrand ? "agree" : "partial";
-  if (primaryBrand && verificationBrand === primaryBrand) return "partial";
-  if (primaryTerms.size === 0 || verificationTerms.size === 0) return "insufficient";
-  return "disagree";
 }
 
 function reconcileVerification(
