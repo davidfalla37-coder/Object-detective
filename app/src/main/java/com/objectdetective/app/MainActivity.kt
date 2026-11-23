@@ -39,6 +39,8 @@ class MainActivity : Activity() {
     private lateinit var appUpdateManager: AppUpdateManager
     private var updatePromptShown = false
     private var downloadedUpdateDialogShown = false
+    private var systemBottomInsetPx = 0
+    private var systemTopInsetPx = 0
 
     private val updateListener = InstallStateUpdatedListener { state ->
         if (state.installStatus() == InstallStatus.DOWNLOADED) {
@@ -63,16 +65,23 @@ class MainActivity : Activity() {
         webView.setOnApplyWindowInsetsListener { view, insets ->
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
                 val bars = insets.getInsets(WindowInsets.Type.systemBars())
-                view.setPadding(bars.left, bars.top, bars.right, bars.bottom)
+                systemBottomInsetPx = bars.bottom
+                systemTopInsetPx = bars.top
+                view.setPadding(bars.left, bars.top, bars.right, 0)
             } else {
                 @Suppress("DEPRECATION")
-                view.setPadding(
-                    insets.systemWindowInsetLeft,
-                    insets.systemWindowInsetTop,
-                    insets.systemWindowInsetRight,
-                    insets.systemWindowInsetBottom
-                )
+                run {
+                    systemBottomInsetPx = insets.systemWindowInsetBottom
+                    systemTopInsetPx = insets.systemWindowInsetTop
+                    view.setPadding(
+                        insets.systemWindowInsetLeft,
+                        insets.systemWindowInsetTop,
+                        insets.systemWindowInsetRight,
+                        0
+                    )
+                }
             }
+            applyWebInsets()
             insets
         }
         webView.requestApplyInsets()
@@ -90,6 +99,11 @@ class MainActivity : Activity() {
         }
 
         webView.webViewClient = object : WebViewClient() {
+            override fun onPageFinished(view: WebView?, url: String?) {
+                super.onPageFinished(view, url)
+                applyWebInsets()
+            }
+
             override fun shouldOverrideUrlLoading(
                 view: WebView,
                 request: WebResourceRequest
@@ -166,6 +180,17 @@ class MainActivity : Activity() {
 
         webView.loadUrl("file:///android_asset/index-2.html")
         webView.post { checkForAppUpdate() }
+    }
+
+    private fun applyWebInsets() {
+        if (!::webView.isInitialized) return
+        val bottom = systemBottomInsetPx
+        val top = systemTopInsetPx
+        webView.evaluateJavascript(
+            "document.documentElement.style.setProperty('--android-bottom-inset', '" + bottom + "px');" +
+                "document.documentElement.style.setProperty('--android-top-inset', '" + top + "px');",
+            null
+        )
     }
 
     private fun checkForAppUpdate() {
