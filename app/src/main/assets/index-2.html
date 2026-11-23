@@ -1106,6 +1106,15 @@ document.getElementById("chat-form").onsubmit=async(event)=>{
   move("app-feedback",screens.help);
   const payment=document.getElementById("payment-promise-title");
   if(payment&&payment.closest("section"))screens.help.appendChild(payment.closest("section"));
+
+  /* Critical layout guard: every original main-level content block must belong
+     to a screen. Leaving even one behind recreates the old scrolling layout
+     underneath the new navigation. Preserve the existing DOM nodes/listeners. */
+  Array.from(main.children).forEach(node=>{
+    if(node===nav || node.classList.contains("brandbar") || node.classList.contains("od-screen"))return;
+    screens.identify.appendChild(node);
+  });
+
   const hero=document.getElementById("welcome-title");
   if(hero){
     const actions=document.createElement("div");
