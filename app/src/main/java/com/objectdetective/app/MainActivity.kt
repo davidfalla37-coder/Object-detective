@@ -31,6 +31,7 @@ import com.google.android.play.core.install.model.UpdateAvailability
 import com.google.mlkit.vision.codescanner.GmsBarcodeScanning
 import com.google.mlkit.vision.codescanner.GmsBarcodeScannerOptions
 import java.io.IOException
+import kotlin.math.roundToInt
 
 class MainActivity : Activity() {
     private lateinit var webView: WebView
@@ -65,7 +66,12 @@ class MainActivity : Activity() {
         webView.setOnApplyWindowInsetsListener { view, insets ->
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
                 val bars = insets.getInsets(WindowInsets.Type.systemBars())
-                systemBottomInsetPx = bars.bottom
+                // Android 15/16 can report a zero visible navigation inset while
+                // the gesture/navigation area still occupies screen space.
+                val stableNavigation = insets.getInsetsIgnoringVisibility(
+                    WindowInsets.Type.navigationBars()
+                )
+                systemBottomInsetPx = maxOf(bars.bottom, stableNavigation.bottom)
                 systemTopInsetPx = bars.top
                 view.setPadding(bars.left, bars.top, bars.right, 0)
             } else {
@@ -184,8 +190,10 @@ class MainActivity : Activity() {
 
     private fun applyWebInsets() {
         if (!::webView.isInitialized) return
-        val bottom = systemBottomInsetPx
-        val top = systemTopInsetPx
+        // WindowInsets are physical pixels; CSS pixels in WebView are density-independent.
+        val density = resources.displayMetrics.density
+        val bottom = (systemBottomInsetPx / density).roundToInt()
+        val top = (systemTopInsetPx / density).roundToInt()
         webView.evaluateJavascript(
             "document.documentElement.style.setProperty('--android-bottom-inset', '" + bottom + "px');" +
                 "document.documentElement.style.setProperty('--android-top-inset', '" + top + "px');",
