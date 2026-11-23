@@ -44,6 +44,10 @@ export function deriveVerificationVerdict(
 
   const primaryTerms = terms(primary.object + " " + (primary.category ?? ""));
   const verificationTerms = terms(verification.object + " " + (verification.category ?? ""));
+  // Brand and model tokens can be shared by a whole product and one of its
+  // components. Do not let those tokens alone establish object-level agreement.
+  for (const word of terms(primary.brand)) primaryTerms.delete(word);
+  for (const word of terms(verification.brand)) verificationTerms.delete(word);
   const shared = [...primaryTerms].filter((word) => verificationTerms.has(word)).length;
 
   // One shared descriptive word is partial evidence, never agreement.
