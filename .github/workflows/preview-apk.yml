@@ -46,4 +46,4 @@ jobs:
           if-no-files-found: error
           retention-days: 14
 
-# Rebuild trigger for the corrected screen-containment preview.
+# Rebuild trigger for restored Android WebView vertical scrolling.
