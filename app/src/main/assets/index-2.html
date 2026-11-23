@@ -1092,6 +1092,11 @@ document.getElementById("chat-form").onsubmit=async(event)=>{
   move("brand-hero",screens.home);
   move("capture-card",screens.identify);
   move("result",screens.identify);
+  const toolsIntro=document.createElement("section");
+  toolsIntro.className="card";
+  toolsIntro.innerHTML="<h2>Investigation tools</h2><p>Use extra details from labels, model numbers, barcodes or measurements to improve matching after an investigation.</p>";
+  screens.tools.appendChild(toolsIntro);
+  move("match-helper",screens.tools);
   move("history-card",screens.history);
   move("app-settings",screens.settings);
   move("app-feedback",screens.help);
@@ -1106,17 +1111,14 @@ document.getElementById("chat-form").onsubmit=async(event)=>{
     document.getElementById("od-start-investigation").addEventListener("click",()=>showScreen("identify"));
   }
   function showScreen(name){
-    const selected=name==="tools"?"identify":name;
+    const selected=name;
     Object.values(screens).forEach(screen=>screen.classList.toggle("active",screen.dataset.screen===selected));
     nav.querySelectorAll("button[data-page]").forEach(button=>{
       if(button.dataset.page===name)button.setAttribute("aria-current","page");
       else button.removeAttribute("aria-current");
     });
-    if(name==="tools"){
-      const helper=document.getElementById("match-helper");
-      if(helper&&!helper.classList.contains("hidden"))helper.scrollIntoView({behavior:"smooth",block:"start"});
-    }
-    window.scrollTo({top:0,behavior:"instant"});
+    
+    window.scrollTo({top:0,behavior:"auto"});
   }
   nav.querySelectorAll("button").forEach(button=>{
     const label=(button.textContent||"").trim().toLowerCase();
