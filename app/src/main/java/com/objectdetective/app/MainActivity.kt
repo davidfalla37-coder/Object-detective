@@ -33,6 +33,7 @@ import com.google.mlkit.vision.codescanner.GmsBarcodeScannerOptions
 import java.io.IOException
 import kotlin.math.roundToInt
 
+// Preview build: keep Android navigation-area spacing density-correct.
 class MainActivity : Activity() {
     private lateinit var webView: WebView
     private var fileCallback: ValueCallback<Array<Uri>>? = null
