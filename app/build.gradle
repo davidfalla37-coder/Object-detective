@@ -19,6 +19,14 @@ android {
         versionName "1.19"
     }
 
+    // Keep development installs separate from the live Play Store app.
+    buildTypes {
+        debug {
+            applicationIdSuffix ".dev"
+            versionNameSuffix "-dev"
+        }
+    }
+
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_17
         targetCompatibility JavaVersion.VERSION_17
