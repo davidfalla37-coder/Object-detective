@@ -1,6 +1,6 @@
 export interface IdentityCandidate {
   object: string;
-  category: string;
+  category?: string;
   brand: string;
 }
 
@@ -41,8 +41,8 @@ export function deriveVerificationVerdict(
   }
   if (verification.verdict === "insufficient") return "insufficient";
 
-  const primaryTerms = terms(primary.object + " " + primary.category);
-  const verificationTerms = terms(verification.object + " " + verification.category);
+  const primaryTerms = terms(primary.object + " " + (primary.category ?? ""));
+  const verificationTerms = terms(verification.object + " " + (verification.category ?? ""));
   const shared = [...primaryTerms].filter((word) => verificationTerms.has(word)).length;
 
   // One shared descriptive word is partial evidence, never agreement.
