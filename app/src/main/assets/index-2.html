@@ -291,6 +291,47 @@ const historyList=document.getElementById('history-list');
 const emptyHistory=document.getElementById('empty-history');
 const clearHistory=document.getElementById('clear-history');
 const HISTORY_KEY='object-detective-history-v1';
+const HISTORY_PHOTOS_DB='object-detective-history-photos-v1';
+let historyPhotosDbPromise=null;
+function openHistoryPhotosDb(){
+  if(!('indexedDB' in window))return Promise.reject(new Error('Photo storage is unavailable.'));
+  if(!historyPhotosDbPromise)historyPhotosDbPromise=new Promise((resolve,reject)=>{
+    const request=indexedDB.open(HISTORY_PHOTOS_DB,1);
+    request.onupgradeneeded=()=>{const db=request.result;if(!db.objectStoreNames.contains('photos'))db.createObjectStore('photos',{keyPath:'id'});};
+    request.onsuccess=()=>resolve(request.result);
+    request.onerror=()=>reject(request.error||new Error('Could not open photo storage.'));
+  });
+  return historyPhotosDbPromise;
+}
+async function storeHistoryPhotos(id,files){
+  const images=await buildInvestigationImages(files,1000,.72);
+  const photos=images.map((url,index)=>{
+    const parts=url.split(',');const mime=(parts[0].match(/data:(.*?);base64/)||[])[1]||'image/jpeg';
+    const raw=atob(parts[1]);const bytes=new Uint8Array(raw.length);
+    for(let i=0;i<raw.length;i++)bytes[i]=raw.charCodeAt(i);
+    return{blob:new Blob([bytes],{type:mime}),name:`investigation-photo-${index+1}.jpg`,type:mime};
+  });
+  const db=await openHistoryPhotosDb();
+  await new Promise((resolve,reject)=>{const tx=db.transaction('photos','readwrite');tx.objectStore('photos').put({id,photos});tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error||new Error('Could not save investigation photos.'));tx.onabort=()=>reject(tx.error||new Error('Photo saving was cancelled.'));});
+}
+async function readHistoryPhotos(id){
+  const db=await openHistoryPhotosDb();
+  return new Promise((resolve,reject)=>{const request=db.transaction('photos','readonly').objectStore('photos').get(id);request.onsuccess=()=>resolve(request.result?.photos||[]);request.onerror=()=>reject(request.error||new Error('Could not load saved photographs.'));});
+}
+async function deleteHistoryPhotos(id){
+  try{const db=await openHistoryPhotosDb();await new Promise((resolve,reject)=>{const tx=db.transaction('photos','readwrite');tx.objectStore('photos').delete(id);tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error);});}catch{}
+}
+async function clearHistoryPhotos(){
+  try{const db=await openHistoryPhotosDb();await new Promise((resolve,reject)=>{const tx=db.transaction('photos','readwrite');tx.objectStore('photos').clear();tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error);});}catch{}
+}
+async function restoreHistoryPhotos(id){
+  const saved=await readHistoryPhotos(id);
+  if(!saved.length)return false;
+  const files=saved.slice(0,5).map((photo,index)=>new File([photo.blob],photo.name||`investigation-photo-${index+1}.jpg`,{type:photo.type||photo.blob.type||'image/jpeg',lastModified:Date.now()}));
+  selectedFiles=[];photoChecks=[];
+  await addSelectedFiles(files);
+  return true;
+}
 const CORRECTIONS_KEY='object-detective-photo-corrections-v1';
 let selectedFiles=[];
 let photoChecks=[];
@@ -634,10 +675,16 @@ async function makeHistoryThumbnail(input){
 }
 
 async function saveInvestigation(data){
+  const id=Date.now();
   const thumbnail=await makeHistoryThumbnail(selectedFiles[0]).catch(()=>'');
   const items=readHistory();
-  items.unshift({id:Date.now(),date:new Date().toISOString(),thumbnail,data});
-  if(writeHistory(items.slice(0,10)))renderHistory();
+  items.unshift({id,date:new Date().toISOString(),thumbnail,data,photo_count:selectedFiles.length});
+  const retained=items.slice(0,10);
+  if(writeHistory(retained)){
+    renderHistory();
+    try{await storeHistoryPhotos(id,selectedFiles);}catch(error){console.warn('Investigation details were saved, but full-size history photos could not be stored.',error);}
+    for(const removed of items.slice(10))deleteHistoryPhotos(removed.id);
+  }
 }
 
 const GUIDE_KEY='object-detective-guide-complete-v1',THEME_KEY='object-detective-theme-v1';
@@ -743,10 +790,24 @@ function renderHistory(){
     meta.textContent=`${new Date(item.date).toLocaleDateString()} · ${item.data?.value_estimate||'Value unknown'} · ${confidenceLabel(item.data?.confidence)}`;
     info.append(name,meta);
     openButton.append(image,info);
-    openButton.addEventListener('click',()=>{
+    openButton.addEventListener('click',async()=>{
       try{
         if(!item.data||typeof item.data!=='object')throw new Error('This saved investigation has incomplete details.');
+        clear.onclick();
         render({...item.data,history_item_id:item.id,history_thumbnail:item.thumbnail||''},false);
+        try{
+          const restored=await restoreHistoryPhotos(item.id);
+          if(!restored){
+            if(item.thumbnail){preview.src=item.thumbnail;preview.style.display='block';placeholder.classList.add('hidden');}
+            photoCount.textContent='Original photos unavailable for this older investigation';
+            photoTip.textContent='This investigation was saved before full-photo history was available. Its result and thumbnail are retained, but the original photographs cannot be recovered.';
+          }
+          result.classList.remove('hidden');
+        }catch(photoError){
+          photoTip.textContent='The result is saved, but its original photographs could not be loaded on this device.';
+          console.warn('Could not restore history photographs.',photoError);
+        }
+        result.scrollIntoView({behavior:'smooth',block:'start'});
       }catch(error){
         errorBox.textContent=error.message||'This saved investigation could not be opened.';
         errorBox.classList.remove('hidden');
@@ -758,13 +819,14 @@ function renderHistory(){
       event.stopPropagation();
       if(confirm('Delete this saved investigation?')){
         writeHistory(readHistory().filter(saved=>saved.id!==item.id));
+        deleteHistoryPhotos(item.id);
         renderHistory();
       }
     });
     entry.append(openButton,remove);historyList.appendChild(entry);
   });
 }
-clearHistory.onclick=()=>{if(confirm('Delete all saved investigations?')){writeHistory([]);renderHistory()}};
+clearHistory.onclick=()=>{if(confirm('Delete all saved investigations?')){writeHistory([]);clearHistoryPhotos();renderHistory()}};
 renderHistory();
 
 let currentChatContext={};
