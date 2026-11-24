@@ -25,6 +25,16 @@ jobs:
         with:
           gradle-version: '8.9'
 
+      - name: Fail if refreshed layout or history-photo protection is missing
+        run: |
+          FILE="app/src/main/assets/index-2.html"
+          grep -q 'id="od-bottom-nav"' "$FILE"
+          grep -q 'class="od-screen' "$FILE"
+          grep -q 'indexedDB.open(HISTORY_PHOTOS_DB' "$FILE"
+          grep -q 'restoreHistoryPhotos(item.id)' "$FILE"
+          grep -q 'async function saveInvestigation(data)' "$FILE"
+          grep -q 'applicationIdSuffix ".test"' app/build.gradle
+
       - name: Restore signing keystore
         env:
           KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
