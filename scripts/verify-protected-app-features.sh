@@ -42,7 +42,18 @@ if grep -Fq 'result.object = "Wireless earbuds with charging case"' "$FUNCTION";
   echo "::error::Hard-coded earbuds fallback has returned"
   exit 1
 fi
-if ! grep -Fq 'investigate-object-preview' "app/src/main/assets/index-2.html"; then
-  echo "::error::Preview app is not isolated from the live investigation endpoint"
+LIVE_URL="https://gboyflbwcobhzbvpdtat.supabase.co/functions/v1/investigate-object"
+if ! grep -Fq "$LIVE_URL" "app/src/main/assets/index-2.html" || grep -Fq 'investigate-object-preview' "app/src/main/assets/index-2.html"; then
+  echo "::error::Production source must use the live endpoint, not the preview endpoint"
+  exit 1
+fi
+LIVE_FUNCTION="supabase/functions/investigate-object/index.ts"
+LIVE_HELPER="supabase/functions/investigate-object/identity-conflict.ts"
+if ! grep -Fq 'applyBrandConflictFallback' "$LIVE_FUNCTION" || ! grep -Fq 'result.object = retainedObject' "$LIVE_HELPER"; then
+  echo "::error::Live broad-object identity safeguard is missing"
+  exit 1
+fi
+if grep -Fq 'result.object = "Wireless earbuds with charging case"' "$LIVE_FUNCTION"; then
+  echo "::error::Hard-coded earbuds fallback has returned to the live service"
   exit 1
 fi
