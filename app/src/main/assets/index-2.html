@@ -211,6 +211,31 @@ html{scroll-padding-top:18px;scroll-padding-bottom:120px}
 :root[data-theme="light"] #od-bottom-nav{background:rgba(10,31,52,.97);border-color:#47718f}
 
   
+/* Android WebView vertical scrolling guard.
+   Keep the document as the scroll surface; do not trap touch gestures inside
+   the individual navigation screens. This is intentionally explicit because
+   WebView can otherwise retain a non-scrollable viewport after screen swaps. */
+html,body{
+  height:auto!important;
+  min-height:100%!important;
+  overflow-x:hidden!important;
+  overflow-y:auto!important;
+  touch-action:pan-y!important;
+  -webkit-overflow-scrolling:touch;
+}
+main{
+  height:auto!important;
+  min-height:100vh;
+  overflow:visible!important;
+  touch-action:pan-y!important;
+}
+.od-screen,.od-screen.active{
+  height:auto!important;
+  min-height:0;
+  overflow:visible!important;
+  touch-action:pan-y!important;
+}
+
 /* True screen navigation for the refreshed app */
 .od-screen{display:none;min-width:0;animation:odScreenIn .18s ease-out}
 .od-screen.active{display:block}
