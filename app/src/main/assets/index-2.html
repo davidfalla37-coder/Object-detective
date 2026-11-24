@@ -245,6 +245,20 @@ main{
 #od-bottom-nav button[aria-current="page"]{color:#9cecff;background:rgba(89,190,230,.16);border-color:rgba(156,236,255,.45)}
 @media(prefers-reduced-motion:reduce){.od-screen{animation:none}}
 
+/* Final S25 adjustments: lower the fixed navigation to the bottom of the
+   WebView viewport and keep the appearance selector readable in light mode. */
+#od-bottom-nav{bottom:0!important}
+:root[data-theme="light"] #app-settings .setting-select{
+  background:#f7fafd!important;color:#17243a!important;border-color:#c1d1e0!important;
+  color-scheme:light;
+}
+@media(prefers-color-scheme:light){
+  :root[data-theme="system"] #app-settings .setting-select{
+    background:#f7fafd!important;color:#17243a!important;border-color:#c1d1e0!important;
+    color-scheme:light;
+  }
+}
+
 </style>
 </head>
 <body>
