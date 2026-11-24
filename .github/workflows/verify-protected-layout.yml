@@ -28,18 +28,37 @@ jobs:
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.9'
+      - name: Restore the same signing key used for previous test APK updates
+        env:
+          KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+        run: printf '%s' "$KEYSTORE_BASE64" | base64 --decode > signing-key.jks
       - name: Prepare app icon resource
         run: |
           mkdir -p app/src/main/res/drawable-nodpi
           cp ic_launcher.webp app/src/main/res/drawable-nodpi/ic_launcher.webp
-      - name: Build isolated debug test APK
-        run: gradle --no-daemon assembleDebug -PtestInstall=true
-      - name: Verify isolated APK exists
-        run: test -s app/build/outputs/apk/debug/app-debug.apk
-      - name: Upload isolated preview APK
+      - name: Build installable release test APK
+        run: gradle --no-daemon assembleRelease -PtestInstall=true
+      - name: Sign test APK with the persistent app signing key
+        env:
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+        run: |
+          BUILD_TOOLS="$ANDROID_HOME/build-tools/$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -n 1)"
+          mkdir -p app/build/outputs/apk/release
+          "$BUILD_TOOLS/apksigner" sign \
+            --ks signing-key.jks \
+            --ks-key-alias "$KEY_ALIAS" \
+            --ks-pass "pass:$KEYSTORE_PASSWORD" \
+            --key-pass "pass:$KEYSTORE_PASSWORD" \
+            --out app/build/outputs/apk/release/object-detective-test.apk \
+            app/build/outputs/apk/release/app-release-unsigned.apk
+          "$BUILD_TOOLS/apksigner" verify --verbose app/build/outputs/apk/release/object-detective-test.apk
+      - name: Verify installable APK exists
+        run: test -s app/build/outputs/apk/release/object-detective-test.apk
+      - name: Upload update-compatible test APK
         uses: actions/upload-artifact@v4
         with:
-          name: Object-Detective-Refreshed-Test-APK
-          path: app/build/outputs/apk/debug/app-debug.apk
+          name: Object-Detective-Update-Test-APK
+          path: app/build/outputs/apk/release/object-detective-test.apk
           if-no-files-found: error
           retention-days: 14
