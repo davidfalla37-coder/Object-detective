@@ -84,7 +84,7 @@ jobs:
           mkdir -p app/src/main/res/drawable-nodpi
           cp ic_launcher.webp app/src/main/res/drawable-nodpi/ic_launcher.webp
       - name: Build release APK
-        run: gradle --no-daemon assembleRelease
+        run: gradle --no-daemon assembleRelease -PtestInstall=true
       - name: Sign installable APK
         env:
           KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
@@ -102,6 +102,6 @@ jobs:
       - name: Upload installable test APK
         uses: actions/upload-artifact@v4
         with:
-          name: Object-Detective-Test-APK
+          name: Object-Detective-Separate-Test-APK
           path: app/build/outputs/apk/release/object-detective-test.apk
           if-no-files-found: error
