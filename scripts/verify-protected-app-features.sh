@@ -21,3 +21,19 @@ grep -Fq 'applicationIdSuffix ".test"' app/build.gradle || {
   exit 1
 }
 echo "Protected refreshed layout, history-photo restore, and separate test package verified."
+
+
+FUNCTION="supabase/functions/investigate-object-preview/index.ts"
+HELPER="supabase/functions/investigate-object-preview/identity-conflict.ts"
+if ! grep -Fq 'applyBrandConflictFallback' "$FUNCTION" || ! grep -Fq 'result.object = retainedObject' "$HELPER"; then
+  echo "::error::Protected broad-object identity fallback is missing"
+  exit 1
+fi
+if grep -Fq 'result.object = "Wireless earbuds with charging case"' "$FUNCTION"; then
+  echo "::error::Hard-coded earbuds fallback has returned"
+  exit 1
+fi
+if ! grep -Fq 'investigate-object-preview' "app/src/main/assets/index-2.html"; then
+  echo "::error::Preview app is not isolated from the live investigation endpoint"
+  exit 1
+fi
