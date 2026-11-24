@@ -18,7 +18,10 @@ android {
         targetSdk 36
         versionCode 20
         versionName "1.19"
-        if (project.hasProperty('testInstall') && project.property('testInstall') == 'true') {
+        if (project.hasProperty('previewInstall') && project.property('previewInstall') == 'true') {
+            applicationIdSuffix ".preview"
+            manifestPlaceholders = [appLabel: "Object Detective Preview"]
+        } else if (project.hasProperty('testInstall') && project.property('testInstall') == 'true') {
             applicationIdSuffix ".test"
             manifestPlaceholders = [appLabel: "Object Detective Test"]
         } else {
