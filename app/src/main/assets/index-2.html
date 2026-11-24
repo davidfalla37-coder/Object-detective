@@ -1312,8 +1312,9 @@ document.getElementById("chat-form").onsubmit=async(event)=>{
     const status=scannerEl("scanner-status"),details=scannerEl("scanner-product-details"),button=scannerEl("scanner-search-product");
     details.classList.add("hidden");details.textContent="";button.disabled=true;status.textContent="Checking product catalogues…";
     try{
+      const lookupFormat=scannerState.format==="UPC_E"?"UPC-E":scannerState.format;
       const response=await fetch("https://kscnivjkldtssskwhsfk.supabase.co/functions/v1/lookup-barcode",{
-        method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({code})
+        method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({code,format:lookupFormat})
       });
       const data=await response.json().catch(()=>({}));
       if(!response.ok)throw new Error(data.error||"The product lookup service is unavailable. Please try again.");
