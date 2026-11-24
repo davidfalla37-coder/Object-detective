@@ -676,13 +676,14 @@ async function makeHistoryThumbnail(input){
 
 async function saveInvestigation(data){
   const id=Date.now();
-  const thumbnail=await makeHistoryThumbnail(selectedFiles[0]).catch(()=>'');
+  const photos=selectedFiles.slice();
+  const thumbnail=await makeHistoryThumbnail(photos[0]).catch(()=>'');
   const items=readHistory();
-  items.unshift({id,date:new Date().toISOString(),thumbnail,data,photo_count:selectedFiles.length});
+  items.unshift({id,date:new Date().toISOString(),thumbnail,data,photo_count:photos.length});
   const retained=items.slice(0,10);
   if(writeHistory(retained)){
     renderHistory();
-    try{await storeHistoryPhotos(id,selectedFiles);}catch(error){console.warn('Investigation details were saved, but full-size history photos could not be stored.',error);}
+    try{await storeHistoryPhotos(id,photos);}catch(error){console.warn('Investigation details were saved, but full-size history photos could not be stored.',error);}
     for(const removed of items.slice(10))deleteHistoryPhotos(removed.id);
   }
 }
