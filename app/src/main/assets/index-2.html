@@ -1039,22 +1039,20 @@ function renderHistory(){
     openButton.addEventListener('click',async()=>{
       try{
         if(!item.data||typeof item.data!=='object')throw new Error('This saved investigation has incomplete details.');
-        // Reset the live capture UI, then restore the saved photographs first.
-        // addSelectedFiles() hides the result panel while loading photos, so render
-        // the saved result only after photo restoration has finished.
+        // Keep the original working History sequence: show the saved result,
+        // restore its photos, then reveal and scroll the completed investigation.
+        // The only refreshed-layout addition is switching to the Identify screen.
+        if(typeof window.odShowScreen==='function')window.odShowScreen('identify');
         clear.onclick();
-        let photoRestoreFailed=false;
+        render({...item.data,history_item_id:item.id,history_thumbnail:item.thumbnail||''},false);
         let restored=false;
+        let photoRestoreFailed=false;
         try{
           restored=await restoreHistoryPhotos(item.id);
         }catch(photoError){
           photoRestoreFailed=true;
           console.warn('Could not restore history photographs.',photoError);
         }
-        // Navigate directly through the screen controller rather than simulating
-        // a navigation-button tap. This works even if the nav labels are restyled.
-        if(typeof window.odShowScreen==='function')window.odShowScreen('identify');
-        render({...item.data,history_item_id:item.id,history_thumbnail:item.thumbnail||''},false);
         if(!restored){
           if(item.thumbnail){preview.src=item.thumbnail;preview.style.display='block';placeholder.classList.add('hidden');}
           photoCount.textContent='Original photos unavailable for this older investigation';
