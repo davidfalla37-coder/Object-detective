@@ -7,6 +7,8 @@ required=(
   'indexedDB.open(HISTORY_PHOTOS_DB'
   'restoreHistoryPhotos(item.id)'
   'async function saveInvestigation(data)'
+  'const lookupFormat=scannerState.format==="UPC_E"?"UPC-E":scannerState.format'
+  'JSON.stringify({code,format:lookupFormat})'
 )
 for pattern in "${required[@]}"; do
   if ! grep -Fq "$pattern" "$FILE"; then
