@@ -20,7 +20,7 @@
     h2{margin:0 0 8px}.row{display:block;width:100%;padding:13px 0;border-bottom:1px solid var(--line);min-width:0}.label,.value{display:block;width:100%;max-width:none;min-width:0}.label{color:var(--muted)}.value{text-align:left;font-weight:700;margin-top:6px;line-height:1.4;font-size:17px;overflow-wrap:anywhere;word-break:break-word}.explain{color:#d5deeb}.warning{padding:12px;border-radius:12px;background:#332712;color:#f7d794;margin-top:12px;overflow-wrap:anywhere}
     #shops a,#vehicle-shops a{display:grid;place-items:center;min-height:50px;padding:10px;border-radius:14px;background:#1b2a44;border:1px solid #354b6c;color:#fff;font-weight:750;text-align:center;text-decoration:none}
     .vehicle-card{border-color:#806116;background:linear-gradient(145deg,#2c250f,#111c30 48%);overflow:hidden}.vehicle-title{color:#ffd34e}.vehicle-note{font-size:14px;color:#ffe6a0}.safety{padding:12px;border-radius:12px;background:#361d18;color:#ffc7b8;border:1px solid #7b3b2e;margin-top:12px;overflow-wrap:anywhere}.vehicle-card .row{display:block;width:100%}.vehicle-card .label,.vehicle-card .value{display:block;width:100%;max-width:none}.vehicle-card .value{text-align:left;margin-top:6px;line-height:1.4;font-size:17px;overflow-wrap:anywhere;word-break:break-word}
-    .condition-badge{display:inline-flex;align-items:center;width:max-content;margin-top:8px;padding:6px 10px;border-radius:999px;font-size:13px;font-weight:800;border:1px solid #39506d;background:#17263d;color:#d8e7ff}.condition-badge.new-sealed{background:#123629;border-color:#2c8058;color:#a7f3d0}.condition-badge.like-new{background:#153448;border-color:#34769a;color:#b8e9ff}.condition-badge.used{background:#302b18;border-color:#76652b;color:#ffe29a}.condition-badge.worn-damaged{background:#3a211e;border-color:#8c463a;color:#ffc2b5}.condition-badge.cannot-tell{background:#242a35;border-color:#535f73;color:#c9d2df}\n    .history-head{display:flex;align-items:center;justify-content:space-between;gap:12px}.history-head h2{margin:0}.history-list{display:grid;gap:10px;margin-top:12px}.history-item{display:grid;grid-template-columns:64px minmax(0,1fr) 38px;align-items:center;gap:10px;padding:10px;border:1px solid var(--line);border-radius:14px;background:#0b1628;color:#fff;text-align:left;width:100%}.history-image{width:64px;height:64px;border-radius:10px;object-fit:cover;background:#07101f}.history-info{min-width:0}.history-name{font-weight:800;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.history-meta{font-size:13px;color:var(--muted);margin-top:4px}.history-delete{width:36px;height:36px;min-height:0;padding:0;border-radius:50%;background:#321b22;color:#ffb4b4}.empty-history{color:var(--muted);margin:8px 0 0}
+    .condition-badge{display:inline-flex;align-items:center;width:max-content;margin-top:8px;padding:6px 10px;border-radius:999px;font-size:13px;font-weight:800;border:1px solid #39506d;background:#17263d;color:#d8e7ff}.condition-badge.new-sealed{background:#123629;border-color:#2c8058;color:#a7f3d0}.condition-badge.like-new{background:#153448;border-color:#34769a;color:#b8e9ff}.condition-badge.used{background:#302b18;border-color:#76652b;color:#ffe29a}.condition-badge.worn-damaged{background:#3a211e;border-color:#8c463a;color:#ffc2b5}.condition-badge.cannot-tell{background:#242a35;border-color:#535f73;color:#c9d2df}\n    .history-head{display:flex;align-items:center;justify-content:space-between;gap:12px}.history-head h2{margin:0}.history-list{display:grid;gap:10px;margin-top:12px}.history-entry{display:grid;grid-template-columns:minmax(0,1fr) 38px;align-items:center;gap:10px;min-width:0}.history-item{display:grid;grid-template-columns:64px minmax(0,1fr);align-items:center;gap:10px;padding:10px;border:1px solid var(--line);border-radius:14px;background:#0b1628;color:#fff;text-align:left;width:100%;min-width:0;cursor:pointer;touch-action:manipulation}.history-item:focus-visible{outline:3px solid var(--accent);outline-offset:3px}.history-image{width:64px;height:64px;border-radius:10px;object-fit:cover;background:#07101f}.history-info{min-width:0}.history-name{font-weight:800;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.history-meta{font-size:13px;color:var(--muted);margin-top:4px}.history-delete{width:36px;height:36px;min-height:0;padding:0;border-radius:50%;background:#321b22;color:#ffb4b4}.empty-history{color:var(--muted);margin:8px 0 0}
     .sell-card textarea,.sell-card input,.sell-card select,.chat-input{width:100%;border:1px solid #354b6c;border-radius:12px;background:#091426;color:var(--text);padding:12px;font:inherit;line-height:1.45}
     .sell-card textarea{min-height:100px;resize:vertical}
     .sell-card .draft-label{display:block;margin:12px 0 6px;color:var(--muted);font-size:14px}
@@ -291,6 +291,47 @@ const historyList=document.getElementById('history-list');
 const emptyHistory=document.getElementById('empty-history');
 const clearHistory=document.getElementById('clear-history');
 const HISTORY_KEY='object-detective-history-v1';
+const HISTORY_PHOTOS_DB='object-detective-history-photos-v1';
+let historyPhotosDbPromise=null;
+function openHistoryPhotosDb(){
+  if(!('indexedDB' in window))return Promise.reject(new Error('Photo storage is unavailable.'));
+  if(!historyPhotosDbPromise)historyPhotosDbPromise=new Promise((resolve,reject)=>{
+    const request=indexedDB.open(HISTORY_PHOTOS_DB,1);
+    request.onupgradeneeded=()=>{const db=request.result;if(!db.objectStoreNames.contains('photos'))db.createObjectStore('photos',{keyPath:'id'});};
+    request.onsuccess=()=>resolve(request.result);
+    request.onerror=()=>reject(request.error||new Error('Could not open photo storage.'));
+  });
+  return historyPhotosDbPromise;
+}
+async function storeHistoryPhotos(id,files){
+  const images=await buildInvestigationImages(files,1000,.72);
+  const photos=images.map((url,index)=>{
+    const parts=url.split(',');const mime=(parts[0].match(/data:(.*?);base64/)||[])[1]||'image/jpeg';
+    const raw=atob(parts[1]);const bytes=new Uint8Array(raw.length);
+    for(let i=0;i<raw.length;i++)bytes[i]=raw.charCodeAt(i);
+    return{blob:new Blob([bytes],{type:mime}),name:`investigation-photo-${index+1}.jpg`,type:mime};
+  });
+  const db=await openHistoryPhotosDb();
+  await new Promise((resolve,reject)=>{const tx=db.transaction('photos','readwrite');tx.objectStore('photos').put({id,photos});tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error||new Error('Could not save investigation photos.'));tx.onabort=()=>reject(tx.error||new Error('Photo saving was cancelled.'));});
+}
+async function readHistoryPhotos(id){
+  const db=await openHistoryPhotosDb();
+  return new Promise((resolve,reject)=>{const request=db.transaction('photos','readonly').objectStore('photos').get(id);request.onsuccess=()=>resolve(request.result?.photos||[]);request.onerror=()=>reject(request.error||new Error('Could not load saved photographs.'));});
+}
+async function deleteHistoryPhotos(id){
+  try{const db=await openHistoryPhotosDb();await new Promise((resolve,reject)=>{const tx=db.transaction('photos','readwrite');tx.objectStore('photos').delete(id);tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error);});}catch{}
+}
+async function clearHistoryPhotos(){
+  try{const db=await openHistoryPhotosDb();await new Promise((resolve,reject)=>{const tx=db.transaction('photos','readwrite');tx.objectStore('photos').clear();tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error);});}catch{}
+}
+async function restoreHistoryPhotos(id){
+  const saved=await readHistoryPhotos(id);
+  if(!saved.length)return false;
+  const files=saved.slice(0,5).map((photo,index)=>new File([photo.blob],photo.name||`investigation-photo-${index+1}.jpg`,{type:photo.type||photo.blob.type||'image/jpeg',lastModified:Date.now()}));
+  selectedFiles=[];photoChecks=[];
+  await addSelectedFiles(files);
+  return true;
+}
 const CORRECTIONS_KEY='object-detective-photo-corrections-v1';
 let selectedFiles=[];
 let photoChecks=[];
@@ -634,10 +675,17 @@ async function makeHistoryThumbnail(input){
 }
 
 async function saveInvestigation(data){
-  const thumbnail=await makeHistoryThumbnail(selectedFiles[0]).catch(()=>'');
+  const id=Date.now();
+  const photos=selectedFiles.slice();
+  const thumbnail=await makeHistoryThumbnail(photos[0]).catch(()=>'');
   const items=readHistory();
-  items.unshift({id:Date.now(),date:new Date().toISOString(),thumbnail,data});
-  if(writeHistory(items.slice(0,10)))renderHistory();
+  items.unshift({id,date:new Date().toISOString(),thumbnail,data,photo_count:photos.length});
+  const retained=items.slice(0,10);
+  if(writeHistory(retained)){
+    renderHistory();
+    try{await storeHistoryPhotos(id,photos);}catch(error){console.warn('Investigation details were saved, but full-size history photos could not be stored.',error);}
+    for(const removed of items.slice(10))deleteHistoryPhotos(removed.id);
+  }
 }
 
 const GUIDE_KEY='object-detective-guide-complete-v1',THEME_KEY='object-detective-theme-v1';
@@ -733,7 +781,8 @@ function renderHistory(){
   const items=readHistory();historyList.innerHTML='';
   emptyHistory.classList.toggle('hidden',items.length>0);clearHistory.classList.toggle('hidden',items.length===0);
   items.forEach(item=>{
-    const row=document.createElement('div');row.className='history-item';row.setAttribute('role','button');row.tabIndex=0;
+    const entry=document.createElement('div');entry.className='history-entry';
+    const openButton=document.createElement('button');openButton.type='button';openButton.className='history-item';
     const image=document.createElement('img');image.className='history-image';image.alt='';
     if(item.thumbnail)image.src=item.thumbnail;
     const info=document.createElement('div');info.className='history-info';
@@ -741,14 +790,44 @@ function renderHistory(){
     const meta=document.createElement('div');meta.className='history-meta';
     meta.textContent=`${new Date(item.date).toLocaleDateString()} · ${item.data?.value_estimate||'Value unknown'} · ${confidenceLabel(item.data?.confidence)}`;
     info.append(name,meta);
+    openButton.append(image,info);
+    openButton.addEventListener('click',async()=>{
+      try{
+        if(!item.data||typeof item.data!=='object')throw new Error('This saved investigation has incomplete details.');
+        clear.onclick();
+        render({...item.data,history_item_id:item.id,history_thumbnail:item.thumbnail||''},false);
+        try{
+          const restored=await restoreHistoryPhotos(item.id);
+          if(!restored){
+            if(item.thumbnail){preview.src=item.thumbnail;preview.style.display='block';placeholder.classList.add('hidden');}
+            photoCount.textContent='Original photos unavailable for this older investigation';
+            photoTip.textContent='This investigation was saved before full-photo history was available. Its result and thumbnail are retained, but the original photographs cannot be recovered.';
+          }
+          result.classList.remove('hidden');
+        }catch(photoError){
+          photoTip.textContent='The result is saved, but its original photographs could not be loaded on this device.';
+          console.warn('Could not restore history photographs.',photoError);
+        }
+        result.scrollIntoView({behavior:'smooth',block:'start'});
+      }catch(error){
+        errorBox.textContent=error.message||'This saved investigation could not be opened.';
+        errorBox.classList.remove('hidden');
+        errorBox.scrollIntoView({behavior:'smooth',block:'center'});
+      }
+    });
     const remove=document.createElement('button');remove.type='button';remove.className='history-delete';remove.textContent='×';remove.setAttribute('aria-label','Delete saved investigation');
-    remove.onclick=event=>{event.stopPropagation();writeHistory(readHistory().filter(entry=>entry.id!==item.id));renderHistory()};
-    const openItem=()=>render({...item.data,history_item_id:item.id,history_thumbnail:item.thumbnail||''},false);
-    row.onclick=openItem;row.onkeydown=event=>{if(event.key==='Enter'||event.key===' '){event.preventDefault();openItem()}};row.append(image,info,remove);historyList.appendChild(row);
+    remove.addEventListener('click',event=>{
+      event.stopPropagation();
+      if(confirm('Delete this saved investigation?')){
+        writeHistory(readHistory().filter(saved=>saved.id!==item.id));
+        deleteHistoryPhotos(item.id);
+        renderHistory();
+      }
+    });
+    entry.append(openButton,remove);historyList.appendChild(entry);
   });
 }
-
-clearHistory.onclick=()=>{if(confirm('Delete all saved investigations?')){writeHistory([]);renderHistory()}};
+clearHistory.onclick=()=>{if(confirm('Delete all saved investigations?')){writeHistory([]);clearHistoryPhotos();renderHistory()}};
 renderHistory();
 
 let currentChatContext={};
