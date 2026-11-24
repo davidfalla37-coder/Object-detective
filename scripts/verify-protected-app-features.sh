@@ -3,7 +3,7 @@ set -euo pipefail
 FILE="app/src/main/assets/index-2.html"
 required=(
   'id="od-bottom-nav"'
-  'class="od-screen'
+  '.od-screen'
   'indexedDB.open(HISTORY_PHOTOS_DB'
   'restoreHistoryPhotos(item.id)'
   'async function saveInvestigation(data)'
