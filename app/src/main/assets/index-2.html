@@ -1183,7 +1183,7 @@ document.getElementById("chat-form").onsubmit=async(event)=>{
     scannerState.value=String(value||"");
     scannerState.format=String(format||"Code");
     scannerState.isQr=scannerState.format==="QR_CODE";
-    scannerState.isUrl=scannerState.isQr&&/^https?:\\/\\//i.test(scannerState.value);
+    scannerState.isUrl=scannerState.isQr&&/^https?:\/\//i.test(scannerState.value);
     scannerEl("scanner-result").classList.remove("hidden");
     scannerEl("scanner-result-type").textContent=scannerState.isQr?"QR code detected":"Barcode detected ("+scannerState.format+")";
     scannerEl("scanner-result-value").textContent=scannerState.value;
