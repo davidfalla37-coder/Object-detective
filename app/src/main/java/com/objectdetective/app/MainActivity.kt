@@ -58,6 +58,7 @@ class MainActivity : Activity() {
         appUpdateManager.registerListener(updateListener)
 
         webView = WebView(this)
+        webView.addJavascriptInterface(BarcodeScannerBridge(this, webView), "AndroidScanner")
         val appRoot = FrameLayout(this)
         appRoot.clipToPadding = true
         appRoot.addView(
