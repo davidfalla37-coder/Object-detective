@@ -702,8 +702,11 @@ identify.onclick=async()=>{
 
 async function inspectPhoto(input){
   const image=await loadImage(input);
-  const smallest=Math.min(image.naturalWidth||image.width,image.naturalHeight||image.height);
-  if(smallest<600)return{level:'warn',message:'resolution is low—move closer and retake it.'};
+  const width=image.naturalWidth||image.width;
+  const height=image.naturalHeight||image.height;
+  // Judge the total pixel count, not the shortest edge: narrow but detailed
+  // close-ups should not be labelled low-resolution just because of their shape.
+  if(!width||!height||width*height<200000)return{level:'warn',message:'this image is very small—use the original photo if available.'};
   const canvas=document.createElement('canvas'),size=96;
   canvas.width=size;canvas.height=size;
   const context=canvas.getContext('2d',{willReadFrequently:true});
