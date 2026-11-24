@@ -34,6 +34,14 @@ jobs:
         run: |
           mkdir -p app/src/main/res/drawable-nodpi
           cp ic_launcher.webp app/src/main/res/drawable-nodpi/ic_launcher.webp
+      - name: Point the isolated preview APK at the preview service
+        run: |
+          FILE="app/src/main/assets/index-2.html"
+          LIVE_URL="https://gboyflbwcobhzbvpdtat.supabase.co/functions/v1/investigate-object"
+          PREVIEW_URL="https://gboyflbwcobhzbvpdtat.supabase.co/functions/v1/investigate-object-preview"
+          grep -Fq "$LIVE_URL" "$FILE"
+          sed -i "s|$LIVE_URL|$PREVIEW_URL|g" "$FILE"
+          grep -Fq "$PREVIEW_URL" "$FILE"
       - name: Build isolated preview APK
         run: gradle --no-daemon assembleRelease -PpreviewInstall=true
       - name: Sign preview APK with persistent key
