@@ -6,7 +6,7 @@
         android:allowBackup="true"
         android:icon="@drawable/ic_launcher"
         android:roundIcon="@drawable/ic_launcher"        
-              android:label="Object Detective"
+              android:label="${appLabel}"
         android:theme="@style/AppTheme">
 
         <activity
