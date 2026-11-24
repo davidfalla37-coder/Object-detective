@@ -20,7 +20,16 @@ grep -Fq 'applicationIdSuffix ".test"' app/build.gradle || {
   echo "::error::Separate test application ID safeguard is missing"
   exit 1
 }
-echo "Protected refreshed layout, history-photo restore, and separate test package verified."
+# Keep the photo-resolution warning based on total pixels, not the shortest edge.
+grep -Fq 'width*height<200000' "$FILE" || {
+  echo "::error::Photo resolution check must use the conservative total-pixel threshold"
+  exit 1
+}
+grep -Fq 'use the original photo if available' "$FILE" || {
+  echo "::error::Photo resolution warning must not tell users to retake useful narrow images"
+  exit 1
+}
+echo "Protected refreshed layout, history-photo restore, photo-resolution guard, and separate test package verified."
 
 
 FUNCTION="supabase/functions/investigate-object-preview/index.ts"
