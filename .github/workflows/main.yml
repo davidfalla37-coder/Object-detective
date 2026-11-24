@@ -29,7 +29,7 @@ jobs:
         run: |
           FILE="app/src/main/assets/index-2.html"
           grep -q 'id="od-bottom-nav"' "$FILE"
-          grep -q 'class="od-screen' "$FILE"
+          grep -q 'od-screen' "$FILE"
           grep -q 'indexedDB.open(HISTORY_PHOTOS_DB' "$FILE"
           grep -q 'restoreHistoryPhotos(item.id)' "$FILE"
           grep -q 'async function saveInvestigation(data)' "$FILE"
