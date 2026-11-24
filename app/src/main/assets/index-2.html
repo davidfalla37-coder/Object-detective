@@ -1053,6 +1053,10 @@ function renderHistory(){
           photoTip.textContent='The result is saved, but its original photographs could not be loaded on this device.';
           console.warn('Could not restore history photographs.',photoError);
         }
+        // The saved result lives on the Identify screen, not the History screen.
+        // Switch screens before scrolling so the result is actually visible.
+        const identifyNavButton=document.querySelector('#od-bottom-nav button[data-page="identify"]');
+        if(identifyNavButton)identifyNavButton.click();
         result.scrollIntoView({behavior:'smooth',block:'start'});
       }catch(error){
         errorBox.textContent=error.message||'This saved investigation could not be opened.';
