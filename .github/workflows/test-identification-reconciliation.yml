@@ -1,0 +1,18 @@
+name: Test Object Detective identification reconciliation
+
+on:
+  push:
+    branches: [restore-layout-with-history-safeguard]
+  pull_request:
+    branches: [main]
+
+jobs:
+  identification-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+      - name: Run identity conflict regression tests
+        run: deno test supabase/functions/investigate-object-preview/identity-conflict_test.ts supabase/functions/investigate-object/identity-conflict_test.ts

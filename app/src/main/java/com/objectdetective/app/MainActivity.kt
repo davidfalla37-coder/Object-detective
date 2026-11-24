@@ -13,6 +13,8 @@ import android.os.Bundle
 import android.os.Environment
 import android.provider.MediaStore
 import android.view.WindowInsets
+import android.view.ViewGroup
+import android.widget.FrameLayout
 import android.webkit.PermissionRequest
 import android.webkit.ValueCallback
 import android.webkit.WebChromeClient
@@ -56,9 +58,22 @@ class MainActivity : Activity() {
         appUpdateManager.registerListener(updateListener)
 
         webView = WebView(this)
-        setContentView(webView)
+        webView.addJavascriptInterface(BarcodeScannerBridge(this, webView), "AndroidScanner")
+        val appRoot = FrameLayout(this)
+        appRoot.clipToPadding = true
+        appRoot.addView(
+            webView,
+            FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.MATCH_PARENT
+            )
+        )
+        setContentView(appRoot)
 
-        webView.setOnApplyWindowInsetsListener { view, insets ->
+        // Apply Android's system-bar insets to the native root, not the WebView.
+        // This makes the WebView's actual viewport end above the gesture/navigation
+        // area, so CSS fixed bottom navigation cannot sit underneath Android controls.
+        appRoot.setOnApplyWindowInsetsListener { view, insets ->
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
                 val bars = insets.getInsets(WindowInsets.Type.systemBars())
                 view.setPadding(bars.left, bars.top, bars.right, bars.bottom)
@@ -73,7 +88,7 @@ class MainActivity : Activity() {
             }
             insets
         }
-        webView.requestApplyInsets()
+        appRoot.requestApplyInsets()
 
         webView.settings.apply {
             javaScriptEnabled = true

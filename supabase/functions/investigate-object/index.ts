@@ -1,3 +1,5 @@
+import { applyBrandConflictFallback } from "./identity-conflict.ts";
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "content-type, authorization, apikey, x-client-info",
@@ -614,24 +616,16 @@ function reconcileVerification(
         : `Readable maker text supports ${explicitReadableBrand}; the exact model and value remain provisional.`,
     ].filter(Boolean).join(" ");
   } else if (brandConflict) {
-    result.object = "Wireless earbuds with charging case";
-    result.brand = "Unknown";
-    result.model = "Unknown";
-    result.model_number = "Unknown";
-    result.variant = "Unknown";
-    result.exact_match_evidence = "The manufacturer checks conflict or cannot confirm a readable brand; the exact model is unconfirmed.";
-    result.case_file_summary = "Wireless earbuds with charging case; manufacturer and exact model are unconfirmed.";
-    result.identifying_clues = "Wireless earbuds and a charging case.";
-    result.confidence = brandDisagreement
-      ? Math.min(primary.confidence, verification.confidence, 0.50)
-      : Math.min(primary.confidence, verification.confidence, 0.80);
-    result.exact_match_confidence = Math.min(primary.exact_match_confidence, verification.exact_match_confidence, 0.35);
-    result.exact_match_status = "not_confirmed";
-    result.next_photo = "Take a sharp close-up of the maker's logo and model text on the case, including its underside and inside the lid.";
-    result.warning = [
-      result.warning,
-      "The identification checks named different manufacturers. The brand, exact model, and value estimate are unconfirmed; check the case markings before relying on the estimate.",
-    ].filter(Boolean).join(" ");
+    applyBrandConflictFallback(
+      result,
+      knownText(primary.object) ? primary.object : (knownText(verification.object) ? verification.object : "Object identification uncertain"),
+      primary.identifying_clues,
+      primary.confidence,
+      verification.confidence,
+      primary.exact_match_confidence,
+      verification.exact_match_confidence,
+      brandDisagreement,
+    );
   } else if (verification.verdict === "agree") {
     result.exact_match_confidence = Math.min(primary.exact_match_confidence, verification.exact_match_confidence);
     result.exact_match_status = verification.exact_match_status === "exact" && strongIdentifier

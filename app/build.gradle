@@ -5,6 +5,7 @@ plugins {
 
 dependencies {
     implementation 'com.google.android.play:app-update:2.1.0'
+    implementation 'com.google.android.gms:play-services-code-scanner:16.1.0'
 }
 
 android {
@@ -15,9 +16,12 @@ android {
         applicationId "com.objectdetective.app"
         minSdk 26
         targetSdk 36
-        versionCode 20
-        versionName "1.19"
-        if (project.hasProperty('testInstall') && project.property('testInstall') == 'true') {
+        versionCode 21
+        versionName "1.20"
+        if (project.hasProperty('previewInstall') && project.property('previewInstall') == 'true') {
+            applicationIdSuffix ".preview"
+            manifestPlaceholders = [appLabel: "Object Detective Preview"]
+        } else if (project.hasProperty('testInstall') && project.property('testInstall') == 'true') {
             applicationIdSuffix ".test"
             manifestPlaceholders = [appLabel: "Object Detective Test"]
         } else {
