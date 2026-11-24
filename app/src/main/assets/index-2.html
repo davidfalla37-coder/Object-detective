@@ -1039,25 +1039,31 @@ function renderHistory(){
     openButton.addEventListener('click',async()=>{
       try{
         if(!item.data||typeof item.data!=='object')throw new Error('This saved investigation has incomplete details.');
+        // Reset the live capture UI, then restore the saved photographs first.
+        // addSelectedFiles() hides the result panel while loading photos, so render
+        // the saved result only after photo restoration has finished.
         clear.onclick();
-        render({...item.data,history_item_id:item.id,history_thumbnail:item.thumbnail||''},false);
+        let photoRestoreFailed=false;
+        let restored=false;
         try{
-          const restored=await restoreHistoryPhotos(item.id);
-          if(!restored){
-            if(item.thumbnail){preview.src=item.thumbnail;preview.style.display='block';placeholder.classList.add('hidden');}
-            photoCount.textContent='Original photos unavailable for this older investigation';
-            photoTip.textContent='This investigation was saved before full-photo history was available. Its result and thumbnail are retained, but the original photographs cannot be recovered.';
-          }
-          result.classList.remove('hidden');
+          restored=await restoreHistoryPhotos(item.id);
         }catch(photoError){
-          photoTip.textContent='The result is saved, but its original photographs could not be loaded on this device.';
+          photoRestoreFailed=true;
           console.warn('Could not restore history photographs.',photoError);
         }
-        // The saved result lives on the Identify screen, not the History screen.
-        // Switch screens before scrolling so the result is actually visible.
-        const identifyNavButton=document.querySelector('#od-bottom-nav button[data-page="identify"]');
-        if(identifyNavButton)identifyNavButton.click();
-        result.scrollIntoView({behavior:'smooth',block:'start'});
+        // Navigate directly through the screen controller rather than simulating
+        // a navigation-button tap. This works even if the nav labels are restyled.
+        if(typeof window.odShowScreen==='function')window.odShowScreen('identify');
+        render({...item.data,history_item_id:item.id,history_thumbnail:item.thumbnail||''},false);
+        if(!restored){
+          if(item.thumbnail){preview.src=item.thumbnail;preview.style.display='block';placeholder.classList.add('hidden');}
+          photoCount.textContent='Original photos unavailable for this older investigation';
+          photoTip.textContent=photoRestoreFailed
+            ?'The result is saved, but its original photographs could not be loaded on this device.'
+            :'This investigation was saved before full-photo history was available. Its result and thumbnail are retained, but the original photographs cannot be recovered.';
+        }
+        result.classList.remove('hidden');
+        requestAnimationFrame(()=>result.scrollIntoView({behavior:'smooth',block:'start'}));
       }catch(error){
         errorBox.textContent=error.message||'This saved investigation could not be opened.';
         errorBox.classList.remove('hidden');
@@ -1361,6 +1367,9 @@ document.getElementById("chat-form").onsubmit=async(event)=>{
     
     window.scrollTo({top:0,behavior:"auto"});
   }
+  // Expose the one screen controller so history and other app modules can
+  // navigate without relying on synthetic clicks or button text matching.
+  window.odShowScreen=showScreen;
   nav.querySelectorAll("button").forEach(button=>{
     const label=(button.textContent||"").trim().toLowerCase();
     const page=label.includes("home")?"home":label.includes("identify")?"identify":label.includes("history")?"history":label.includes("tools")?"tools":label.includes("settings")?"settings":"help";
