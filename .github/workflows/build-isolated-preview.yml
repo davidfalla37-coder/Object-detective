@@ -4,7 +4,6 @@ on:
   push:
     branches:
       - restore-layout-with-history-safeguard
-      - identification-one-update-preview
   workflow_dispatch:
 
 permissions:
