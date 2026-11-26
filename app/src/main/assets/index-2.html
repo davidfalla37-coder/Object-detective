@@ -270,6 +270,18 @@ main{
 #scanner-status{min-height:20px;margin-top:10px;font-size:13px;color:var(--muted)}
 #scanner-product-details{margin-top:10px;padding:12px;border-radius:12px;background:var(--field);border:1px solid var(--border);overflow-wrap:anywhere}
 
+    .visual-reference{border-color:#39749c;background:linear-gradient(145deg,#102a45,#0b1729)}
+    .visual-reference h3{margin:0 0 7px}.visual-reference-note,.visual-reference-credit,.visual-reference-feedback{font-size:13px;line-height:1.5;color:var(--muted)}
+    .visual-comparison-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:12px}
+    .visual-comparison-grid>div{min-width:0}.visual-comparison-grid label{display:block;font-size:12px;font-weight:800;color:var(--muted);margin-bottom:6px}
+    .visual-comparison-grid img{display:block;width:100%;height:150px;object-fit:contain;border-radius:12px;border:1px solid var(--line);background:#071426}
+    .visual-reference-source{display:inline-block;margin-top:5px;color:#8cddff;font-size:13px;font-weight:750}
+    .visual-reference .feedback-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
+    .visual-reference .feedback-actions button{min-height:44px;padding:10px;font-size:13px}
+    :root[data-theme="light"] .visual-reference{background:linear-gradient(145deg,#fff,#eef6fd)}
+    :root[data-theme="light"] .visual-comparison-grid img{background:#f3f7fb}
+    @media(max-width:360px){.visual-comparison-grid img{height:115px}}
+
 </style>
 </head>
 <body>
@@ -336,6 +348,21 @@ main{
     <p class="explain" id="confidence-note">This is an AI estimate of the broad object identification, not a verified probability. Exact model certainty is shown separately.</p>
     <div class="row"><span class="label">Exact make/model match</span><span class="value" id="exact-match">Not confirmed</span></div>
     <p class="explain" id="exact-match-evidence"></p>
+    <section class="card visual-reference hidden" id="visual-reference" aria-live="polite">
+      <h3>Visual reference comparison</h3>
+      <p class="visual-reference-note" id="visual-reference-note">Looking for a genuine reference photograph…</p>
+      <div class="visual-comparison-grid">
+        <div><label>Your photograph</label><img id="visual-user-photo" alt="Your photographed object"></div>
+        <div><label>Possible reference</label><img id="visual-reference-image" alt="Possible catalogue or reference photograph"></div>
+      </div>
+      <p class="visual-reference-credit" id="visual-reference-credit"></p>
+      <a class="visual-reference-source" id="visual-reference-source" href="#" target="_blank" rel="noopener noreferrer">View original image and licence</a>
+      <div class="feedback-actions">
+        <button class="secondary" id="visual-reference-match" type="button">Looks like the same item</button>
+        <button class="secondary" id="visual-reference-mismatch" type="button">Not the same item</button>
+      </div>
+      <p class="visual-reference-feedback" id="visual-reference-feedback">This is a visual lead, not proof of an exact model. Check distinctive details before accepting it.</p>
+    </section>
     <p class="explain" id="explanation"></p>
     <p class="explain" id="compatibility"></p>
     <div class="warning hidden" id="warning"></div>
@@ -753,6 +780,62 @@ async function buildInvestigationImages(inputs,maxSide,quality){
   }));
 }
 
+let visualReferenceRequestId=0;
+async function loadVisualReference(data,targetContainer){
+  const panel=document.getElementById('visual-reference');
+  const note=document.getElementById('visual-reference-note');
+  const referenceImage=document.getElementById('visual-reference-image');
+  const userImage=document.getElementById('visual-user-photo');
+  const source=document.getElementById('visual-reference-source');
+  const credit=document.getElementById('visual-reference-credit');
+  const feedback=document.getElementById('visual-reference-feedback');
+  const requestId=++visualReferenceRequestId;
+  // Keep the same comparison panel in the existing app, but place it beside
+  // whichever result is being viewed: photo investigations or barcode scans.
+  if(targetContainer){
+    targetContainer.appendChild(panel);
+  }else{
+    const evidence=document.getElementById('exact-match-evidence');
+    if(evidence&&evidence.parentNode)evidence.parentNode.insertBefore(panel,evidence.nextSibling);
+  }
+  panel.classList.remove('hidden');
+  note.textContent='Searching Wikimedia Commons for a possible reference photograph…';
+  referenceImage.removeAttribute('src');userImage.removeAttribute('src');source.removeAttribute('href');
+  credit.textContent='';feedback.textContent='This is a visual lead, not proof of an exact model. Check distinctive details before accepting it.';
+  if(preview.src)userImage.src=preview.src;
+  else if(selectedFiles[0])userImage.src=URL.createObjectURL(selectedFiles[0]);
+  const queryParts=[data.brand,data.model,data.model_number,data.object].map(v=>String(v||'').trim()).filter(v=>v&&v.toLowerCase()!=='unknown');
+  const query=[...new Set(queryParts)].join(' ').slice(0,180);
+  if(!query){note.textContent='No clear product name was available to search for a reference photograph.';return;}
+  try{
+    const endpoint='https://commons.wikimedia.org/w/api.php?action=query&generator=search&gsrsearch='+encodeURIComponent(query)+'&gsrnamespace=6&gsrlimit=8&prop=imageinfo&iiprop=url%7Cextmetadata&iiurlwidth=900&format=json&origin=*';
+    const response=await fetch(endpoint,{headers:{Accept:'application/json'}});
+    if(!response.ok)throw new Error('Reference image search is temporarily unavailable.');
+    const payload=await response.json();
+    if(requestId!==visualReferenceRequestId)return;
+    const pages=Object.values(payload?.query?.pages||{});
+    const candidate=pages.map(page=>({page,info:page?.imageinfo?.[0]})).find(item=>{
+      const thumb=item.info?.thumburl||item.info?.url;
+      return typeof thumb==='string'&&thumb.startsWith('https://upload.wikimedia.org/')&&typeof item.info?.descriptionurl==='string'&&item.info.descriptionurl.startsWith('https://commons.wikimedia.org/');
+    });
+    if(!candidate){note.textContent='No suitable reference photograph was found. The identification is still available; try another angle or a clearer model number.';return;}
+    const info=candidate.info;
+    const imageUrl=info.thumburl||info.url;
+    referenceImage.src=imageUrl;
+    referenceImage.onerror=()=>{if(requestId===visualReferenceRequestId)note.textContent='The reference photograph could not be loaded. Open the source page to inspect it.';};
+    source.href=info.descriptionurl;
+    const rawLicense=info.extmetadata?.LicenseShortName?.value||'Licence details on source page';
+    credit.textContent='Source: Wikimedia Commons · '+String(rawLicense).replace(/<[^>]*>/g,'').slice(0,80);
+    const title=String(candidate.page?.title||'').replace(/^File:/,'');
+    note.textContent='Possible reference: '+title+'. Compare shape, logos, markings and model details. This may be a similar item, not the exact model.';
+  }catch(error){
+    if(requestId===visualReferenceRequestId)note.textContent='Could not retrieve a reference photograph right now. Your identification result has not been affected.';
+  }
+}
+
+document.getElementById('visual-reference-match').onclick=()=>{document.getElementById('visual-reference-feedback').textContent='You marked this reference as looking like the same item. This feedback stays on this device and is not sent automatically.';};
+document.getElementById('visual-reference-mismatch').onclick=()=>{document.getElementById('visual-reference-feedback').textContent='You marked this as the wrong reference. Do not treat it as evidence for the identification. This feedback stays on this device.';};
+
 function render(data,saveResult=true){
   const fields=['object','category','purpose','value_estimate','condition'];
   for(const id of fields)document.getElementById(id).textContent=data[id]||'Unknown';
@@ -782,6 +865,7 @@ function render(data,saveResult=true){
   const warning=document.getElementById('warning');
   if(data.warning){warning.textContent=data.warning;warning.classList.remove('hidden')}else warning.classList.add('hidden');
   configureMatchHelper(data);
+  loadVisualReference(data);
   const vehicleDetails=document.getElementById('vehicle-details');
   const isVehiclePart=data.is_vehicle_part===true;
   vehicleDetails.classList.toggle('hidden',!isVehiclePart);
@@ -1325,10 +1409,40 @@ document.getElementById("chat-form").onsubmit=async(event)=>{
       if(data.found&&data.product){
         const p=data.product;details.replaceChildren();
         const heading=document.createElement("strong");heading.textContent="Catalogue match found";details.appendChild(heading);
+        // For books, show a cover only when Google Books confirms this exact ISBN.
+        // This is preview-side UI work; it does not change the shared production lookup service.
+        if(String(p.type||"").toLowerCase().includes("book") && /^97[89]\\d{10}$/.test(code)){
+          try{
+            const booksUrl=new URL("https://www.googleapis.com/books/v1/volumes");
+            booksUrl.searchParams.set("q","isbn:"+code);
+            booksUrl.searchParams.set("maxResults","5");
+            const booksResponse=await fetch(booksUrl.toString());
+            if(booksResponse.ok){
+              const booksData=await booksResponse.json();
+              const exactBook=(Array.isArray(booksData.items)?booksData.items:[]).find(item=>
+                (Array.isArray(item.volumeInfo?.industryIdentifiers)?item.volumeInfo.industryIdentifiers:[])
+                  .some(identifier=>String(identifier.identifier||"").replace(/[-\\s]/g,"")===code)
+              );
+              const cover=exactBook?.volumeInfo?.imageLinks?.thumbnail||exactBook?.volumeInfo?.imageLinks?.smallThumbnail;
+              if(typeof cover==="string" && /^https:\\/\\//i.test(cover)){
+                const image=document.createElement("img");
+                image.src=cover.replace(/^http:\\/\\//i,"https://");
+                image.alt="Book cover for "+String(p.name||"the matched book");
+                image.loading="lazy";
+                image.style.cssText="display:block;width:100%;max-height:260px;object-fit:contain;margin:12px auto;border-radius:10px;background:#fff";
+                image.onerror=()=>image.remove();
+                heading.after(image);
+              }
+            }
+          }catch(error){
+            console.warn("Exact ISBN cover lookup unavailable:",error);
+          }
+        }
         [["Product",p.name],["Brand",p.brand],["Type",p.type],["Quantity",p.quantity]].filter(([,v])=>v).forEach(([label,value])=>{
           const line=document.createElement("p");line.textContent=label+": "+value;details.appendChild(line);
         });
         const note=document.createElement("p");note.textContent="Check the product name and packaging against the item in front of you. A barcode match is not proof of authenticity or exact variant.";details.appendChild(note);
+        if(typeof loadVisualReference==="function"){loadVisualReference({object:p.name||"Scanned product",brand:p.brand||"",model:p.type||"",model_number:"",category:p.type||""},details);}
         if(data.sourceUrl){const link=document.createElement("a");link.href=data.sourceUrl;link.target="_blank";link.rel="noopener noreferrer";link.textContent="Catalogue source: "+(data.source||"Open Facts database");details.appendChild(link);}
         status.textContent="Product details retrieved.";
       }else{details.textContent=data.message||"No matching product was found. The barcode was read, but the item is not identified yet.";status.textContent="No catalogue match.";}
