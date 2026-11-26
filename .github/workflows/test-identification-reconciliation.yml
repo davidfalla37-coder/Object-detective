@@ -2,7 +2,7 @@ name: Test Object Detective identification reconciliation
 
 on:
   push:
-    branches: [restore-layout-with-history-safeguard]
+    branches: [restore-layout-with-history-safeguard, identification-one-update-preview]
   pull_request:
     branches: [main]
 
@@ -14,5 +14,7 @@ jobs:
       - uses: denoland/setup-deno@v2
         with:
           deno-version: v2.x
+      - name: Type-check the isolated preview Edge Function
+        run: deno check supabase/functions/investigate-object-preview/index.ts
       - name: Run identity conflict regression tests
         run: deno test supabase/functions/investigate-object-preview/identity-conflict_test.ts supabase/functions/investigate-object/identity-conflict_test.ts
