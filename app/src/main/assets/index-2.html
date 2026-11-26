@@ -812,7 +812,8 @@ function render(data,saveResult=true){
   document.getElementById('compatibility').textContent=data.compatibility?`Compatibility: ${data.compatibility}`:'';
   const warning=document.getElementById('warning');
   if(data.warning){warning.textContent=data.warning;warning.classList.remove('hidden')}else warning.classList.add('hidden');
-  configureMatchHelper(data);\n  loadVisualReference(data);
+  configureMatchHelper(data);
+  loadVisualReference(data);
   const vehicleDetails=document.getElementById('vehicle-details');
   const isVehiclePart=data.is_vehicle_part===true;
   vehicleDetails.classList.toggle('hidden',!isVehiclePart);
