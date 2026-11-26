@@ -830,15 +830,19 @@ async function loadVisualReference(data,targetContainer){
   };
   try{
     const commonsUrl='https://commons.wikimedia.org/w/api.php?action=query&generator=search&gsrsearch='+encodeURIComponent(query)+'&gsrnamespace=6&gsrlimit=10&prop=imageinfo&iiprop=url%7Cextmetadata&iiurlwidth=900&format=json&origin=*';
-    const response=await fetch(commonsUrl,{headers:{Accept:'application/json'}});
-    if(!response.ok)throw new Error('Reference image search unavailable');
-    const payload=await response.json();
-    if(requestId!==visualReferenceRequestId)return;
-    const pages=Object.values(payload?.query?.pages||{});
-    const candidates=pages.map(page=>({page,info:page?.imageinfo?.[0]})).filter(item=>{
-      const info=item.info;
-      return info&&typeof info.descriptionurl==='string'&&info.descriptionurl.startsWith('https://commons.wikimedia.org/');
-    });
+    let candidates=[];
+    try{
+      const response=await fetch(commonsUrl,{headers:{Accept:'application/json'},signal:AbortSignal.timeout(8000)});
+      if(response.ok){
+        const payload=await response.json();
+        if(requestId!==visualReferenceRequestId)return;
+        const pages=Object.values(payload?.query?.pages||{});
+        candidates=pages.map(page=>({page,info:page?.imageinfo?.[0]})).filter(item=>{
+          const info=item.info;
+          return info&&typeof info.descriptionurl==='string'&&info.descriptionurl.startsWith('https://commons.wikimedia.org/');
+        });
+      }
+    }catch(_){}
     let selected=null,loaded=false;
     for(const item of candidates){
       const urls=[item.info.thumburl,item.info.url];
@@ -846,7 +850,7 @@ async function loadVisualReference(data,targetContainer){
     }
     if(!loaded){
       const wikiUrl='https://en.wikipedia.org/w/api.php?action=query&generator=search&gsrsearch='+encodeURIComponent(query)+'&gsrnamespace=0&gsrlimit=8&prop=pageimages&piprop=thumbnail&pithumbsize=900&format=json&origin=*';
-      const wikiResponse=await fetch(wikiUrl,{headers:{Accept:'application/json'}});
+      const wikiResponse=await fetch(wikiUrl,{headers:{Accept:'application/json'},signal:AbortSignal.timeout(8000)});
       if(wikiResponse.ok){
         const wikiPayload=await wikiResponse.json();
         if(requestId!==visualReferenceRequestId)return;
