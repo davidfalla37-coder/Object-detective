@@ -27,12 +27,20 @@ jobs:
         with:
           gradle-version: '8.9'
 
+      - name: Restore stable preview signing keystore
+        env:
+          KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+        run: printf '%s' "$KEYSTORE_BASE64" | base64 --decode > signing-key.jks
+
       - name: Prepare app icon
         run: |
           mkdir -p app/src/main/res/drawable-nodpi
           cp ic_launcher.webp app/src/main/res/drawable-nodpi/ic_launcher.webp
 
-      - name: Build preview debug APK
+      - name: Build preview APK with stable signing
+        env:
+          PREVIEW_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          PREVIEW_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
         run: gradle --no-daemon assembleDebug
 
       - name: Verify preview APK exists
@@ -46,4 +54,5 @@ jobs:
           if-no-files-found: error
           retention-days: 14
 
-# Rebuild trigger for restored Android WebView vertical scrolling.
+# Preview package ID is com.objectdetective.app.preview2.
+# This installs alongside the previous .preview test and the live Play app.
