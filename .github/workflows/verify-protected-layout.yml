@@ -4,7 +4,6 @@ on:
   push:
     branches:
       - restore-layout-with-history-safeguard
-      - identification-one-update-preview
   pull_request:
     branches:
       - main
