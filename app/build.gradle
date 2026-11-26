@@ -12,6 +12,15 @@ android {
     namespace 'com.objectdetective.app'
     compileSdk 36
 
+    signingConfigs {
+        preview {
+            storeFile rootProject.file("signing-key.jks")
+            storePassword System.getenv("PREVIEW_KEYSTORE_PASSWORD")
+            keyAlias System.getenv("PREVIEW_KEY_ALIAS")
+            keyPassword System.getenv("PREVIEW_KEYSTORE_PASSWORD")
+        }
+    }
+
     defaultConfig {
         applicationId "com.objectdetective.app"
         minSdk 26
@@ -22,8 +31,9 @@ android {
 
     buildTypes {
         debug {
-            applicationIdSuffix ".preview"
+            applicationIdSuffix ".preview2"
             versionNameSuffix "-preview"
+            signingConfig signingConfigs.preview
         }
     }
 
