@@ -1342,12 +1342,58 @@ document.getElementById("chat-form").onsubmit=async(event)=>{
     });
   }
 
+  function lookupBookByIsbn(isbn){
+    if(!window.AndroidScanner||typeof window.AndroidScanner.lookupBookByIsbn!=="function"){
+      return Promise.resolve({found:false,message:"The dedicated ISBN catalogue is unavailable in this app build."});
+    }
+    return new Promise(resolve=>{
+      let settled=false;
+      const finish=result=>{
+        if(settled)return;
+        settled=true;
+        clearTimeout(timer);
+        window.onBookIsbnLookup=null;
+        resolve(result||{found:false});
+      };
+      window.onBookIsbnLookup=result=>finish(result);
+      const timer=setTimeout(()=>finish({found:false,message:"The book catalogue lookup timed out."}),25000);
+      try{window.AndroidScanner.lookupBookByIsbn(isbn);}
+      catch(_){finish({found:false,message:"The book catalogue could not be reached."});}
+    });
+  }
+  function renderBookMatch(book,source,sourceUrl){
+    const details=scannerEl("scanner-product-details");
+    details.replaceChildren();
+    const heading=document.createElement("strong");heading.textContent="Exact ISBN book record found";details.appendChild(heading);
+    [["Title",book.name],["Author",book.author],["Publisher",book.publisher],["Publication date",book.publishedDate],["Edition",book.edition],["Format",book.format],["Pages",book.pages],["ISBN",book.code]].filter(([,v])=>v).forEach(([label,value])=>{
+      const line=document.createElement("p");line.textContent=label+": "+value;details.appendChild(line);
+    });
+    const note=document.createElement("p");note.textContent="This record was returned for the scanned ISBN. Check the physical book's title and edition details; catalogue records can contain errors.";details.appendChild(note);
+    if(sourceUrl){const link=document.createElement("a");link.href=sourceUrl;link.target="_blank";link.rel="noopener noreferrer";link.textContent="Book catalogue source: "+source;details.appendChild(link);}
+    details.classList.remove("hidden");
+  }
+
   scannerEl("scanner-search-product").addEventListener("click",async()=>{
     const code=String(scannerState.value||"").trim();if(!code)return;
     const status=scannerEl("scanner-status"),details=scannerEl("scanner-product-details"),button=scannerEl("scanner-search-product");
     details.classList.add("hidden");details.textContent="";button.disabled=true;status.textContent="Checking product catalogues…";
     try{
       const lookupFormat=scannerState.format==="UPC_E"?"UPC-E":scannerState.format;
+      const isbnCode=code.replace(/[- ]/g,"");
+      const isIsbn13=/^97[89][0-9]{10}$/.test(isbnCode);
+      if(isIsbn13){
+        status.textContent="Checking book catalogues using the exact ISBN…";
+        const bookResult=await lookupBookByIsbn(isbnCode);
+        if(bookResult.found&&bookResult.product){
+          renderBookMatch(bookResult.product,bookResult.source,bookResult.sourceUrl);
+          status.textContent="Book details retrieved from an exact ISBN record.";
+        }else{
+          details.classList.remove("hidden");
+          details.textContent="The barcode was read, but no exact book record was found. "+(bookResult.message||"Try again later or identify the book using its cover.");
+          status.textContent="No exact ISBN record found.";
+        }
+        return;
+      }
       let primaryMatch=null,primaryMessage="";
       try{
         const response=await fetch("https://kscnivjkldtssskwhsfk.supabase.co/functions/v1/lookup-barcode",{
