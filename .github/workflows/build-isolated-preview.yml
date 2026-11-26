@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - restore-layout-with-history-safeguard
+      - dev/catalogue-lookup-improvements-2026-11-26
   workflow_dispatch:
 
 permissions:
