@@ -210,6 +210,7 @@ class BarcodeScannerBridge(
                 if (title.isBlank()) continue
                 val product = JSONObject()
                     .put("name", title)
+                    .put("subtitle", info.optString("subtitle"))
                     .put("author", authors)
                     .put("publisher", info.optString("publisher"))
                     .put("publishedDate", info.optString("publishedDate"))
@@ -244,6 +245,30 @@ class BarcodeScannerBridge(
             val edition = JSONObject(connection.inputStream.bufferedReader(Charsets.UTF_8).use { it.readText() })
             val title = edition.optString("title")
             if (title.isBlank()) return null
+            // Linked work records can supply a subtitle omitted from the edition record.
+            var workTitle = ""
+            val works = edition.optJSONArray("works")
+            val workKey = works?.optJSONObject(0)?.optString("key").orEmpty()
+            if (workKey.startsWith("/works/")) {
+                val workConnection = (URL("https://openlibrary.org$workKey.json").openConnection() as HttpURLConnection).apply {
+                    requestMethod = "GET"
+                    connectTimeout = 5000
+                    readTimeout = 6000
+                    setRequestProperty("User-Agent", "ObjectDetective/1.0 (ISBN lookup)")
+                    setRequestProperty("Accept", "application/json")
+                }
+                try {
+                    if (workConnection.responseCode in 200..299) {
+                        val work = JSONObject(workConnection.inputStream.bufferedReader(Charsets.UTF_8).use { it.readText() })
+                        workTitle = work.optString("title")
+                    }
+                } finally {
+                    workConnection.disconnect()
+                }
+            }
+            val subtitle = edition.optString("subtitle").ifBlank {
+                workTitle.takeIf { it.isNotBlank() && !it.equals(title, ignoreCase = true) }.orEmpty()
+            }
             val authorsArray = edition.optJSONArray("authors")
             val authors = mutableListOf<String>()
             if (authorsArray != null) {
@@ -272,6 +297,7 @@ class BarcodeScannerBridge(
             val publisher = publishers?.optString(0).orEmpty()
             val product = JSONObject()
                 .put("name", title)
+                .put("subtitle", subtitle)
                 .put("author", authors.joinToString(", "))
                 .put("publisher", publisher)
                 .put("publishedDate", edition.optString("publish_date"))
