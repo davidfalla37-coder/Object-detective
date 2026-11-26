@@ -1343,6 +1343,12 @@ document.getElementById("chat-form").onsubmit=async(event)=>{
           const line=document.createElement("p");line.textContent=label+": "+value;details.appendChild(line);
         });
         const note=document.createElement("p");note.textContent="Check the product name and packaging against the item in front of you. A barcode match is not proof of authenticity or exact variant.";details.appendChild(note);
+        // Barcode identifications also enter the shared visual-reference workflow.
+        // Books use the exact-ISBN cover lookup above; other categories search for a
+        // credited reference image using the catalogue name and category.
+        if(typeof loadVisualReference==="function"){
+          loadVisualReference({object:p.name||"Scanned product",brand:p.brand||"",model:p.type||"",model_number:"",category:p.type||""});
+        }
         if(data.sourceUrl){const link=document.createElement("a");link.href=data.sourceUrl;link.target="_blank";link.rel="noopener noreferrer";link.textContent="Catalogue source: "+(data.source||"Open Facts database");details.appendChild(link);}
         status.textContent="Product details retrieved.";
       }else{details.textContent=data.message||"No matching product was found. The barcode was read, but the item is not identified yet.";status.textContent="No catalogue match.";}
