@@ -3,6 +3,13 @@ package com.objectdetective.app
 import android.app.Activity
 import android.webkit.JavascriptInterface
 import android.webkit.WebView
+import android.graphics.BitmapFactory
+import android.util.Base64
+import com.google.mlkit.vision.common.InputImage
+import com.google.mlkit.vision.text.TextRecognition
+import com.google.mlkit.vision.text.latin.TextRecognizerOptions
+import java.net.URLEncoder
+import com.google.android.gms.tasks.Tasks
 import com.google.mlkit.vision.codescanner.GmsBarcodeScanning
 import com.google.mlkit.vision.codescanner.GmsBarcodeScannerOptions
 import com.google.mlkit.vision.barcode.common.Barcode
@@ -279,6 +286,137 @@ class BarcodeScannerBridge(
                 .put("sourceUrl", "https://openlibrary.org/isbn/$isbn")
         } finally {
             connection.disconnect()
+        }
+    }
+
+    /**
+     * Runs on-device OCR on a user-selected book-cover image. The image is
+     * processed locally; only extracted title/author text is used for lookup.
+     */
+    @JavascriptInterface
+    fun recognizeBookCoverImage(dataUrl: String) {
+        Thread({
+            val result = try {
+                val encoded = dataUrl.substringAfter("base64,", "")
+                require(encoded.isNotBlank() && encoded.length <= 18_000_000) { "Image is empty or too large." }
+                val bytes = Base64.decode(encoded, Base64.DEFAULT)
+                val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+                BitmapFactory.decodeByteArray(bytes, 0, bytes.size, bounds)
+                var sample = 1
+                while (bounds.outWidth / sample > 2000 || bounds.outHeight / sample > 2000) sample *= 2
+                val bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.size, BitmapFactory.Options().apply { inSampleSize = sample })
+                    ?: throw IllegalArgumentException("The selected cover image could not be read.")
+                val recognizer = TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS)
+                try {
+                    val text = Tasks.await(recognizer.process(InputImage.fromBitmap(bitmap, 0))).text
+                    JSONObject().put("success", true).put("text", text)
+                } finally {
+                    recognizer.close()
+                    bitmap.recycle()
+                }
+            } catch (_: Exception) {
+                JSONObject().put("success", false).put("message", "Text could not be read from that cover. Try a clearer, front-on photograph.")
+            }
+            webView.post {
+                webView.evaluateJavascript("window.onBookCoverOcrResult && window.onBookCoverOcrResult($result)", null)
+            }
+        }, "ObjectDetective-BookOCR").start()
+    }
+
+    /**
+     * Searches by OCR/manual title and author. These are candidate suggestions,
+     * never exact edition matches because the ISBN was not verified.
+     */
+    @JavascriptInterface
+    fun searchBooksByTitleAuthor(title: String, author: String) {
+        val cleanTitle = title.trim().take(180)
+        val cleanAuthor = author.trim().take(120)
+        if (cleanTitle.length < 2) {
+            postBookTitleSearchResult(JSONObject().put("success", false).put("message", "Enter at least part of the book title."))
+            return
+        }
+        Thread({
+            val result = try {
+                val candidates = org.json.JSONArray()
+                val query = buildString {
+                    append("intitle:")
+                    append(URLEncoder.encode(cleanTitle, "UTF-8"))
+                    if (cleanAuthor.isNotBlank()) {
+                        append("+inauthor:")
+                        append(URLEncoder.encode(cleanAuthor, "UTF-8"))
+                    }
+                }
+                val google = URL("https://www.googleapis.com/books/v1/volumes?q=$query&maxResults=5")
+                val connection = (google.openConnection() as HttpURLConnection).apply {
+                    connectTimeout = 7000; readTimeout = 9000
+                    setRequestProperty("User-Agent", "ObjectDetective/1.0")
+                    setRequestProperty("Accept", "application/json")
+                }
+                try {
+                    if (connection.responseCode in 200..299) {
+                        val payload = JSONObject(connection.inputStream.bufferedReader(Charsets.UTF_8).use { it.readText() })
+                        val items = payload.optJSONArray("items")
+                        if (items != null) for (i in 0 until minOf(items.length(), 5)) {
+                            val info = items.optJSONObject(i)?.optJSONObject("volumeInfo") ?: continue
+                            val bookTitle = info.optString("title")
+                            if (bookTitle.isBlank()) continue
+                            val authors = info.optJSONArray("authors")
+                            val authorNames = if (authors != null) (0 until authors.length()).map { authors.optString(it) }.filter { it.isNotBlank() }.joinToString(", ") else ""
+                            candidates.put(JSONObject()
+                                .put("title", bookTitle)
+                                .put("author", authorNames)
+                                .put("publisher", info.optString("publisher"))
+                                .put("publishedDate", info.optString("publishedDate"))
+                                .put("format", info.optString("printType"))
+                                .put("isbn", info.optJSONArray("industryIdentifiers")?.let { ids ->
+                                    (0 until ids.length()).mapNotNull { ids.optJSONObject(it)?.optString("identifier") }.firstOrNull().orEmpty()
+                                }.orEmpty())
+                                .put("source", "Google Books")
+                                .put("sourceUrl", info.optString("infoLink")))
+                        }
+                    }
+                } finally { connection.disconnect() }
+
+                if (candidates.length() == 0) {
+                    val params = "title=" + URLEncoder.encode(cleanTitle, "UTF-8") +
+                        if (cleanAuthor.isNotBlank()) "&author=" + URLEncoder.encode(cleanAuthor, "UTF-8") else ""
+                    val openUrl = URL("https://openlibrary.org/search.json?$params&limit=5")
+                    val openConnection = (openUrl.openConnection() as HttpURLConnection).apply {
+                        connectTimeout = 7000; readTimeout = 9000
+                        setRequestProperty("User-Agent", "ObjectDetective/1.0 (book title search)")
+                        setRequestProperty("Accept", "application/json")
+                    }
+                    try {
+                        if (openConnection.responseCode in 200..299) {
+                            val payload = JSONObject(openConnection.inputStream.bufferedReader(Charsets.UTF_8).use { it.readText() })
+                            val docs = payload.optJSONArray("docs")
+                            if (docs != null) for (i in 0 until minOf(docs.length(), 5)) {
+                                val doc = docs.optJSONObject(i) ?: continue
+                                candidates.put(JSONObject()
+                                    .put("title", doc.optString("title"))
+                                    .put("author", doc.optJSONArray("author_name")?.let { a -> (0 until a.length()).joinToString(", ") { a.optString(it) } }.orEmpty())
+                                    .put("publisher", doc.optJSONArray("publisher")?.optString(0).orEmpty())
+                                    .put("publishedDate", doc.optJSONArray("first_publish_year")?.optString(0).orEmpty())
+                                    .put("format", "Book record")
+                                    .put("isbn", doc.optJSONArray("isbn")?.optString(0).orEmpty())
+                                    .put("source", "Open Library")
+                                    .put("sourceUrl", "https://openlibrary.org" + doc.optString("key")))
+                            }
+                        }
+                    } finally { openConnection.disconnect() }
+                }
+                JSONObject().put("success", true).put("candidates", candidates)
+                    .put("message", if (candidates.length() == 0) "No title-and-author candidates were found. Try correcting the cover text or adding another photo." else "")
+            } catch (_: Exception) {
+                JSONObject().put("success", false).put("message", "Book title catalogues could not be reached. Please try again.")
+            }
+            postBookTitleSearchResult(result)
+        }, "ObjectDetective-BookTitleSearch").start()
+    }
+
+    private fun postBookTitleSearchResult(result: JSONObject) {
+        webView.post {
+            webView.evaluateJavascript("window.onBookTitleSearchResult && window.onBookTitleSearchResult($result)", null)
         }
     }
 
