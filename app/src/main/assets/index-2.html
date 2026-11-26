@@ -817,8 +817,11 @@ async function loadVisualReference(data,targetContainer){
     for(const url of [...new Set(urls.filter(value=>typeof value==='string'&&value.startsWith('https://')))]){
       if(requestId!==visualReferenceRequestId)return false;
       const loaded=await new Promise(resolve=>{
-        referenceImage.onload=()=>resolve(true);
-        referenceImage.onerror=()=>resolve(false);
+        let settled=false;
+        const finish=value=>{if(settled)return;settled=true;clearTimeout(timeout);resolve(value);};
+        const timeout=setTimeout(()=>finish(false),6500);
+        referenceImage.onload=()=>finish(true);
+        referenceImage.onerror=()=>finish(false);
         referenceImage.src=url;
       });
       if(loaded&&requestId===visualReferenceRequestId)return true;
