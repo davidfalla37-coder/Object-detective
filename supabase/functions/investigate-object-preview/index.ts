@@ -722,6 +722,7 @@ async function researchAndVerifyIdentification(
         "Authorization": "Bearer " + OPENAI_API_KEY,
         "Content-Type": "application/json",
       },
+      signal: AbortSignal.timeout(12000),
       body: JSON.stringify({
         model: "gpt-5.4-mini",
         reasoning: { effort: "low" },
@@ -1293,32 +1294,32 @@ Deno.serve(async (request: Request): Promise<Response> => {
       ? { ...independentVerification, verdict: deriveVerificationVerdict(primaryResult, independentVerification) }
       : null;
 
-    if (shouldRunIdentificationResearch(primaryResult, verification)) {
-      const researchedVerification = await researchAndVerifyIdentification(
-        images,
-        primaryResult,
-        verification,
-      );
-      if (researchedVerification) {
-        verification = {
-          ...researchedVerification,
-          verdict: deriveVerificationVerdict(primaryResult, researchedVerification),
-        };
-      }
+    const primaryBrandKnown = knownText(primaryResult.brand);
+    const verifiedBrandKnown = knownText(verification?.brand || "");
+    const primaryBrand = primaryResult.brand.trim().toLowerCase().replace(/[^a-z0-9]+/g, "");
+    const verifiedBrand = (verification?.brand || "").trim().toLowerCase().replace(/[^a-z0-9]+/g, "");
+    const brandConflict = !!verification && primaryBrandKnown && verifiedBrandKnown && primaryBrand !== verifiedBrand;
+    const brandMissing = !primaryBrandKnown || !verifiedBrandKnown;
+    const exactIdentityUnclear = primaryResult.exact_match_status === "not_confirmed" ||
+      !verification || verification.exact_match_status === "not_confirmed";
+    const needsManufacturerRead = brandConflict || (brandMissing && exactIdentityUnclear);
+    const researchPromise = shouldRunIdentificationResearch(primaryResult, verification)
+      ? researchAndVerifyIdentification(images, primaryResult, verification)
+      : Promise.resolve(null);
+    const manufacturerPromise = needsManufacturerRead
+      ? inspectManufacturerMark(images)
+      : Promise.resolve(null);
+    const [researchedVerification, manufacturerEvidence] = await Promise.all([
+      researchPromise,
+      manufacturerPromise,
+    ]);
+    if (researchedVerification) {
+      verification = {
+        ...researchedVerification,
+        verdict: deriveVerificationVerdict(primaryResult, researchedVerification),
+      };
     }
-
     if (verification) {
-      const primaryBrandKnown = knownText(primaryResult.brand);
-      const verifiedBrandKnown = knownText(verification.brand);
-      const primaryBrand = primaryResult.brand.trim().toLowerCase().replace(/[^a-z0-9]+/g, "");
-      const verifiedBrand = verification.brand.trim().toLowerCase().replace(/[^a-z0-9]+/g, "");
-      const brandConflict = primaryBrandKnown && verifiedBrandKnown && primaryBrand !== verifiedBrand;
-      const brandMissing = !primaryBrandKnown || !verifiedBrandKnown;
-      const exactIdentityUnclear = primaryResult.exact_match_status === "not_confirmed" ||
-        verification.exact_match_status === "not_confirmed";
-      const manufacturerEvidence = brandConflict || (brandMissing && exactIdentityUnclear)
-        ? await inspectManufacturerMark(images)
-        : null;
       return jsonResponse(reconcileVerification(primaryResult, verification, manufacturerEvidence));
     }
     return jsonResponse(conservativeFallback(primaryResult));
