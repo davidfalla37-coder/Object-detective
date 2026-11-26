@@ -1362,7 +1362,7 @@ document.getElementById("chat-form").onsubmit=async(event)=>{
   screens.tools.appendChild(scannerCard);
 
 
-  const scannerState={value:"",format:"",isQr:false,isUrl:false};
+  const scannerState={value:"",format:"",isQr:false,isUrl:false,lookupPromise:null};
   const scannerEl=id=>document.getElementById(id);
   window.onNativeBarcodeScanned=function(value,format){
     scannerState.value=String(value||"");
@@ -1379,6 +1379,10 @@ document.getElementById("chat-form").onsubmit=async(event)=>{
       :"The barcode has been read. Product details still need to be checked against the packaging.";
     scannerEl("scanner-product-details").classList.add("hidden");
     scannerEl("scanner-status").textContent="Scan complete.";
+    if(!scannerState.isQr){
+      scannerEl("scanner-status").textContent="Barcode read. Identifying product automatically…";
+      identifyScannedBarcode();
+    }
   };
   window.onNativeBarcodeError=function(message){scannerEl("scanner-status").textContent=String(message||"Scanner unavailable. Please try again.");};
   scannerEl("open-scanner").addEventListener("click",()=>{
@@ -1404,61 +1408,71 @@ document.getElementById("chat-form").onsubmit=async(event)=>{
     scannerEl("scanner-status").textContent="Code ready to search.";
   }
   scannerEl("manual-code-submit").addEventListener("click",()=>prepareBarcodeSearch(scannerEl("manual-code").value));
-  scannerEl("scanner-search-product").addEventListener("click",async()=>{
+  async function identifyScannedBarcode(){
     const code=String(scannerState.value||"").trim();if(!code)return;
+    if(scannerState.lookupPromise)return scannerState.lookupPromise;
     const status=scannerEl("scanner-status"),details=scannerEl("scanner-product-details"),button=scannerEl("scanner-search-product");
     details.classList.add("hidden");details.textContent="";button.disabled=true;status.textContent="Checking product catalogues…";
-    try{
-      const lookupFormat=scannerState.format==="UPC_E"?"UPC-E":scannerState.format;
-      const response=await fetch("https://kscnivjkldtssskwhsfk.supabase.co/functions/v1/lookup-barcode",{
-        method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({code,format:lookupFormat})
-      });
-      const data=await response.json().catch(()=>({}));
-      if(!response.ok)throw new Error(data.error||"The product lookup service is unavailable. Please try again.");
-      details.classList.remove("hidden");
-      if(data.found&&data.product){
-        const p=data.product;details.replaceChildren();
-        const heading=document.createElement("strong");heading.textContent="Catalogue match found";details.appendChild(heading);
-        // For books, show a cover only when Google Books confirms this exact ISBN.
-        // This is preview-side UI work; it does not change the shared production lookup service.
-        if(String(p.type||"").toLowerCase().includes("book") && /^97[89]\\d{10}$/.test(code)){
-          try{
-            const booksUrl=new URL("https://www.googleapis.com/books/v1/volumes");
-            booksUrl.searchParams.set("q","isbn:"+code);
-            booksUrl.searchParams.set("maxResults","5");
-            const booksResponse=await fetch(booksUrl.toString());
-            if(booksResponse.ok){
-              const booksData=await booksResponse.json();
-              const exactBook=(Array.isArray(booksData.items)?booksData.items:[]).find(item=>
-                (Array.isArray(item.volumeInfo?.industryIdentifiers)?item.volumeInfo.industryIdentifiers:[])
-                  .some(identifier=>String(identifier.identifier||"").replace(/[-\s]/g,"")===code)
-              );
-              const cover=exactBook?.volumeInfo?.imageLinks?.thumbnail||exactBook?.volumeInfo?.imageLinks?.smallThumbnail;
-              if(typeof cover==="string" && /^https:\/\//i.test(cover)){
-                const image=document.createElement("img");
-                image.src=cover.replace(/^http:\/\//i,"https://");
-                image.alt="Book cover for "+String(p.name||"the matched book");
-                image.loading="lazy";
-                image.style.cssText="display:block;width:100%;max-height:260px;object-fit:contain;margin:12px auto;border-radius:10px;background:#fff";
-                image.onerror=()=>image.remove();
-                heading.after(image);
-              }
-            }
-          }catch(error){
-            console.warn("Exact ISBN cover lookup unavailable:",error);
-          }
-        }
-        [["Product",p.name],["Brand",p.brand],["Type",p.type],["Quantity",p.quantity]].filter(([,v])=>v).forEach(([label,value])=>{
-          const line=document.createElement("p");line.textContent=label+": "+value;details.appendChild(line);
+    scannerState.lookupPromise=(async()=>{
+      try{
+        const lookupFormat=scannerState.format==="UPC_E"?"UPC-E":scannerState.format;
+        const response=await fetch("https://gboyflbwcobhzbvpdtat.supabase.co/functions/v1/lookup-barcode-preview",{
+          method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({code,format:lookupFormat})
         });
-        const note=document.createElement("p");note.textContent="Check the product name and packaging against the item in front of you. A barcode match is not proof of authenticity or exact variant.";details.appendChild(note);
-        if(typeof loadVisualReference==="function"){loadVisualReference({object:p.name||"Scanned product",brand:p.brand||"",model:p.type||"",model_number:"",category:p.type||""},details);}
-        if(data.sourceUrl){const link=document.createElement("a");link.href=data.sourceUrl;link.target="_blank";link.rel="noopener noreferrer";link.textContent="Catalogue source: "+(data.source||"Open Facts database");details.appendChild(link);}
-        status.textContent="Product details retrieved.";
-      }else{details.textContent=data.message||"No matching product was found. The barcode was read, but the item is not identified yet.";status.textContent="No catalogue match.";}
-    }catch(error){details.classList.remove("hidden");details.textContent=error.message||"Product lookup failed. Please try again.";status.textContent="Lookup could not be completed.";}
-    finally{button.disabled=false;}
-  });
+        const data=await response.json().catch(()=>({}));
+        if(!response.ok)throw new Error(data.error||"The product lookup service is unavailable. Please try again.");
+        details.classList.remove("hidden");
+        if(data.found&&data.product){
+          const p=data.product;details.replaceChildren();
+          const heading=document.createElement("strong");heading.textContent="Catalogue match found";details.appendChild(heading);
+          if(String(p.type||"").toLowerCase().includes("book") && /^97[89]\d{10}$/.test(code)){
+            try{
+              const booksUrl=new URL("https://www.googleapis.com/books/v1/volumes");
+              booksUrl.searchParams.set("q","isbn:"+code);
+              booksUrl.searchParams.set("maxResults","5");
+              const booksResponse=await fetch(booksUrl.toString());
+              if(booksResponse.ok){
+                const booksData=await booksResponse.json();
+                const exactBook=(Array.isArray(booksData.items)?booksData.items:[]).find(item=>
+                  (Array.isArray(item.volumeInfo?.industryIdentifiers)?item.volumeInfo.industryIdentifiers:[])
+                    .some(identifier=>String(identifier.identifier||"").replace(/[-\s]/g,"")===code)
+                );
+                const cover=exactBook?.volumeInfo?.imageLinks?.thumbnail||exactBook?.volumeInfo?.imageLinks?.smallThumbnail;
+                if(typeof cover==="string" && /^https:\/\//i.test(cover)){
+                  const image=document.createElement("img");
+                  image.src=cover.replace(/^http:\/\//i,"https://");
+                  image.alt="Book cover for "+String(p.name||"the matched book");
+                  image.loading="lazy";
+                  image.style.cssText="display:block;width:100%;max-height:260px;object-fit:contain;margin:12px auto;border-radius:10px;background:#fff";
+                  image.onerror=()=>image.remove();
+                  heading.after(image);
+                }
+              }
+            }catch(error){console.warn("Exact ISBN cover lookup unavailable:",error);}
+          }
+          [["Product",p.name],["Brand",p.brand],["Type",p.type],["Quantity",p.quantity]].filter(([,v])=>v).forEach(([label,value])=>{
+            const line=document.createElement("p");line.textContent=label+": "+value;details.appendChild(line);
+          });
+          const note=document.createElement("p");note.textContent=data.disclaimer||"Check the product name and packaging against the item in front of you. A barcode match is not proof of authenticity or exact variant.";details.appendChild(note);
+          if(typeof loadVisualReference==="function"){loadVisualReference({object:p.name||"Scanned product",brand:p.brand||"",model:p.type||"",model_number:"",category:p.type||""},details);}
+          if(data.sourceUrl){const link=document.createElement("a");link.href=data.sourceUrl;link.target="_blank";link.rel="noopener noreferrer";link.textContent="Catalogue source: "+(data.source||"Open Facts database");details.appendChild(link);}
+          status.textContent="Product details retrieved.";
+        }else{
+          details.textContent=data.message||"No matching product was found. The barcode was read, but the item is not identified yet.";
+          status.textContent="No catalogue match.";
+        }
+      }catch(error){
+        details.classList.remove("hidden");details.textContent=error.message||"Product lookup failed. Please try again.";
+        status.textContent="Lookup could not be completed.";
+      }finally{
+        button.disabled=false;
+        scannerState.lookupPromise=null;
+      }
+    })();
+    return scannerState.lookupPromise;
+  }
+  scannerEl("scanner-search-product").addEventListener("click",identifyScannedBarcode);
+
 
   move("match-helper",screens.tools);
   move("history-card",screens.history);
