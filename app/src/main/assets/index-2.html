@@ -1255,6 +1255,25 @@ document.getElementById("chat-form").onsubmit=async(event)=>{
       </label>
       <button class="secondary" id="manual-code-submit" type="button">Use code</button>
     </div>
+    <div class="match-fields" style="margin-top:16px">
+      <h3>Can't find a book by ISBN?</h3>
+      <p>Choose a clear photo of the front cover. Object Detective will read the text on your device, then search book catalogues by title and author.</p>
+      <label for="book-cover-image">Choose book-cover photo
+        <input id="book-cover-image" type="file" accept="image/*">
+      </label>
+      <p id="book-cover-status" role="status" aria-live="polite"></p>
+      <label for="book-cover-text">Text read from cover (check and edit)
+        <textarea id="book-cover-text" rows="5" placeholder="Recognised cover text will appear here"></textarea>
+      </label>
+      <label for="book-search-title">Book title
+        <input id="book-search-title" autocomplete="off" placeholder="Enter or correct the book title">
+      </label>
+      <label for="book-search-author">Author
+        <input id="book-search-author" autocomplete="off" placeholder="Enter or correct the author">
+      </label>
+      <button class="secondary" id="book-cover-search" type="button">Search book catalogues</button>
+      <div id="book-cover-candidates" class="hidden" aria-live="polite"></div>
+    </div>
     <div id="scanner-result" class="tip hidden" aria-live="polite">
       <strong id="scanner-result-type"></strong>
       <p id="scanner-result-value"></p>
@@ -1310,6 +1329,59 @@ document.getElementById("chat-form").onsubmit=async(event)=>{
     scannerEl("scanner-status").textContent="Code ready to search.";
   }
   scannerEl("manual-code-submit").addEventListener("click",()=>prepareBarcodeSearch(scannerEl("manual-code").value));
+
+  function recogniseBookCover(dataUrl){
+    return new Promise(resolve=>{
+      let settled=false;
+      const finish=result=>{if(settled)return;settled=true;clearTimeout(timer);window.onBookCoverOcrResult=null;resolve(result||{success:false});};
+      window.onBookCoverOcrResult=finish;
+      const timer=setTimeout(()=>finish({success:false,message:"Cover text recognition timed out."}),20000);
+      try{window.AndroidScanner.recognizeBookCoverImage(dataUrl);}catch(_){finish({success:false,message:"Cover text recognition is unavailable in this build."});}
+    });
+  }
+  function searchBooksByTitleAuthor(title,author){
+    return new Promise(resolve=>{
+      let settled=false;
+      const finish=result=>{if(settled)return;settled=true;clearTimeout(timer);window.onBookTitleSearchResult=null;resolve(result||{success:false});};
+      window.onBookTitleSearchResult=finish;
+      const timer=setTimeout(()=>finish({success:false,message:"Book catalogue search timed out."}),25000);
+      try{window.AndroidScanner.searchBooksByTitleAuthor(title,author);}catch(_){finish({success:false,message:"Book catalogue search is unavailable."});}
+    });
+  }
+  scannerEl("book-cover-image").addEventListener("change",async event=>{
+    const file=event.target.files&&event.target.files[0];if(!file)return;
+    const status=scannerEl("book-cover-status"),textArea=scannerEl("book-cover-text");
+    status.textContent="Reading the book cover on your device…";
+    try{
+      const dataUrl=await new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(reader.result);reader.onerror=()=>reject(new Error("Image could not be read."));reader.readAsDataURL(file);});
+      const result=await recogniseBookCover(dataUrl);
+      if(!result.success){status.textContent=result.message||"No cover text could be read.";return;}
+      textArea.value=result.text||"";
+      const lines=(result.text||"").split(/\\r?\\n/).map(x=>x.trim()).filter(x=>x.length>2);
+      const title=scannerEl("book-search-title");
+      if(!title.value&&lines.length)title.value=lines.slice(0,3).join(" ").slice(0,180);
+      status.textContent="Cover text recognised. Check the title and author below, correct them if needed, then search.";
+    }catch(_){status.textContent="The cover image could not be processed. Try another photograph.";}
+  });
+  scannerEl("book-cover-search").addEventListener("click",async()=>{
+    const title=scannerEl("book-search-title").value.trim(),author=scannerEl("book-search-author").value.trim();
+    const output=scannerEl("book-cover-candidates");output.replaceChildren();output.classList.remove("hidden");
+    if(title.length<2){output.textContent="Please enter or correct the book title first.";return;}
+    output.textContent="Searching book catalogues by title and author…";
+    const result=await searchBooksByTitleAuthor(title,author);output.replaceChildren();
+    if(!result.success){output.textContent=result.message||"Book search failed.";return;}
+    const candidates=result.candidates||[];
+    if(!candidates.length){output.textContent=result.message||"No candidates found. Try correcting the title or author.";return;}
+    const heading=document.createElement("strong");heading.textContent="Possible book matches — edition not verified";output.appendChild(heading);
+    candidates.forEach(book=>{
+      const card=document.createElement("div");card.className="tip";card.style.marginTop="10px";
+      [["Title",book.title],["Author",book.author],["Publisher",book.publisher],["Publication date",book.publishedDate],["Format",book.format],["ISBN",book.isbn]].filter(([,v])=>v).forEach(([label,value])=>{const p=document.createElement("p");p.textContent=label+": "+value;card.appendChild(p);});
+      const note=document.createElement("p");note.textContent="Possible match from "+(book.source||"book catalogue")+". Compare the cover and edition details before relying on it.";card.appendChild(note);
+      if(book.sourceUrl){const a=document.createElement("a");a.href=book.sourceUrl;a.target="_blank";a.rel="noopener noreferrer";a.textContent="Open "+(book.source||"catalogue")+" record";card.appendChild(a);}
+      output.appendChild(card);
+    });
+  });
+
   function renderBarcodeProduct(product,source,sourceUrl,title){
     const details=scannerEl("scanner-product-details");
     details.replaceChildren();
