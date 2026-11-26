@@ -1302,7 +1302,7 @@ Deno.serve(async (request: Request): Promise<Response> => {
     const brandMissing = !primaryBrandKnown || !verifiedBrandKnown;
     const exactIdentityUnclear = primaryResult.exact_match_status === "not_confirmed" ||
       !verification || verification.exact_match_status === "not_confirmed";
-    const needsManufacturerRead = brandConflict || (brandMissing && exactIdentityUnclear);
+    const needsManufacturerRead = !!verification && (brandConflict || (brandMissing && exactIdentityUnclear));
     const researchPromise = shouldRunIdentificationResearch(primaryResult, verification)
       ? researchAndVerifyIdentification(images, primaryResult, verification)
       : Promise.resolve(null);
