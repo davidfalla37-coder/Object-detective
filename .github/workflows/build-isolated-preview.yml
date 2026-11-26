@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - restore-layout-with-history-safeguard
+      - identification-one-update-preview
   workflow_dispatch:
 
 permissions:
@@ -42,6 +43,22 @@ jobs:
           grep -Fq "$LIVE_URL" "$FILE"
           sed -i "s|$LIVE_URL|$PREVIEW_URL|g" "$FILE"
           grep -Fq "$PREVIEW_URL" "$FILE"
+      - name: Validate embedded JavaScript syntax
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          import subprocess
+          html = Path("app/src/main/assets/index-2.html").read_text()
+          scripts = re.findall(r'<script\\b[^>]*>([\\s\\S]*?)</script\\s*>', html, flags=re.IGNORECASE)
+          if not scripts:
+              raise SystemExit("No inline JavaScript found")
+          for index, script in enumerate(scripts):
+              path = Path(f"/tmp/object-detective-script-{index}.js")
+              path.write_text(script)
+              subprocess.run(["node", "--check", str(path)], check=True)
+          print(f"Validated {len(scripts)} inline JavaScript block(s).")
+          PY
       - name: Build isolated preview APK
         run: gradle --no-daemon assembleRelease -PpreviewInstall=true
       - name: Sign preview APK with persistent key
