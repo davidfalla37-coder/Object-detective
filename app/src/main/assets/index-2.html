@@ -790,49 +790,88 @@ async function loadVisualReference(data,targetContainer){
   const credit=document.getElementById('visual-reference-credit');
   const feedback=document.getElementById('visual-reference-feedback');
   const requestId=++visualReferenceRequestId;
-  // Keep the same comparison panel in the existing app, but place it beside
-  // whichever result is being viewed: photo investigations or barcode scans.
-  if(targetContainer){
-    targetContainer.appendChild(panel);
-  }else{
+  if(targetContainer)targetContainer.appendChild(panel);
+  else{
     const evidence=document.getElementById('exact-match-evidence');
     if(evidence&&evidence.parentNode)evidence.parentNode.insertBefore(panel,evidence.nextSibling);
   }
   panel.classList.remove('hidden');
-  note.textContent='Searching Wikimedia Commons for a possible reference photograph…';
-  referenceImage.removeAttribute('src');userImage.removeAttribute('src');source.removeAttribute('href');
-  credit.textContent='';feedback.textContent='This is a visual lead, not proof of an exact model. Check distinctive details before accepting it.';
-  if(preview.src)userImage.src=preview.src;
-  else if(selectedFiles[0])userImage.src=URL.createObjectURL(selectedFiles[0]);
-  const queryParts=[data.brand,data.model,data.model_number,data.object].map(v=>String(v||'').trim()).filter(v=>v&&v.toLowerCase()!=='unknown');
+  note.textContent='Finding a reference photograph…';
+  referenceImage.removeAttribute('src');userImage.removeAttribute('src');
+  referenceImage.style.display='block';userImage.style.display='block';
+  source.removeAttribute('href');source.setAttribute('aria-disabled','true');
+  credit.textContent='';
+  feedback.textContent='A reference photograph is a visual lead, not proof of an exact model. Compare distinctive details before accepting it.';
+  userImage.alt='Your original investigation photograph';
+  userImage.onerror=()=>{if(requestId===visualReferenceRequestId)userImage.alt='Your original photograph could not be previewed here; it was still included in the investigation.';};
+  try{
+    if(selectedFiles[0]){
+      const localImages=await buildInvestigationImages([selectedFiles[0]],1000,.78);
+      if(requestId===visualReferenceRequestId&&localImages[0])userImage.src=localImages[0];
+    }else if(preview.src)userImage.src=preview.src;
+  }catch(_){if(preview.src)userImage.src=preview.src;}
+  const queryParts=[data.brand,data.model,data.model_number,data.part_number,data.object].map(v=>String(v||'').trim()).filter(v=>v&&v.toLowerCase()!=='unknown');
   const query=[...new Set(queryParts)].join(' ').slice(0,180);
   if(!query){note.textContent='No clear product name was available to search for a reference photograph.';return;}
+  const loadImageCandidates=async(urls)=>{
+    for(const url of [...new Set(urls.filter(value=>typeof value==='string'&&value.startsWith('https://')))]){
+      if(requestId!==visualReferenceRequestId)return false;
+      const loaded=await new Promise(resolve=>{
+        referenceImage.onload=()=>resolve(true);
+        referenceImage.onerror=()=>resolve(false);
+        referenceImage.src=url;
+      });
+      if(loaded&&requestId===visualReferenceRequestId)return true;
+    }
+    return false;
+  };
   try{
-    const endpoint='https://commons.wikimedia.org/w/api.php?action=query&generator=search&gsrsearch='+encodeURIComponent(query)+'&gsrnamespace=6&gsrlimit=8&prop=imageinfo&iiprop=url%7Cextmetadata&iiurlwidth=900&format=json&origin=*';
-    const response=await fetch(endpoint,{headers:{Accept:'application/json'}});
-    if(!response.ok)throw new Error('Reference image search is temporarily unavailable.');
+    const commonsUrl='https://commons.wikimedia.org/w/api.php?action=query&generator=search&gsrsearch='+encodeURIComponent(query)+'&gsrnamespace=6&gsrlimit=10&prop=imageinfo&iiprop=url%7Cextmetadata&iiurlwidth=900&format=json&origin=*';
+    const response=await fetch(commonsUrl,{headers:{Accept:'application/json'}});
+    if(!response.ok)throw new Error('Reference image search unavailable');
     const payload=await response.json();
     if(requestId!==visualReferenceRequestId)return;
     const pages=Object.values(payload?.query?.pages||{});
-    const candidate=pages.map(page=>({page,info:page?.imageinfo?.[0]})).find(item=>{
-      const thumb=item.info?.thumburl||item.info?.url;
-      return typeof thumb==='string'&&thumb.startsWith('https://upload.wikimedia.org/')&&typeof item.info?.descriptionurl==='string'&&item.info.descriptionurl.startsWith('https://commons.wikimedia.org/');
+    const candidates=pages.map(page=>({page,info:page?.imageinfo?.[0]})).filter(item=>{
+      const info=item.info;
+      return info&&typeof info.descriptionurl==='string'&&info.descriptionurl.startsWith('https://commons.wikimedia.org/');
     });
-    if(!candidate){note.textContent='No suitable reference photograph was found. The identification is still available; try another angle or a clearer model number.';return;}
-    const info=candidate.info;
-    const imageUrl=info.thumburl||info.url;
-    referenceImage.src=imageUrl;
-    referenceImage.onerror=()=>{if(requestId===visualReferenceRequestId)note.textContent='The reference photograph could not be loaded. Open the source page to inspect it.';};
-    source.href=info.descriptionurl;
+    let selected=null,loaded=false;
+    for(const item of candidates){
+      const urls=[item.info.thumburl,item.info.url];
+      if(await loadImageCandidates(urls)){selected=item;loaded=true;break;}
+    }
+    if(!loaded){
+      const wikiUrl='https://en.wikipedia.org/w/api.php?action=query&generator=search&gsrsearch='+encodeURIComponent(query)+'&gsrnamespace=0&gsrlimit=8&prop=pageimages&piprop=thumbnail&pithumbsize=900&format=json&origin=*';
+      const wikiResponse=await fetch(wikiUrl,{headers:{Accept:'application/json'}});
+      if(wikiResponse.ok){
+        const wikiPayload=await wikiResponse.json();
+        if(requestId!==visualReferenceRequestId)return;
+        const wikiPages=Object.values(wikiPayload?.query?.pages||{});
+        for(const page of wikiPages){
+          const imageUrl=page?.thumbnail?.source;
+          if(await loadImageCandidates([imageUrl])){
+            selected={page,info:{descriptionurl:page?.fullurl||('https://en.wikipedia.org/?curid='+page.pageid),extmetadata:{}}};
+            loaded=true;break;
+          }
+        }
+      }
+    }
+    if(!loaded||!selected){
+      note.textContent='No usable reference photograph could be found this time. Your identification is still available; try a clearer model label or another angle.';
+      return;
+    }
+    if(requestId!==visualReferenceRequestId)return;
+    const info=selected.info;
+    source.href=info.descriptionurl;source.removeAttribute('aria-disabled');
     const rawLicense=info.extmetadata?.LicenseShortName?.value||'Licence details on source page';
-    credit.textContent='Source: Wikimedia Commons · '+String(rawLicense).replace(/<[^>]*>/g,'').slice(0,80);
-    const title=String(candidate.page?.title||'').replace(/^File:/,'');
-    note.textContent='Possible reference: '+title+'. Compare shape, logos, markings and model details. This may be a similar item, not the exact model.';
+    credit.textContent=info.extmetadata?'Source: Wikimedia Commons · '+String(rawLicense).replace(/<[^>]*>/g,'').slice(0,80):'Source: Wikipedia article image';
+    const title=String(selected.page?.title||'Reference photograph').replace(/^File:/,'');
+    note.textContent='Reference photograph loaded: '+title+'. Compare shape, logos, markings and model details. This may be a similar item, not the exact model.';
   }catch(error){
-    if(requestId===visualReferenceRequestId)note.textContent='Could not retrieve a reference photograph right now. Your identification result has not been affected.';
+    if(requestId===visualReferenceRequestId)note.textContent='Reference photographs are temporarily unavailable. Your identification result has not been affected.';
   }
 }
-
 document.getElementById('visual-reference-match').onclick=()=>{document.getElementById('visual-reference-feedback').textContent='You marked this reference as looking like the same item. This feedback stays on this device and is not sent automatically.';};
 document.getElementById('visual-reference-mismatch').onclick=()=>{document.getElementById('visual-reference-feedback').textContent='You marked this as the wrong reference. Do not treat it as evidence for the identification. This feedback stays on this device.';};
 
