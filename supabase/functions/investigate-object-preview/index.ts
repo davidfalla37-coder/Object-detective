@@ -975,6 +975,76 @@ async function verifyIdentification(
   }
 }
 
+async function fetchReferencePhoto(query: string): Promise<Record<string, string>> {
+  const toDataUrl = async (url: string): Promise<string | null> => {
+    try {
+      const response = await fetch(url, { signal: AbortSignal.timeout(7000) });
+      if (!response.ok) return null;
+      const contentType = response.headers.get("content-type") || "image/jpeg";
+      if (!contentType.toLowerCase().startsWith("image/")) return null;
+      const bytes = new Uint8Array(await response.arrayBuffer());
+      if (bytes.length === 0 || bytes.length > 2_500_000) return null;
+      let binary = "";
+      const chunkSize = 0x8000;
+      for (let offset = 0; offset < bytes.length; offset += chunkSize) {
+        binary += String.fromCharCode(...bytes.subarray(offset, Math.min(offset + chunkSize, bytes.length)));
+      }
+      return `data:${contentType};base64,${btoa(binary)}`;
+    } catch {
+      return null;
+    }
+  };
+
+  const commonsUrl = "https://commons.wikimedia.org/w/api.php?action=query&generator=search&gsrsearch=" +
+    encodeURIComponent(query) +
+    "&gsrnamespace=6&gsrlimit=8&prop=imageinfo&iiprop=url%7Cextmetadata&iiurlwidth=900&format=json&origin=*";
+  try {
+    const response = await fetch(commonsUrl, { signal: AbortSignal.timeout(7000) });
+    if (response.ok) {
+      const payload = await response.json() as any;
+      const pages = Object.values(payload?.query?.pages || {}) as any[];
+      for (const page of pages) {
+        const info = page?.imageinfo?.[0];
+        const imageDataUrl = info?.thumburl ? await toDataUrl(info.thumburl) : null;
+        if (!imageDataUrl) continue;
+        const license = info?.extmetadata?.LicenseShortName?.value || "Licence details on source page";
+        return {
+          imageDataUrl,
+          sourceUrl: info.descriptionurl || "https://commons.wikimedia.org/",
+          title: String(page.title || "Reference photograph").replace(/^File:/, ""),
+          credit: "Source: Wikimedia Commons · " + String(license).replace(/<[^>]*>/g, "").slice(0, 80),
+        };
+      }
+    }
+  } catch (error) {
+    console.error("Wikimedia reference search failed:", error instanceof Error ? error.message : error);
+  }
+
+  const wikiUrl = "https://en.wikipedia.org/w/api.php?action=query&generator=search&gsrsearch=" +
+    encodeURIComponent(query) +
+    "&gsrnamespace=0&gsrlimit=8&prop=pageimages&piprop=thumbnail&pithumbsize=900&format=json&origin=*";
+  try {
+    const response = await fetch(wikiUrl, { signal: AbortSignal.timeout(7000) });
+    if (response.ok) {
+      const payload = await response.json() as any;
+      const pages = Object.values(payload?.query?.pages || {}) as any[];
+      for (const page of pages) {
+        const imageDataUrl = page?.thumbnail?.source ? await toDataUrl(page.thumbnail.source) : null;
+        if (!imageDataUrl) continue;
+        return {
+          imageDataUrl,
+          sourceUrl: page.fullurl || "https://en.wikipedia.org/?curid=" + page.pageid,
+          title: String(page.title || "Reference photograph"),
+          credit: "Source: Wikipedia article image; check the source page for image licensing.",
+        };
+      }
+    }
+  } catch (error) {
+    console.error("Wikipedia reference search failed:", error instanceof Error ? error.message : error);
+  }
+  return {};
+}
+
 Deno.serve(async (request: Request): Promise<Response> => {
   if (request.method === "OPTIONS") {
     return new Response(null, { status: 204, headers: corsHeaders });
@@ -1000,6 +1070,13 @@ Deno.serve(async (request: Request): Promise<Response> => {
     return errorResponse("The selected photos are too large. Please use clearer, smaller photos.", 413, "request_too_large");
   }
 
+  if (body.mode === "reference-search") {
+    const query = typeof (body as Record<string, unknown>).query === "string"
+      ? String((body as Record<string, unknown>).query).trim().slice(0, 180)
+      : "";
+    if (!query) return errorResponse("A product description is required for the reference search.", 400, "missing_reference_query");
+    return jsonResponse(await fetchReferencePhoto(query));
+  }
 
   if (body.mode === "chat") {
     const question = typeof body.question === "string" ? body.question.trim().slice(0, 700) : "";
