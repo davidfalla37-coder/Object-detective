@@ -1437,7 +1437,8 @@ document.getElementById("chat-form").onsubmit=async(event)=>{
     const details=scannerEl("scanner-product-details");
     details.replaceChildren();
     const heading=document.createElement("strong");heading.textContent="Exact ISBN book record found";details.appendChild(heading);
-    [["Title",book.name],["Author",book.author],["Publisher",book.publisher],["Publication date",book.publishedDate],["Edition",book.edition],["Format",book.format],["Pages",book.pages],["ISBN",book.code]].filter(([,v])=>v).forEach(([label,value])=>{
+    const fullTitle=[book.name,book.subtitle].filter(Boolean).join(": ");
+    [["Title",fullTitle],["Author",book.author],["Publisher",book.publisher],["Publication date",book.publishedDate],["Edition",book.edition],["Format",book.format],["Pages",book.pages],["ISBN",book.code]].filter(([,v])=>v).forEach(([label,value])=>{
       const line=document.createElement("p");line.textContent=label+": "+value;details.appendChild(line);
     });
     const note=document.createElement("p");note.textContent="This record was returned for the scanned ISBN. Check the physical book's title and edition details; catalogue records can contain errors.";details.appendChild(note);
