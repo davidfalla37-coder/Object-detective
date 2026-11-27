@@ -18,19 +18,19 @@ android {
         applicationId "com.objectdetective.app"
         minSdk 26
         targetSdk 36
-        versionCode 28
-        versionName "1.25-PRO-preview"
+        versionCode 29
+        versionName "1.26-PRO-preview"
         if (project.hasProperty('proInstall') && project.property('proInstall') == 'true') {
             applicationIdSuffix ".preview2"
-            manifestPlaceholders = [appLabel: "Object Detective PRO"]
+            manifestPlaceholders = [appLabel: "Object Detective PRO", appIcon: "@drawable/ic_launcher_pro"]
         } else if (project.hasProperty('previewInstall') && project.property('previewInstall') == 'true') {
             applicationIdSuffix ".preview2"
-            manifestPlaceholders = [appLabel: "Object Detective Preview"]
+            manifestPlaceholders = [appLabel: "Object Detective Preview", appIcon: "@drawable/ic_launcher"]
         } else if (project.hasProperty('testInstall') && project.property('testInstall') == 'true') {
             applicationIdSuffix ".test"
-            manifestPlaceholders = [appLabel: "Object Detective Test"]
+            manifestPlaceholders = [appLabel: "Object Detective Test", appIcon: "@drawable/ic_launcher"]
         } else {
-            manifestPlaceholders = [appLabel: "Object Detective"]
+            manifestPlaceholders = [appLabel: "Object Detective", appIcon: "@drawable/ic_launcher"]
         }
     }
 
