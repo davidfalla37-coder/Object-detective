@@ -43,7 +43,7 @@ jobs:
         run: |
           FILE="app/src/main/assets/index-2.html"
           LIVE_URL="https://gboyflbwcobhzbvpdtat.supabase.co/functions/v1/investigate-object"
-          PREVIEW_URL="https://gboyflbwcobhzbvpdtat.supabase.co/functions/v1/investigate-object-preview"
+          PREVIEW_URL="https://gboyflbwcobhzbvpdtat.supabase.co/functions/v1/investigate-object-preview-preview"
           if grep -Fq "$PREVIEW_URL" "$FILE"; then
             echo "Preview endpoint already configured."
           elif grep -Fq "$LIVE_URL" "$FILE"; then

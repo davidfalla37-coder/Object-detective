@@ -572,7 +572,7 @@ main{
   </section>
 </div>
 <script>
-const FUNCTION_URL='https://gboyflbwcobhzbvpdtat.supabase.co/functions/v1/investigate-object-preview';
+const FUNCTION_URL='https://gboyflbwcobhzbvpdtat.supabase.co/functions/v1/investigate-object-preview-preview';
 const nativeEvidenceRequests=new Map();
 window.onNativeEvidenceReady=function(requestId,payload){
   const resolve=nativeEvidenceRequests.get(String(requestId));
@@ -866,7 +866,7 @@ async function loadVisualReference(data,targetContainer){
   referenceImage.removeAttribute('src');
   if(visualUserPhotoUrl){URL.revokeObjectURL(visualUserPhotoUrl);visualUserPhotoUrl='';}
   userImage.removeAttribute('src');
-  referenceImage.style.display='block';userImage.style.display='block';
+  referenceImage.style.display='none';userImage.style.display='block';const referenceCell=referenceImage.parentElement;const referenceFeedback=panel.querySelector('.feedback-actions');if(referenceCell)referenceCell.style.display='none';if(referenceFeedback)referenceFeedback.style.display='none';source.style.display='none';
   source.removeAttribute('href');source.setAttribute('aria-disabled','true');
   credit.textContent='';
   feedback.textContent='A reference photograph is a visual lead, not proof of an exact model. Compare distinctive details before accepting it.';
@@ -898,8 +898,9 @@ async function loadVisualReference(data,targetContainer){
     let triedRemoteFallback=false;
     referenceImage.onload=()=>{
       if(requestId!==visualReferenceRequestId)return;
+      if(referenceCell)referenceCell.style.display='block';referenceImage.style.display='block';if(referenceFeedback)referenceFeedback.style.display='flex';
       source.href=typeof payload.sourceUrl==='string'&&payload.sourceUrl.startsWith('https://')?payload.sourceUrl:'#';
-      if(source.href!=='#')source.removeAttribute('aria-disabled');
+      if(source.href!=='#'){source.removeAttribute('aria-disabled');source.style.display='inline-block';}
       credit.textContent=payload.credit||'Reference source details available on the source page.';
       note.textContent='Reference photograph loaded: '+(payload.title||'Possible match')+'. Compare logos, markings and model details. It may be a similar item, not the exact model.';
     };
@@ -910,7 +911,7 @@ async function loadVisualReference(data,targetContainer){
         referenceImage.src=payload.imageUrl;
         return;
       }
-      referenceImage.removeAttribute('src');
+      referenceImage.removeAttribute('src');referenceImage.style.display='none';if(referenceCell)referenceCell.style.display='none';if(referenceFeedback)referenceFeedback.style.display='none';source.style.display='none';
       note.textContent='The reference photograph could not be displayed. Your own photograph remains available for comparison.';
     };
     referenceImage.src=embeddedImage?payload.imageDataUrl:payload.imageUrl;

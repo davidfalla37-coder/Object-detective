@@ -5,6 +5,8 @@ set -euo pipefail
 # This runs before any preview APK is signed or uploaded.
 LIVE="supabase/functions/investigate-object/index.ts"
 PREVIEW="supabase/functions/investigate-object-preview/index.ts"
+PRO_PREVIEW="supabase/functions/investigate-object-preview-preview/index.ts"
+PRO_HELPER="supabase/functions/investigate-object-preview-preview/identity-conflict.ts"
 
 for file in "$LIVE" "$PREVIEW"; do
   if [[ "$file" == "$PREVIEW" ]]; then
@@ -32,3 +34,13 @@ if "return {};" not in body or "fetch(" in body:
     raise SystemExit("Pro reference-photo search must fail closed without identity verification.")
 print("Identification reliability safeguards passed.")
 PY
+
+# The separately packaged Pro preview has its own isolated service and model-code rule.
+grep -Fq "rawImages.length > 15" "$PRO_PREVIEW"
+grep -Fq "value.slice(0, 15)" "$PRO_PREVIEW"
+grep -Fq "MAX_IMAGE_DATA_URL_LENGTH * 15" "$PRO_PREVIEW"
+grep -Fq "applySamsungEarbudModelEvidence" "$PRO_PREVIEW"
+grep -Fq 'result.model_number = "SM-R630"' "$PRO_HELPER"
+grep -Fq 'result.model = "Galaxy Buds3 Pro"' "$PRO_HELPER"
+grep -Fq 'investigate-object-preview-preview' app/src/main/assets/index-2.html
+echo "Isolated Pro service, 15-photo capacity, and Samsung model-code mapping verified."
