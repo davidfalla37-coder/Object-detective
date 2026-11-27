@@ -539,6 +539,13 @@ main{
 </div>
 <script>
 const FUNCTION_URL='https://gboyflbwcobhzbvpdtat.supabase.co/functions/v1/investigate-object';
+const nativeEvidenceRequests=new Map();
+window.onNativeEvidenceReady=function(requestId,payload){
+  const resolve=nativeEvidenceRequests.get(String(requestId));
+  if(!resolve)return;
+  nativeEvidenceRequests.delete(String(requestId));
+  try{resolve(JSON.parse(payload||'{}'))}catch{resolve({available:false,photos:[]})}
+};
 const AMAZON_ASSOCIATE_TAG='';
 const AMAZON_APP_LINKS_APPROVED=false;
 const cameraFile=document.getElementById('camera-file');
@@ -698,8 +705,12 @@ identify.onclick=async()=>{
   statusBox.classList.remove('hidden');errorBox.classList.add('hidden');result.classList.add('hidden');
   try{
     const images=await buildInvestigationImages(selectedFiles,1800,.86);
+    statusBox.textContent='Reading labels and barcodes across your photos…';
+    const evidencePromise=analyzeNativeEvidence(images).catch(()=>({available:false,photos:[]}));
     const analysisPromise=(async()=>{
-      const response=await fetch(FUNCTION_URL,{method:'POST',headers:{'Content-Type':'text/plain;charset=UTF-8'},body:JSON.stringify({images,photoCount:selectedFiles.length,mode:'multi-angle-accuracy'})});
+      const nativeEvidence=await evidencePromise;
+      statusBox.textContent='Comparing visual evidence with product records…';
+      const response=await fetch(FUNCTION_URL,{method:'POST',headers:{'Content-Type':'text/plain;charset=UTF-8'},body:JSON.stringify({images,photoCount:selectedFiles.length,mode:'multi-angle-accuracy',extractedEvidence:nativeEvidence.photos||[]})});
       const data=await response.json().catch(()=>({}));
       return{response,data};
     })();
@@ -765,6 +776,19 @@ function loadImage(input){
       image.src=reader.result;
     };
     reader.readAsDataURL(input);
+  });
+}
+
+async function analyzeNativeEvidence(images){
+  if(!window.AndroidEvidence||typeof window.AndroidEvidence.analyzeImages!=='function')return{available:false,photos:[]};
+  const requestId='od-'+Date.now()+'-'+Math.random().toString(36).slice(2);
+  return new Promise(resolve=>{
+    let settled=false;
+    const finish=value=>{if(settled)return;settled=true;clearTimeout(timeout);nativeEvidenceRequests.delete(requestId);resolve(value)};
+    const timeout=setTimeout(()=>finish({available:false,photos:[],error:'On-device evidence scan timed out'}),18000);
+    nativeEvidenceRequests.set(requestId,finish);
+    try{window.AndroidEvidence.analyzeImages(JSON.stringify(images),requestId)}
+    catch(error){finish({available:false,photos:[],error:String(error&&error.message||error)})}
   });
 }
 
