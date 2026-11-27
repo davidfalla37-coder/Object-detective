@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - restore-layout-with-history-safeguard
+      - fix/global-identification-reliability-20261127
   workflow_dispatch:
 
 permissions:
