@@ -20,7 +20,10 @@ android {
         targetSdk 36
         versionCode 26
         versionName "1.25"
-        if (project.hasProperty('previewInstall') && project.property('previewInstall') == 'true') {
+        if (project.hasProperty('proInstall') && project.property('proInstall') == 'true') {
+            applicationIdSuffix ".propreview"
+            manifestPlaceholders = [appLabel: "Object Detective PRO"]
+        } else if (project.hasProperty('previewInstall') && project.property('previewInstall') == 'true') {
             applicationIdSuffix ".preview2"
             manifestPlaceholders = [appLabel: "Object Detective Preview"]
         } else if (project.hasProperty('testInstall') && project.property('testInstall') == 'true') {
