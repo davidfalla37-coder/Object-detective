@@ -1,4 +1,4 @@
-import { applyBrandConflictFallback } from "./identity-conflict.ts";
+import { applyBrandConflictFallback, applySamsungEarbudModelEvidence } from "./identity-conflict.ts";
 
 function fixture() {
   return {
@@ -58,4 +58,33 @@ Deno.test("an actual earbuds result remains earbuds when that is the primary fin
   if (result.object !== "Wireless earbuds with charging case") {
     throw new Error("The real primary object was not preserved.");
   }
+});
+
+
+Deno.test("Samsung SM-R630 evidence resolves conflicting earbud brand and model", () => {
+  const result = {
+    object: "SoundPEATS wireless earbuds", category: "Electronics",
+    brand: "SoundPEATS", manufacturer: "SoundPEATS", model: "Unknown",
+    model_number: "Unknown", variant: "Unknown", exact_match_status: "not_confirmed",
+    exact_match_confidence: 0.2, exact_match_evidence: "Visual guess",
+    identifying_clues: "Samsung branding, model SM-R630, case reference EP-OR630, wireless earbuds and charging case.",
+    case_file_summary: "Wireless earbuds.", warning: "",
+    value_estimate: "Unknown (GBP)", value_reasoning: "",
+  };
+  applySamsungEarbudModelEvidence(result, "No local OCR text extracted.");
+  if (result.brand !== "Samsung" || result.manufacturer !== "Samsung") throw new Error("Samsung brand conflict was not resolved.");
+  if (result.model !== "Galaxy Buds3 Pro" || result.model_number !== "SM-R630") throw new Error("SM-R630 was not resolved to Galaxy Buds3 Pro.");
+  if (result.exact_match_status !== "likely") throw new Error("Model confidence must remain cautious.");
+});
+
+Deno.test("Samsung model evidence does not alter unrelated categories", () => {
+  const result = {
+    object: "Cordless drill", category: "Tools", brand: "Unknown", manufacturer: "Unknown",
+    model: "Unknown", model_number: "Unknown", variant: "Unknown",
+    exact_match_status: "not_confirmed", exact_match_confidence: 0.2,
+    exact_match_evidence: "", identifying_clues: "Samsung SM-R630",
+    case_file_summary: "", warning: "", value_estimate: "Unknown (GBP)", value_reasoning: "",
+  };
+  applySamsungEarbudModelEvidence(result, "");
+  if (result.object !== "Cordless drill") throw new Error("Unrelated object was changed.");
 });
