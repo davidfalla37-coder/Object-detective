@@ -64,7 +64,7 @@ jobs:
           print(f"Validated {len(scripts)} inline JavaScript block(s).")
           PY
       - name: Build isolated preview APK
-        run: gradle --no-daemon assembleRelease -PpreviewInstall=true
+        run: gradle --no-daemon assembleRelease -PproInstall=true
       - name: Sign preview APK with persistent key
         env:
           KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
@@ -84,7 +84,7 @@ jobs:
           BUILD_TOOLS="$ANDROID_HOME/build-tools/$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -n 1)"
           BADGING=$("$BUILD_TOOLS/aapt" dump badging app/build/outputs/apk/release/object-detective-preview.apk)
           echo "$BADGING" | grep -F "package: name='com.objectdetective.app.preview2'"
-          echo "$BADGING" | grep -F "application-label:'Object Detective Preview'"
+          echo "$BADGING" | grep -F "application-label:'Object Detective PRO'"
       - name: Verify installable APK exists
         run: test -s app/build/outputs/apk/release/object-detective-preview.apk
       - name: Upload isolated preview APK
