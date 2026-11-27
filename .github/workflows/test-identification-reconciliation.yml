@@ -2,7 +2,7 @@ name: Test Object Detective identification reconciliation
 
 on:
   push:
-    branches: [restore-layout-with-history-safeguard, identification-one-update-preview]
+    branches: [restore-layout-with-history-safeguard, identification-one-update-preview, fix/free-identification-reliability-20261127]
   pull_request:
     branches: [main]
 
