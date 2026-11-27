@@ -5,6 +5,7 @@ on:
     branches:
       - restore-layout-with-history-safeguard
       - identification-one-update-preview
+      - identification-evidence-pipeline
   workflow_dispatch:
 
 permissions:
