@@ -1,4 +1,4 @@
-import { applyBrandConflictFallback, applySamsungEarbudModelEvidence } from "./identity-conflict.ts";
+import { applyBrandConflictFallback, applySamsungEarbudModelEvidence, reconcileCrossCheckIdentityEvidence } from "./identity-conflict.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -1574,7 +1574,14 @@ Deno.serve(async (request: Request): Promise<Response> => {
     }
     if (verification) {
       const reconciled = reconcileVerification(primaryResult, verification, manufacturerEvidence);
-      const machineReconciled = applyMachineReadableIdentityEvidence(reconciled, machineEvidenceContext);
+      const evidenceReconciled = reconcileCrossCheckIdentityEvidence(
+        reconciled,
+        primaryResult,
+        { ...verification, identifying_clues: verification.evidence, exact_match_evidence: verification.evidence, case_file_summary: "Unknown" },
+        machineEvidenceContext,
+        manufacturerEvidence?.evidence ?? "",
+      );
+      const machineReconciled = applyMachineReadableIdentityEvidence(evidenceReconciled, machineEvidenceContext);
       return jsonResponse(applySamsungEarbudModelEvidence(machineReconciled, combinedIdentityEvidence));
     }
     const fallback = applyMachineReadableIdentityEvidence(conservativeFallback(primaryResult), machineEvidenceContext);
