@@ -43,9 +43,18 @@ if grep -Fq 'result.object = "Wireless earbuds with charging case"' "$FUNCTION";
   exit 1
 fi
 LIVE_URL="https://gboyflbwcobhzbvpdtat.supabase.co/functions/v1/investigate-object"
-if ! grep -Fq "$LIVE_URL" "app/src/main/assets/index-2.html" || grep -Fq 'investigate-object-preview' "app/src/main/assets/index-2.html"; then
-  echo "::error::Production source must use the live endpoint, not the preview endpoint"
-  exit 1
+PREVIEW_URL="https://gboyflbwcobhzbvpdtat.supabase.co/functions/v1/investigate-object-preview"
+BRANCH_NAME="${GITHUB_REF_NAME:-$(git branch --show-current)}"
+if [[ "$BRANCH_NAME" == "main" || "$BRANCH_NAME" == release/* ]]; then
+  if ! grep -Fq "$LIVE_URL" "$FILE" || grep -Fq 'investigate-object-preview' "$FILE"; then
+    echo "::error::Production/release source must use the live endpoint"
+    exit 1
+  fi
+else
+  if ! grep -Fq "$PREVIEW_URL" "$FILE" || grep -Fq "$LIVE_URL" "$FILE"; then
+    echo "::error::Test source must use the isolated preview endpoint"
+    exit 1
+  fi
 fi
 LIVE_FUNCTION="supabase/functions/investigate-object/index.ts"
 LIVE_HELPER="supabase/functions/investigate-object/identity-conflict.ts"
