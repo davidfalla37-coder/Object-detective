@@ -477,6 +477,8 @@ main{
       </select>
     </label>
     <button class="secondary" type="button" id="replay-guide" style="width:100%">Show how to use the app</button>
+    <p class="photo-guide">Saved photo corrections stay on this device to improve future matching. You can delete them at any time.</p>
+    <button class="secondary" type="button" id="clear-photo-corrections" style="width:100%;margin-top:10px">Delete saved photo corrections</button>
     <a class="link-button" id="rate-app" href="https://play.google.com/store/apps/details?id=com.objectdetective.app" rel="noopener">Open Object Detective on Google Play</a>
     <p class="photo-guide">The Play Store rating option depends on the app and testing track available to your account.</p>
   </section>
@@ -1084,6 +1086,8 @@ function renderHistory(){
   });
 }
 clearHistory.onclick=()=>{if(confirm('Delete all saved investigations?')){writeHistory([]);clearHistoryPhotos();renderHistory()}};
+const clearPhotoCorrections=document.getElementById('clear-photo-corrections');
+clearPhotoCorrections.onclick=()=>{if(confirm('Delete all saved photo corrections from this device? Your investigation history and photographs will remain.')){try{localStorage.removeItem(CORRECTIONS_KEY);document.getElementById('feedback-status').textContent='Saved photo corrections deleted from this device.';}catch{document.getElementById('feedback-status').textContent='Could not delete saved photo corrections. Please try again.';}}};
 renderHistory();
 
 let currentChatContext={};
