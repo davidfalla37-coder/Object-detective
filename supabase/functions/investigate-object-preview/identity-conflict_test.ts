@@ -80,7 +80,7 @@ Deno.test("one OCR model code with matching maker text upgrades a generic result
     { value_estimate: "£35–£55 (GBP)" },
     JSON.stringify({ extractedFromPhotos: [{ photoIndex: 0, visibleText: "CASIO 5590 GA-2000 WATER RESIST 20BAR" }] }),
   );
-  if (result.model_number !== "GA-2000" || result.model !== "GA-2000") throw new Error("OCR model code was not carried into the result.");
+  if (result.model_number !== "GA-2000" || result.model !== "GA-2000") throw new Error("OCR model code was not carried into the result: " + JSON.stringify(result));
   if (result.exact_match_status !== "likely") throw new Error("OCR alone must not claim an exact retail variant.");
   if (!result.object.includes("GA-2000")) throw new Error("Likely object summary did not include the readable model family.");
   if (result.value_estimate !== "£35–£55 (GBP)") throw new Error("The lowest supported value range was not restored.");
