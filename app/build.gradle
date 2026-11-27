@@ -19,8 +19,8 @@ android {
         versionCode 25
         versionName "1.24"
         if (project.hasProperty('previewInstall') && project.property('previewInstall') == 'true') {
-            applicationIdSuffix ".preview2"
-            manifestPlaceholders = [appLabel: "Object Detective Preview"]
+            applicationIdSuffix ".freepreview"
+            manifestPlaceholders = [appLabel: "Object Detective Free Preview"]
         } else if (project.hasProperty('testInstall') && project.property('testInstall') == 'true') {
             applicationIdSuffix ".test"
             manifestPlaceholders = [appLabel: "Object Detective Test"]
