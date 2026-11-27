@@ -10,7 +10,7 @@ const corsHeaders = {
 const PRIMARY_MODEL = "gpt-4.1-mini";
 const VERIFICATION_MODEL = "gpt-4.1";
 const MAX_IMAGE_DATA_URL_LENGTH = 20 * 1024 * 1024;
-const MAX_REQUEST_LENGTH = MAX_IMAGE_DATA_URL_LENGTH * 5 + 16 * 1024;
+const MAX_REQUEST_LENGTH = 50 * 1024 * 1024;
 
 interface RequestBody {
   image?: unknown;
@@ -70,7 +70,7 @@ interface ExtractedPhotoEvidence {
 
 function sanitizeExtractedEvidence(value: unknown): ExtractedPhotoEvidence[] {
   if (!Array.isArray(value)) return [];
-  return value.slice(0, 5).map((entry, index) => {
+  return value.slice(0, 15).map((entry, index) => {
     const record = entry && typeof entry === "object" ? entry as Record<string, unknown> : {};
     const rawBarcodes = Array.isArray(record.barcodes) ? record.barcodes : [];
     return {
@@ -1227,8 +1227,8 @@ Deno.serve(async (request: Request): Promise<Response> => {
   if (rawImages.length === 0) {
     return errorResponse("At least one image data URL is required.", 400, "missing_image");
   }
-  if (rawImages.length > 5) {
-    return errorResponse("Please send no more than five photos.", 400, "too_many_images");
+  if (rawImages.length > 15) {
+    return errorResponse("Please send no more than fifteen photos.", 400, "too_many_images");
   }
   const images = rawImages.map((value) => typeof value === "string" ? value.trim() : "");
   if (images.some((value) => !value)) {
