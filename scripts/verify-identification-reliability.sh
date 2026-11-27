@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# Regression gate for the 2026-11-27 shared identification fix.
+
 LIVE="supabase/functions/investigate-object/index.ts"
 PREVIEW="supabase/functions/investigate-object-preview/index.ts"
 
