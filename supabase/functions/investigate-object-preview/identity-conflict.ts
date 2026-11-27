@@ -59,6 +59,109 @@ export function applyBrandConflictFallback<T extends BrandConflictResult>(
 }
 
 
+
+export type CrossCheckIdentityRecord = {
+  object: string; brand: string; model: string; model_number: string; variant: string;
+  identifying_clues: string; case_file_summary: string; exact_match_evidence: string;
+  confidence: number; exact_match_confidence: number; exact_match_status: string; warning: string;
+};
+
+/** Category-neutral reconciliation: preserve evidence, reject unsupported conflicts. */
+export function reconcileCrossCheckIdentityEvidence<T extends CrossCheckIdentityRecord>(
+  result: T,
+  primary: Partial<CrossCheckIdentityRecord>,
+  verification: Partial<CrossCheckIdentityRecord>,
+  machineEvidence: string,
+  manufacturerEvidence = "",
+): T {
+  const known = (value: unknown): value is string =>
+    typeof value === "string" && value.trim().length > 0 && value.trim().toLowerCase() !== "unknown";
+  const normalize = (value: string): string => value.toLowerCase().replace(/[^a-z0-9]+/g, "");
+  const directEvidence = normalize([machineEvidence, manufacturerEvidence].join(" "));
+  const directlySupported = (candidate: string): boolean => {
+    const token = normalize(candidate);
+    return token.length >= 3 && directEvidence.includes(token);
+  };
+  const choose = (a?: string, b?: string): { value: string; conflict: boolean } => {
+    const left = known(a) ? a.trim() : "";
+    const right = known(b) ? b.trim() : "";
+    if (!left) return { value: right || "Unknown", conflict: false };
+    if (!right || normalize(left) === normalize(right)) return { value: left, conflict: false };
+    const leftSupported = directlySupported(left);
+    const rightSupported = directlySupported(right);
+    if (leftSupported !== rightSupported) return { value: leftSupported ? left : right, conflict: false };
+    return { value: "Unknown", conflict: true };
+  };
+
+  const brandChoice = choose(primary.brand, verification.brand);
+  const modelChoice = choose(primary.model, verification.model);
+  const numberChoice = choose(primary.model_number, verification.model_number);
+  const variantChoice = choose(primary.variant, verification.variant);
+  result.brand = brandChoice.value;
+  result.model = modelChoice.value;
+  result.model_number = numberChoice.value;
+  result.variant = variantChoice.value;
+
+  let broadObject = (known(primary.object) ? primary.object : "") ||
+    (known(verification.object) ? verification.object : "") || result.object;
+  const pObject = known(primary.object) ? primary.object : "";
+  const vObject = known(verification.object) ? verification.object : "";
+  if (pObject && vObject) {
+    const left = normalize(pObject), right = normalize(vObject);
+    if (left.includes(right) && pObject.length > vObject.length) broadObject = pObject;
+    else if (right.includes(left) && vObject.length > pObject.length) broadObject = vObject;
+    else if (left === right) broadObject = pObject;
+    else if (brandChoice.conflict) {
+      let generic = pObject;
+      for (const claim of [primary.brand, verification.brand, primary.model, verification.model, primary.model_number, verification.model_number]) {
+        if (known(claim)) generic = generic.split(claim).join(" ");
+      }
+      broadObject = generic.replace(/\s+/g, " ").trim() || "Object identification uncertain";
+    }
+  }
+
+  if (brandChoice.conflict) {
+    result.object = broadObject;
+    result.brand = result.model = result.model_number = result.variant = "Unknown";
+    result.exact_match_status = "not_confirmed";
+    result.exact_match_confidence = Math.min(result.exact_match_confidence, 0.35);
+    result.confidence = Math.min(result.confidence, 0.65);
+    result.warning = [result.warning, "The independent checks disagree about the manufacturer and no direct readable maker evidence resolves the conflict. The broad object type is retained; the maker and exact model are unconfirmed."].filter(Boolean).join(" ");
+  } else {
+    result.object = broadObject;
+    if (known(result.brand) && !result.object.toLowerCase().includes(result.brand.toLowerCase())) {
+      result.object = result.brand + " " + result.object;
+    }
+    const modelConflict = modelChoice.conflict || numberChoice.conflict || variantChoice.conflict;
+    if (modelConflict) {
+      if (modelChoice.conflict) result.model = "Unknown";
+      if (numberChoice.conflict) result.model_number = "Unknown";
+      if (variantChoice.conflict) result.variant = "Unknown";
+      result.exact_match_status = "not_confirmed";
+      result.exact_match_confidence = Math.min(result.exact_match_confidence, 0.45);
+      result.warning = [result.warning, "The independent checks proposed different model-level details and the supplied readable evidence does not resolve them. The broader object identification is retained."].filter(Boolean).join(" ");
+    } else if (result.exact_match_status === "exact" &&
+      (!known(primary.model_number) || !known(verification.model_number) ||
+        normalize(primary.model_number!) !== normalize(verification.model_number!))) {
+      result.exact_match_status = "likely";
+      result.exact_match_confidence = Math.min(result.exact_match_confidence, 0.78);
+    }
+  }
+
+  const mergeText = (...values: Array<string | undefined>): string => {
+    const seen = new Set<string>();
+    return values.map(value => (value || "").trim())
+      .filter(value => value && value.toLowerCase() !== "unknown" && !seen.has(value) && !!seen.add(value))
+      .join(" ").slice(0, 1400) || "Unknown";
+  };
+  result.identifying_clues = mergeText(primary.identifying_clues, verification.identifying_clues,
+    verification.exact_match_evidence, verification.case_file_summary);
+  result.exact_match_evidence = mergeText(primary.exact_match_evidence,
+    verification.exact_match_evidence, manufacturerEvidence);
+  result.case_file_summary = mergeText(primary.case_file_summary, verification.case_file_summary, result.object);
+  return result;
+}
+
 export type SamsungEarbudEvidenceResult = {
   object: string;
   category: string;
