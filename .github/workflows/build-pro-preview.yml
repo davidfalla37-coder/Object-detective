@@ -3,8 +3,6 @@ name: Build isolated Object Detective PRO APK
 on:
   push:
     branches:
-      - restore-layout-with-history-safeguard
-      - identification-one-update-preview
       - pro/identification-foundation-preview
   workflow_dispatch:
 
@@ -75,19 +73,19 @@ jobs:
             --key-pass "pass:$KEYSTORE_PASSWORD" \
             --out app/build/outputs/apk/release/object-detective-pro.apk \
             app/build/outputs/apk/release/app-release-unsigned.apk
-          "$BUILD_TOOLS/apksigner" verify --verbose app/build/outputs/apk/release/object-detective-preview.apk
+          "$BUILD_TOOLS/apksigner" verify --verbose app/build/outputs/apk/release/object-detective-pro.apk
       - name: Verify PRO package identity and visible label
         run: |
           BUILD_TOOLS="$ANDROID_HOME/build-tools/$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -n 1)"
-          BADGING=$("$BUILD_TOOLS/aapt" dump badging app/build/outputs/apk/release/object-detective-preview.apk)
+          BADGING=$("$BUILD_TOOLS/aapt" dump badging app/build/outputs/apk/release/object-detective-pro.apk)
           echo "$BADGING" | grep -F "package: name='com.objectdetective.app.propreview'"
           echo "$BADGING" | grep -F "application-label:'Object Detective PRO'"
       - name: Verify installable PRO APK exists
-        run: test -s app/build/outputs/apk/release/object-detective-preview.apk
+        run: test -s app/build/outputs/apk/release/object-detective-pro.apk
       - name: Upload isolated PRO APK
         uses: actions/upload-artifact@v4
         with:
           name: Object-Detective-PRO-Preview-APK
-          path: app/build/outputs/apk/release/object-detective-preview.apk
+          path: app/build/outputs/apk/release/object-detective-pro.apk
           if-no-files-found: error
           retention-days: 14
