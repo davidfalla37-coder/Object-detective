@@ -135,3 +135,14 @@ Deno.test("conflicting model numbers are withheld unless one is directly readabl
     { object: "Cordless drill", brand: "Makita", model: "DHP484", model_number: "DHP484", variant: "Unknown" }, "");
   if (result.model !== "Unknown" || result.model_number !== "Unknown") throw new Error("Conflicting model number was guessed.");
 });
+
+
+Deno.test("directly supported maker replaces the losing maker in the whole-item description", () => {
+  const result = crossCheckFixture();
+  reconcileCrossCheckIdentityEvidence(result,
+    { object: "SoundPEATS wireless earbuds", brand: "SoundPEATS", model: "Unknown", model_number: "Unknown", variant: "Unknown" },
+    { object: "Samsung wireless earbuds", brand: "Samsung", model: "Galaxy Buds3 Pro", model_number: "SM-R630", variant: "Pro" },
+    '{"visibleText":"Samsung SM-R630"}');
+  if (/SoundPEATS/i.test(result.object)) throw new Error("Losing manufacturer remains in final object name.");
+  if (!/Samsung/i.test(result.object)) throw new Error("Supported manufacturer missing from final object name.");
+});
