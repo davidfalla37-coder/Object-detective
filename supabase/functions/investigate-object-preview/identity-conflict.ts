@@ -65,6 +65,7 @@ export type SamsungEarbudEvidenceResult = {
   exact_match_confidence: number; exact_match_evidence: string; identifying_clues: string;
   case_file_summary: string; warning: string; value_estimate: string; value_reasoning: string;
   age_era_estimate: string; explanation: string; compatibility: string; next_photo: string;
+  confidence: number; confidence_booster: string; buyer_seller_check: string;
 };
 
 /** Resolve legible Samsung earbud identifiers deterministically, clearing any model-level conflicts. */
@@ -90,8 +91,6 @@ export function applySamsungEarbudModelEvidence<T extends SamsungEarbudEvidenceR
   result.purpose = "Wireless audio playback and hands-free communication.";
   result.compatibility = "Bluetooth audio devices, including compatible phones, tablets and computers; USB-C charging case.";
   result.age_era_estimate = "Unknown";
-  result.value_estimate = "Unknown (GBP)";
-  result.value_reasoning = "No resale estimate is provided until the exact model, working status and condition are confirmed.";
   result.warning = "The printed identifier supports the model details shown. Photo identification cannot verify pairing, battery health, authenticity or working condition.";
 
   if (modelCode) {
@@ -101,6 +100,11 @@ export function applySamsungEarbudModelEvidence<T extends SamsungEarbudEvidenceR
     result.variant = "Galaxy Buds3 Pro";
     result.exact_match_status = "exact";
     result.exact_match_confidence = 0.96;
+    result.value_estimate = "£25–£40 (GBP)";
+    result.value_reasoning = "Indicative UK used-market range for Galaxy Buds3 Pro. Recent sold examples ranged from £26.42 to £47.07; this cautious range allows for the visible light wear and the fact that pairing, charging and battery health have not been tested. Check current local sold listings before sale.";
+    result.next_photo = "No extra photo is needed to identify the model. Test Bluetooth pairing, audio in both earbuds, charging and battery health to refine the resale estimate.";
+    result.confidence_booster = "The printed SM-R630 model code and EP-OR630 case reference confirm Galaxy Buds3 Pro. The model is identified; function tests would refine condition and resale value.";
+    result.buyer_seller_check = "Test Bluetooth pairing, audio in both earbuds, charging case operation and battery health. The model code is already confirmed from the photos.";
     result.exact_match_evidence = [
       "Samsung branding and the printed model code SM-R630 are present in the supplied-photo evidence.",
       "Samsung support maps model code SM-R630 to Galaxy Buds3 Pro.",

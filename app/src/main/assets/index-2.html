@@ -344,7 +344,7 @@ main{
     <div class="row"><span class="label">Purpose</span><span class="value" id="purpose"></span></div>
     <div class="row"><span class="label">Estimated second-hand value</span><span class="value" id="value_estimate"></span></div>
     <div class="row"><span class="label">Condition assessment</span><span class="condition-badge cannot-tell" id="condition_badge">Can't tell</span><span class="value" id="condition"></span></div>
-    <div class="row"><span class="label">Object-type confidence</span><span class="value" id="confidence"></span></div>
+    <div class="row"><span class="label">Broad object confidence</span><span class="value" id="confidence"></span></div>
     <p class="explain" id="confidence-note">This is an AI estimate of the broad object identification, not a verified probability. Exact model certainty is shown separately.</p>
     <div class="row"><span class="label">Exact make/model match</span><span class="value" id="exact-match">Not confirmed</span></div>
     <p class="explain" id="exact-match-evidence"></p>
@@ -866,6 +866,8 @@ document.getElementById('visual-reference-mismatch').onclick=()=>{document.getEl
 function render(data,saveResult=true){
   const fields=['object','category','purpose','value_estimate','condition'];
   for(const id of fields)document.getElementById(id).textContent=data[id]||'Unknown';
+  const objectLabel=document.getElementById('object')?.parentElement?.querySelector('.label');
+  if(objectLabel)objectLabel.textContent=data.exact_match_status==='exact'?'Identified object':'Likely object';
   const conditionGrades={new_sealed:{label:'New/sealed',className:'new-sealed'},like_new:{label:'Like new',className:'like-new'},used:{label:'Used',className:'used'},worn_damaged:{label:'Worn/damaged',className:'worn-damaged'},cannot_tell:{label:"Can't tell",className:'cannot-tell'}};
   const conditionGrade=conditionGrades[data.condition_grade]||conditionGrades.cannot_tell;
   const conditionBadge=document.getElementById('condition_badge');
@@ -877,7 +879,7 @@ function render(data,saveResult=true){
   const exactRaw=Number(data.exact_match_confidence);
   const exactPct=Number.isFinite(exactRaw)?Math.round(exactRaw<=1?exactRaw*100:exactRaw):null;
   const exactStatus=data.exact_match_status||'not_confirmed';
-  const exactLabels={exact:'AI reports an exact match',likely:'Likely match — check the model number',not_confirmed:'Exact model not confirmed'};
+  const exactLabels={exact:'Exact model match confirmed',likely:'Likely match — check the model number',not_confirmed:'Exact model not confirmed'};
   document.getElementById('exact-match').textContent=(exactLabels[exactStatus]||exactLabels.not_confirmed)+(exactPct===null?'':` (${exactPct}%)`);
   document.getElementById('exact-match-evidence').textContent=data.exact_match_evidence||'Look for a readable brand and model number to confirm an exact match.';
   currentFeedbackData=data;
