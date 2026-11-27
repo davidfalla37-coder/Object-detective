@@ -321,7 +321,7 @@ main{
     <p>Let Object Detective investigate it. Discover what it is, what it does and what it could be worth.</p>
     <div class="hero-points">
       <span><b>✦</b> AI-powered insights</span>
-      <span><b>✦</b> Up to 5 photos</span>
+      <span><b>✦</b> Up to 15 photos</span>
     </div>
     <div class="hero-glow" aria-hidden="true"></div>
   </section>
@@ -329,7 +329,7 @@ main{
   <section class="card capture-card">
     <div class="section-kicker"><span>01</span> START YOUR INVESTIGATION</div>
     <div class="photo" id="photo-area" role="button" tabindex="0" aria-label="Take a photo with the camera"><div id="placeholder"><span class="emoji">📷</span><span id="photo-prompt">Tap here to take a photo</span></div><img id="preview" alt="Selected object"></div>
-    <p class="photo-guide"><span class="photo-count" id="photo-count">0 of 5 photos</span> — <span id="photo-step">Start with the whole item; add a close-up of its brand or model label if present.</span></p>
+    <p class="photo-guide"><span class="photo-count" id="photo-count">0 of 15 photos</span> — <span id="photo-step">Start with the whole item; add a close-up of its brand or model label if present.</span></p>
     <div class="thumbs hidden" id="thumbs" aria-label="Selected photographs"></div>
     <div class="quality hidden" id="quality" role="status"></div>
     <div class="tip" id="photo-tip">Show the whole object. Add a close-up of any label or model number. For watch straps, include the connector and the back of the watch; a ruler beside the strap helps show its width.</div>
@@ -639,7 +639,7 @@ async function clearHistoryPhotos(){
 async function restoreHistoryPhotos(id){
   const saved=await readHistoryPhotos(id);
   if(!saved.length)return false;
-  const files=saved.slice(0,5).map((photo,index)=>new File([photo.blob],photo.name||`investigation-photo-${index+1}.jpg`,{type:photo.type||photo.blob.type||'image/jpeg',lastModified:Date.now()}));
+  const files=saved.slice(0,15).map((photo,index)=>new File([photo.blob],photo.name||`investigation-photo-${index+1}.jpg`,{type:photo.type||photo.blob.type||'image/jpeg',lastModified:Date.now()}));
   selectedFiles=[];photoChecks=[];
   await addSelectedFiles(files);
   return true;
@@ -650,20 +650,20 @@ let selectedFiles=[];
 let photoChecks=[];
 
 function openCamera(){
-  if(selectedFiles.length>=5)return;
+  if(selectedFiles.length>=15)return;
   cameraFile.value='';
   cameraFile.click();
 }
 takePhoto.onclick=openCamera;
 photoArea.addEventListener('click',openCamera);
 photoArea.addEventListener('keydown',event=>{
-  if((event.key==='Enter'||event.key===' ')&&selectedFiles.length<5){
+  if((event.key==='Enter'||event.key===' ')&&selectedFiles.length<15){
     event.preventDefault();
     openCamera();
   }
 });
 chooseGallery.onclick=()=>{
-  if(selectedFiles.length>=5)return;
+  if(selectedFiles.length>=15)return;
   galleryFile.value='';
   galleryFile.click();
 };
@@ -671,7 +671,7 @@ cameraFile.onchange=()=>addSelectedFiles(cameraFile.files);
 galleryFile.onchange=()=>addSelectedFiles(galleryFile.files);
 
 async function addSelectedFiles(fileList){
-  const incoming=Array.from(fileList||[]).slice(0,5-selectedFiles.length);
+  const incoming=Array.from(fileList||[]).slice(0,15-selectedFiles.length);
   if(!incoming.length)return;
   takePhoto.disabled=true;
   chooseGallery.disabled=true;
@@ -712,15 +712,15 @@ clear.onclick=()=>{
 
 function updatePhotoGuide(){
   const count=selectedFiles.length;
-  photoCount.textContent=`${count} of 5 photo${count===1?'':'s'}`;
+  photoCount.textContent=`${count} of 15 photo${count===1?'':'s'}`;
   const photoStep=document.getElementById('photo-step');
   if(photoStep)photoStep.textContent=count===0?'Start with the whole item; add a close-up of its brand or model label if present.':count===1?'Next, show the maker/model label or the underside.':count===2?'More views are optional; add one that shows a useful detail.':'Extra views are optional. Avoid repeating the same angle.';
-  takePhoto.textContent=count===0?'📷 Take first photo':count<5?'📷 Add another angle':'5 photos added';
-  photoPrompt.textContent=count===0?'Tap here to take a photo':count<5?'Tap here to add another angle':'Photo limit reached';
-  photoArea.setAttribute('aria-label',count===0?'Take a photo with the camera':count<5?'Add another photo with the camera':'Photo limit reached');
-  photoArea.setAttribute('aria-disabled',count>=5?'true':'false');
-  takePhoto.disabled=count>=5;
-  chooseGallery.disabled=count>=5;
+  takePhoto.textContent=count===0?'📷 Take first photo':count<15?'📷 Add another angle':'15 photos added';
+  photoPrompt.textContent=count===0?'Tap here to take a photo':count<15?'Tap here to add another angle':'Photo limit reached';
+  photoArea.setAttribute('aria-label',count===0?'Take a photo with the camera':count<15?'Add another photo with the camera':'Photo limit reached');
+  photoArea.setAttribute('aria-disabled',count>=15?'true':'false');
+  takePhoto.disabled=count>=15;
+  chooseGallery.disabled=count>=15;
   clear.classList.toggle('hidden',count===0);
   thumbs.classList.toggle('hidden',count===0);
   thumbs.innerHTML='';
@@ -1185,7 +1185,7 @@ async function saveInvestigation(data){
 
 const GUIDE_KEY='object-detective-guide-complete-v1',THEME_KEY='object-detective-theme-v1';
 const guideSteps=[
- {title:'Photograph the whole object',copy:'Take up to five clear photos. Start with the whole item, then add labels, model numbers, connectors or other useful details.'},
+ {title:'Photograph the whole object',copy:'Take up to fifteen clear photos. Start with the whole item, then add labels, model numbers, connectors or other useful details.'},
  {title:'Check what the photos support',copy:'The app gives a likely object identification and separate exact model certainty. An unconfirmed exact match means you should check a label or take another close-up.'},
  {title:'Treat values as estimates',copy:'Values, condition and compatibility may be wrong. Check important details yourself, especially before buying, selling, repairing or fitting a part.'}
 ];
