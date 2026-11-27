@@ -349,11 +349,11 @@ main{
     <div class="row"><span class="label">Exact make/model match</span><span class="value" id="exact-match">Not confirmed</span></div>
     <p class="explain" id="exact-match-evidence"></p>
     <section class="card visual-reference hidden" id="visual-reference" aria-live="polite">
-      <h3>Visual reference comparison</h3>
+      <h3>Reference image check</h3>
       <p class="visual-reference-note" id="visual-reference-note">Looking for a genuine reference photograph…</p>
       <div class="visual-comparison-grid">
         <div><label>Your photograph</label><img id="visual-user-photo" alt="Your photographed object"></div>
-        <div><label>Possible reference</label><img id="visual-reference-image" alt="Possible catalogue or reference photograph"></div>
+        <div><label>Verified reference</label><img id="visual-reference-image" alt="Verified matching reference photograph"></div>
       </div>
       <p class="visual-reference-credit" id="visual-reference-credit"></p>
       <a class="visual-reference-source" id="visual-reference-source" href="#" target="_blank" rel="noopener noreferrer">View original image and licence</a>
@@ -825,7 +825,7 @@ async function loadVisualReference(data,targetContainer){
     if(requestId!==visualReferenceRequestId)return;
     if(!response.ok)throw new Error(payload?.error?.message||'Reference image search unavailable.');
     if(typeof payload.imageDataUrl!=='string'||!payload.imageDataUrl.startsWith('data:image/')){
-      note.textContent='No suitable reference photograph was found. Your own photograph is shown for comparison; the identification is still available.';
+      note.textContent='No verified matching reference photograph is available. Your own photograph remains visible; unrelated product images are never shown.';
       return;
     }
     referenceImage.onload=()=>{
