@@ -693,17 +693,8 @@ function reconcileVerification(
     result.next_photo = verification.next_photo;
   }
 
-  const hasSpecificModelIdentifier = knownText(result.model) || knownText(result.model_number);
-  const identityIsTooUncertain =
-    result.exact_match_status === "not_confirmed" ||
-    result.exact_match_confidence < 0.6 ||
-    !knownText(result.brand) ||
-    !hasSpecificModelIdentifier;
-  if (identityIsTooUncertain) {
-    result.value_estimate = "Unknown (GBP)";
-    result.value_reasoning =
-      "Withheld because the make or exact model is not confirmed. Identify the model and compare current UK completed sales before estimating a resale price.";
-  }
+  // Do not discard a defensible broad-category valuation solely because the exact model is uncertain.
+  // The model may still return Unknown when the available evidence genuinely cannot support a range.
 
   result.explanation = rebuiltExplanation(result, verification, brandConflict, directBrandDisagreement);
   reconcileStrapMaterial(result, primary.object);
@@ -844,9 +835,8 @@ function shouldRunIdentificationResearch(
 
 function conservativeFallback(result: InvestigationResult): InvestigationResult {
   const fallback: InvestigationResult = { ...result };
-  fallback.confidence = Math.min(fallback.confidence, 0.79);
-  fallback.exact_match_confidence = Math.min(fallback.exact_match_confidence, 0.69);
-  if (fallback.exact_match_status === "exact") fallback.exact_match_status = "likely";
+  // Preserve the model's calibrated scores when the independent verifier is unavailable.
+  // The warning below communicates the missing second pass; an arbitrary 79% ceiling is misleading.
   fallback.warning = [
     fallback.warning,
     "A second verification pass was unavailable, so this result is shown cautiously.",
