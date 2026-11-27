@@ -1,4 +1,4 @@
-import { applyBrandConflictFallback } from "./identity-conflict.ts";
+import { applyBrandConflictFallback, applyUniversalEvidenceReconciliation } from "./identity-conflict.ts";
 
 function fixture() {
   return {
@@ -57,5 +57,44 @@ Deno.test("an actual earbuds result remains earbuds when that is the primary fin
   );
   if (result.object !== "Wireless earbuds with charging case") {
     throw new Error("The real primary object was not preserved.");
+  }
+});
+
+function universalFixture() {
+  return {
+    object: "Casio wristwatch", category: "wearable electronic device", purpose: "timekeeping",
+    brand: "Casio", manufacturer: "Casio", model: "Unknown", model_number: "Unknown",
+    part_number: "Unknown", variant: "Unknown", confidence: 0.9,
+    exact_match_status: "not_confirmed", exact_match_confidence: 0.45,
+    exact_match_evidence: "Unknown", identifying_clues: "Unknown", case_file_summary: "Unknown",
+    next_photo: "Unknown", warning: "", value_estimate: "Unknown (GBP)",
+    value_reasoning: "Withheld", confidence_booster: "Unknown", buyer_seller_check: "Unknown",
+  };
+}
+
+Deno.test("one OCR model code with matching maker text upgrades a generic result to likely", () => {
+  const result = universalFixture();
+  applyUniversalEvidenceReconciliation(
+    result,
+    { value_estimate: "£40–£60 (GBP)" },
+    { value_estimate: "£35–£55 (GBP)" },
+    JSON.stringify({ extractedFromPhotos: [{ photoIndex: 0, visibleText: "CASIO 5590 GA-2000 WATER RESIST 20BAR" }] }),
+  );
+  if (result.model_number !== "GA-2000" || result.model !== "GA-2000") throw new Error("OCR model code was not carried into the result.");
+  if (result.exact_match_status !== "likely") throw new Error("OCR alone must not claim an exact retail variant.");
+  if (!result.object.includes("GA-2000")) throw new Error("Likely object summary did not include the readable model family.");
+  if (result.value_estimate !== "£35–£55 (GBP)") throw new Error("The lowest supported value range was not restored.");
+});
+
+Deno.test("ambiguous OCR codes do not become a model guess", () => {
+  const result = universalFixture();
+  applyUniversalEvidenceReconciliation(
+    result,
+    {},
+    null,
+    JSON.stringify({ extractedFromPhotos: [{ photoIndex: 0, visibleText: "CASIO GA-2000 A1586" }] }),
+  );
+  if (result.model_number !== "Unknown" || result.exact_match_status !== "not_confirmed") {
+    throw new Error("Multiple OCR codes were incorrectly promoted to a model.");
   }
 });
