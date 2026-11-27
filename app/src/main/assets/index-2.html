@@ -791,17 +791,27 @@ async function inspectPhoto(input){
   const context=canvas.getContext('2d',{willReadFrequently:true});
   context.drawImage(image,0,0,size,size);
   const pixels=context.getImageData(0,0,size,size).data;
-  let brightness=0,edges=0,samples=0;
+  let brightness=0,edges=0,samples=0,edgePixels=0,chroma=0;
   const grey=new Float32Array(size*size);
-  for(let i=0,p=0;i<pixels.length;i+=4,p++){grey[p]=pixels[i]*.299+pixels[i+1]*.587+pixels[i+2]*.114;brightness+=grey[p]}
+  for(let i=0,p=0;i<pixels.length;i+=4,p++){
+    grey[p]=pixels[i]*.299+pixels[i+1]*.587+pixels[i+2]*.114;
+    brightness+=grey[p];
+    chroma+=Math.max(pixels[i],pixels[i+1],pixels[i+2])-Math.min(pixels[i],pixels[i+1],pixels[i+2]);
+  }
   brightness/=grey.length;
+  chroma/=grey.length;
   for(let y=1;y<size-1;y++)for(let x=1;x<size-1;x++){
     const p=y*size+x;
-    edges+=Math.abs(4*grey[p]-grey[p-1]-grey[p+1]-grey[p-size]-grey[p+size]);samples++;
+    const edge=Math.abs(4*grey[p]-grey[p-1]-grey[p+1]-grey[p-size]-grey[p+size]);
+    edges+=edge;
+    if(edge>55)edgePixels++;
+    samples++;
   }
   const sharpness=edges/samples;
+  const edgeDensity=edgePixels/samples;
   if(brightness<38)return{level:'warn',message:'it is too dark—use more light and retake it.'};
   if(brightness>225)return{level:'warn',message:'it is overexposed—reduce glare and retake it.'};
+  if(brightness>190&&chroma<18&&edgeDensity<.035)return{level:'warn',message:'this photo appears to show mostly a plain surface. Move closer so the item fills the frame, or remove this photo.'};
   if(sharpness<7)return{level:'warn',message:'it may be blurry—hold steady and retake it.'};
   return{level:'good',message:'Quality looks good.'};
 }
