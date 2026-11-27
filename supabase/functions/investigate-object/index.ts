@@ -693,17 +693,8 @@ function reconcileVerification(
     result.next_photo = verification.next_photo;
   }
 
-  const hasSpecificModelIdentifier = knownText(result.model) || knownText(result.model_number);
-  const identityIsTooUncertain =
-    result.exact_match_status === "not_confirmed" ||
-    result.exact_match_confidence < 0.6 ||
-    !knownText(result.brand) ||
-    !hasSpecificModelIdentifier;
-  if (identityIsTooUncertain) {
-    result.value_estimate = "Unknown (GBP)";
-    result.value_reasoning =
-      "Withheld because the make or exact model is not confirmed. Identify the model and compare current UK completed sales before estimating a resale price.";
-  }
+  // Exact-model uncertainty alone must not erase a defensible used-value range for the supported object class.
+  // Unknown remains appropriate when the evidence cannot support even a cautious broad-category estimate.
 
   result.explanation = rebuiltExplanation(result, verification, brandConflict, directBrandDisagreement);
   reconcileStrapMaterial(result, primary.object);
@@ -712,9 +703,8 @@ function reconcileVerification(
 
 function conservativeFallback(result: InvestigationResult): InvestigationResult {
   const fallback: InvestigationResult = { ...result };
-  fallback.confidence = Math.min(fallback.confidence, 0.79);
-  fallback.exact_match_confidence = Math.min(fallback.exact_match_confidence, 0.69);
-  if (fallback.exact_match_status === "exact") fallback.exact_match_status = "likely";
+  // Preserve the calibrated model scores when the independent verifier is unavailable.
+  // The warning below discloses the missing second pass without imposing an arbitrary ceiling.
   fallback.warning = [
     fallback.warning,
     "A second verification pass was unavailable, so this result is shown cautiously.",
@@ -765,7 +755,7 @@ async function verifyIdentification(
                 "Return confidence for the verified identity and a separate exact_match_confidence.",
                 "General confidence measures whether the broad object type and supported manufacturer are correct; do not lower it solely because the exact model number is unknown. Keep exact_match_confidence separate and lower it when model-level evidence is missing. A clear manufacturer-specific mark such as a TCL Channel key should increase confidence in a TCL TV remote, while leaving exact model certainty unresolved.",
                 "Return the best-supported object, brand, model, model number and variant from the visible evidence; use Unknown whenever a detail is unsupported.",
-                "Estimate the current UK SECOND-HAND resale value for the photographed item AS SHOWN. Do not assume original packaging, accessories, pristine condition or tested working order unless visible evidence supports that. Adjust for visible wear, damage, missing parts, age, uncertainty and unverified working status. Fair or visibly worn electronics should normally be materially cheaper than a clean tested used example, and substantially below new retail. For a mixed-brand or incomplete bundle, value the photographed bundle as one used private-sale item; do not add new replacement prices of its components. Do not award a branded-component premium when the exact model is unconfirmed. If working status is unverified, describe functionality as untested and use a cautious range. If the exact model or working condition is too uncertain for a useful resale estimate, return Unknown (GBP).",
+                "Estimate the current UK SECOND-HAND resale value for the photographed item AS SHOWN. Do not assume original packaging, accessories, pristine condition or tested working order unless visible evidence supports that. Adjust for visible wear, damage, missing parts, age, uncertainty and unverified working status. Fair or visibly worn electronics should normally be materially cheaper than a clean tested used example, and substantially below new retail. For a mixed-brand or incomplete bundle, value the photographed bundle as one used private-sale item; do not add new replacement prices of its components. Do not award a branded-component premium when the exact model is unconfirmed. If working status is unverified, describe functionality as untested and use a cautious range. If the exact marketed model is uncertain, do not automatically return Unknown: estimate the broadest supported product class when a cautious UK used-market range is defensible from the visible category, brand, age and condition. Do not invent a price or imply the item is tested. Return Unknown (GBP) only when the evidence cannot support even a broad-category range or the item's condition makes a useful estimate impossible.",
                 "In evidence, describe only the visible identification clues; do not discuss price comparisons.",
                 "Suggest the single best next photograph when more evidence would materially improve certainty.",
                 "The app supplied " + photoCount + " photo(s).",
