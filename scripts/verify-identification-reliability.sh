@@ -2,6 +2,7 @@
 set -euo pipefail
 
 # Regression gate for shared identification and Pro visual-reference safety.
+# This runs before any preview APK is signed or uploaded.
 LIVE="supabase/functions/investigate-object/index.ts"
 PREVIEW="supabase/functions/investigate-object-preview/index.ts"
 
