@@ -65,6 +65,19 @@
     :root{--accent:#55cfff;--bg:#050c19;--bg-alt:#102747;--panel:#0d1b31;--line:#254465;--text:#f5f9ff;--muted:#a9bdd4}
     body{background:radial-gradient(ellipse at 82% 0%,#164b79 0,transparent 34%),linear-gradient(155deg,#0b1b34 0,#050c19 55%);letter-spacing:.005em}
     main{padding-top:17px}
+    .pro-dossier{border-color:#9a742b;background:linear-gradient(145deg,#28220f,#111c30 58%);box-shadow:0 16px 38px #0005}
+    .pro-dossier-kicker{color:#f5cf70;font-size:11px;font-weight:950;letter-spacing:.16em;margin:0 0 8px}
+    .pro-dossier-intro{font-size:14px;margin:0 0 12px}
+    .pro-dossier-row{padding:12px 0;border-bottom:1px solid #806b382e}
+    .pro-dossier-row:last-of-type{border-bottom:0}
+    .pro-dossier-label{display:block;color:#f1cf7c;font-size:12px;font-weight:850;margin-bottom:5px}
+    .pro-dossier-value{display:block;color:var(--text);line-height:1.5;overflow-wrap:anywhere}
+    .pro-report-actions{display:grid;gap:8px;margin-top:14px}
+    .pro-report-status{min-height:20px;color:#f5cf70;font-size:13px}
+    .pro-report-export{width:100%;min-height:120px;margin-top:10px;padding:12px;border-radius:12px;border:1px solid #806b38;background:#091426;color:#f8fafc;font:inherit;line-height:1.45}
+    :root[data-theme="light"] .pro-dossier{background:linear-gradient(145deg,#fff8df,#fff 62%);border-color:#d2b45f}
+    :root[data-theme="light"] .pro-dossier-value{color:#17243a}
+    :root[data-theme="light"] .pro-report-export{background:#fff;color:#17243a;border-color:#d2b45f}
     .pro-edition{display:inline-flex;align-items:center;margin-left:8px;padding:3px 8px;border-radius:7px;background:linear-gradient(120deg,#f8d477,#c88b24);color:#172033;font-size:11px;font-weight:950;letter-spacing:.12em;vertical-align:middle;box-shadow:0 2px 10px #d6a63b55}
     .brandbar{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:0 2px 18px}
     .brand-lockup{display:flex;align-items:center;gap:11px;min-width:0}
@@ -349,6 +362,24 @@ main{
     <p class="explain" id="confidence-note">This is an AI estimate of the broad object identification, not a verified probability. Exact model certainty is shown separately.</p>
     <div class="row"><span class="label">Exact make/model match</span><span class="value" id="exact-match">Not confirmed</span></div>
     <p class="explain" id="exact-match-evidence"></p>
+    <section class="card pro-dossier" id="pro-dossier" aria-label="Pro investigation dossier">
+      <p class="pro-dossier-kicker">OBJECT DETECTIVE PRO · INVESTIGATION DOSSIER</p>
+      <h3>Beyond the basic result</h3>
+      <p class="pro-dossier-intro">A structured breakdown of the clues, model certainty, condition, value reasoning and the next checks. Details are shown only when the investigation provides them.</p>
+      <div class="pro-dossier-row" id="pro-row-case"><span class="pro-dossier-label">Detective case summary</span><span class="pro-dossier-value" id="pro-case-summary"></span></div>
+      <div class="pro-dossier-row" id="pro-row-clues"><span class="pro-dossier-label">Identifying clues</span><span class="pro-dossier-value" id="pro-identifying-clues"></span></div>
+      <div class="pro-dossier-row" id="pro-row-era"><span class="pro-dossier-label">Likely age / era</span><span class="pro-dossier-value" id="pro-age-era"></span></div>
+      <div class="pro-dossier-row" id="pro-row-condition"><span class="pro-dossier-label">Visible condition evidence</span><span class="pro-dossier-value" id="pro-condition-evidence"></span></div>
+      <div class="pro-dossier-row" id="pro-row-value"><span class="pro-dossier-label">How the estimate was reached</span><span class="pro-dossier-value" id="pro-value-reasoning"></span></div>
+      <div class="pro-dossier-row" id="pro-row-completeness"><span class="pro-dossier-label">Completeness check</span><span class="pro-dossier-value" id="pro-completeness"></span></div>
+      <div class="pro-dossier-row" id="pro-row-buyer"><span class="pro-dossier-label">Most important buyer / seller check</span><span class="pro-dossier-value" id="pro-buyer-check"></span></div>
+      <div class="pro-dossier-row" id="pro-row-next"><span class="pro-dossier-label">Best next step to improve certainty</span><span class="pro-dossier-value" id="pro-next-step"></span></div>
+      <div class="pro-report-actions">
+        <button class="primary" type="button" id="pro-share-report">Share / export PRO report</button>
+        <div class="pro-report-status" id="pro-report-status" role="status"></div>
+      </div>
+      <textarea class="pro-report-export hidden" id="pro-report-export" readonly aria-label="PRO report text to copy"></textarea>
+    </section>
     <section class="card visual-reference hidden" id="visual-reference" aria-live="polite">
       <h3>Visual reference comparison</h3>
       <p class="visual-reference-note" id="visual-reference-note">Looking for a genuine reference photograph…</p>
@@ -881,6 +912,83 @@ async function loadVisualReference(data,targetContainer){
 document.getElementById('visual-reference-match').onclick=()=>{document.getElementById('visual-reference-feedback').textContent='You marked this reference as looking like the same item. This feedback stays on this device and is not sent automatically.';};
 document.getElementById('visual-reference-mismatch').onclick=()=>{document.getElementById('visual-reference-feedback').textContent='You marked this as the wrong reference. Do not treat it as evidence for the identification. This feedback stays on this device.';};
 
+function populateProDossier(data){
+  const rows=[
+    ['case','case_file_summary'],
+    ['clues','identifying_clues'],
+    ['era','age_era_estimate'],
+    ['condition','condition_evidence'],
+    ['value','value_reasoning'],
+    ['completeness','completeness_check'],
+    ['buyer','buyer_seller_check'],
+    ['next','confidence_booster']
+  ];
+  let visible=0;
+  for(const [row,key] of rows){
+    const value=typeof data[key]==='string'?data[key].trim():'';
+    const useful=value&&value.toLowerCase()!=='unknown';
+    document.getElementById('pro-row-'+row).classList.toggle('hidden',!useful);
+    document.getElementById('pro-'+({case:'case-summary',clues:'identifying-clues',era:'age-era',condition:'condition-evidence',value:'value-reasoning',completeness:'completeness',buyer:'buyer-check',next:'next-step'}[row])).textContent=useful?value:'';
+    if(useful)visible++;
+  }
+  document.getElementById('pro-dossier').classList.toggle('hidden',visible===0);
+}
+function buildProReportText(data){
+  const lines=[
+    'OBJECT DETECTIVE PRO — INVESTIGATION REPORT',
+    'Likely object: '+(data.object||'Unknown'),
+    'Category: '+(data.category||'Unknown'),
+    'Brand: '+(data.brand||'Unknown'),
+    'Model: '+(data.model||'Unknown'),
+    'Model / part number: '+(data.model_number||data.part_number||'Unknown'),
+    'Exact match status: '+(data.exact_match_status||'not_confirmed'),
+    'Exact match evidence: '+(data.exact_match_evidence||'Not confirmed'),
+    'Object-type confidence: '+(Number.isFinite(Number(data.confidence))?Math.round(Number(data.confidence)*100)+'%':'Unknown'),
+    'Estimated second-hand value: '+(data.value_estimate||'Unknown'),
+    'Condition: '+(data.condition||'Unknown'),
+    'Case summary: '+(data.case_file_summary||'Not available'),
+    'Identifying clues: '+(data.identifying_clues||'Not available'),
+    'Age / era: '+(data.age_era_estimate||'Not available'),
+    'Condition evidence: '+(data.condition_evidence||'Not available'),
+    'Value reasoning: '+(data.value_reasoning||'Not available'),
+    'Completeness: '+(data.completeness_check||'Not available'),
+    'Buyer / seller check: '+(data.buyer_seller_check||'Not available'),
+    'Recommended next step: '+(data.confidence_booster||data.next_photo||'Not available'),
+    'Warnings: '+(data.warning||'None reported'),
+    '',
+    'Important: AI-assisted identification and values are estimates, not proof, authentication, a formal appraisal or guaranteed sold prices. Verify exact identifiers, condition, compatibility and safety before relying on the result.',
+    'No photographs are included in this report.'
+  ];
+  return lines.join('\\n');
+}
+document.getElementById('pro-share-report').addEventListener('click',async()=>{
+  const data=currentFeedbackData||{};
+  const report=buildProReportText(data);
+  const status=document.getElementById('pro-report-status');
+  const box=document.getElementById('pro-report-export');
+  box.value=report;
+  status.textContent='';
+  try{
+    if(navigator.share){
+      await navigator.share({title:'Object Detective PRO investigation report',text:report});
+      status.textContent='Report shared. No photographs were included.';
+      return;
+    }
+  }catch(error){
+    if(error&&error.name==='AbortError'){status.textContent='Sharing cancelled. Nothing was sent.';return;}
+  }
+  try{
+    if(navigator.clipboard&&navigator.clipboard.writeText){
+      await navigator.clipboard.writeText(report);
+      status.textContent='Report copied to clipboard. No photographs were included.';
+      return;
+    }
+  }catch{}
+  box.classList.remove('hidden');
+  box.focus();
+  box.select();
+  status.textContent='Report text is ready to copy. No photographs were included.';
+});
 function render(data,saveResult=true){
   const fields=['object','category','purpose','value_estimate','condition'];
   for(const id of fields)document.getElementById(id).textContent=data[id]||'Unknown';
@@ -898,6 +1006,7 @@ function render(data,saveResult=true){
   const exactLabels={exact:'AI reports an exact match',likely:'Likely match — check the model number',not_confirmed:'Exact model not confirmed'};
   document.getElementById('exact-match').textContent=(exactLabels[exactStatus]||exactLabels.not_confirmed)+(exactPct===null?'':` (${exactPct}%)`);
   document.getElementById('exact-match-evidence').textContent=data.exact_match_evidence||'Look for a readable brand and model number to confirm an exact match.';
+  populateProDossier(data);
   currentFeedbackData=data;
   document.getElementById('feedback-correction').classList.add('hidden');
   document.getElementById('feedback-vote').classList.remove('hidden');
@@ -1057,11 +1166,11 @@ async function saveInvestigation(data){
   const thumbnail=await makeHistoryThumbnail(photos[0]).catch(()=>'');
   const items=readHistory();
   items.unshift({id,date:new Date().toISOString(),thumbnail,data,photo_count:photos.length});
-  const retained=items.slice(0,10);
+  const retained=items.slice(0,50);
   if(writeHistory(retained)){
     renderHistory();
     try{await storeHistoryPhotos(id,photos);}catch(error){console.warn('Investigation details were saved, but full-size history photos could not be stored.',error);}
-    for(const removed of items.slice(10))deleteHistoryPhotos(removed.id);
+    for(const removed of items.slice(50))deleteHistoryPhotos(removed.id);
   }
 }
 
