@@ -427,6 +427,7 @@ async function inspectManufacturerMark(
         "Authorization": "Bearer " + OPENAI_API_KEY,
         "Content-Type": "application/json",
       },
+      signal,
       body: JSON.stringify({
         model: VERIFICATION_MODEL,
         store: false,
@@ -985,6 +986,7 @@ async function verifyIdentification(
   images: string[],
   photoCount: number,
   machineEvidenceContext: string,
+  signal?: AbortSignal,
 ): Promise<VerificationResult | null> {
 
   try {
@@ -1322,11 +1324,23 @@ Deno.serve(async (request: Request): Promise<Response> => {
     );
   }
 
+  let verificationController: AbortController | null = null;
   try {
     const photoCount = images.length;
     const extractedEvidence = sanitizeExtractedEvidence(body.extractedEvidence);
     const rawMachineEvidence = buildMachineEvidenceContext(extractedEvidence);
     const catalogueEvidencePromise = resolveBarcodeCatalogueEvidence(extractedEvidence);
+    // Run independent visual verification alongside the primary pass to avoid
+    // adding the full latency of two sequential model calls. Skip it immediately
+    // when local OCR already contains the strong Samsung model identifier.
+    const machineHasSamsungModelCode = /\\bsamsung\\b/i.test(rawMachineEvidence) &&
+      /\\bSM-R630\\b/i.test(rawMachineEvidence) &&
+      /\\b(?:earbuds?|wireless\\s+buds|galaxy\\s+buds|charging\\s+case)\\b/i.test(rawMachineEvidence);
+    let independentVerificationPromise: Promise<VerificationResult | null> = Promise.resolve(null);
+    if (!machineHasSamsungModelCode) {
+      verificationController = new AbortController();
+      independentVerificationPromise = verifyIdentification(images, photoCount, rawMachineEvidence, verificationController.signal);
+    }
     // The primary pass can already surface a directly readable manufacturer/model code.
     // In that narrow high-evidence case, the deterministic Samsung catalogue mapping below
     // is safer and faster than paying for a duplicate visual pass.
@@ -1520,9 +1534,10 @@ Deno.serve(async (request: Request): Promise<Response> => {
       /\bsamsung\b/i.test(primaryIdentityText) &&
       /\bSM-R630\b/i.test(primaryIdentityText) &&
       /\b(?:earbuds?|wireless\s+buds|galaxy\s+buds|charging\s+case)\b/i.test(primaryIdentityText);
+    if (primaryHasSamsungModelCode) verificationController?.abort();
     const independentVerification = primaryHasSamsungModelCode
       ? null
-      : await verifyIdentification(images, photoCount, rawMachineEvidence);
+      : await independentVerificationPromise;
     const catalogueEvidence = await catalogueEvidencePromise;
     const machineEvidenceContext = buildMachineEvidenceContext(extractedEvidence, catalogueEvidence);
     let verification = independentVerification
@@ -1587,6 +1602,7 @@ Deno.serve(async (request: Request): Promise<Response> => {
     const fallback = applyMachineReadableIdentityEvidence(conservativeFallback(primaryResult), machineEvidenceContext);
     return jsonResponse(applySamsungEarbudModelEvidence(fallback, combinedIdentityEvidence));
   } catch (error) {
+    verificationController?.abort();
     console.error("OBJECT_INVESTIGATION_FAILED");
     return errorResponse("Unable to investigate the object right now. Please try again.", 500, "internal_error");
   }
