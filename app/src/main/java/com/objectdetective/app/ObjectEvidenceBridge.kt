@@ -34,11 +34,13 @@ class ObjectEvidenceBridge(private val webView: WebView) {
             var scanner: BarcodeScanner? = null
             try {
                 val images = JSONArray(imagesJson)
-                recognizer = TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS)
+                val textClient = TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS)
+                recognizer = textClient
                 val options = BarcodeScannerOptions.Builder()
                     .setBarcodeFormats(Barcode.FORMAT_ALL_FORMATS)
                     .build()
-                scanner = BarcodeScanning.getClient(options)
+                val barcodeClient = BarcodeScanning.getClient(options)
+                scanner = barcodeClient
 
                 for (index in 0 until minOf(images.length(), 5)) {
                     val photo = JSONObject()
@@ -65,13 +67,15 @@ class ObjectEvidenceBridge(private val webView: WebView) {
                         }
                         try {
                             val input = InputImage.fromBitmap(bitmap, 0)
-                            val textResult = Tasks.await(recognizer.process(input), 12, TimeUnit.SECONDS)
+                            val textResult = Tasks.await(textClient.process(input), 12, TimeUnit.SECONDS)
                             photo.put("text", textResult.text.take(5000))
-                            val barcodeResults = Tasks.await(scanner.process(input), 12, TimeUnit.SECONDS)
+                            val barcodeResults = Tasks.await(barcodeClient.process(input), 12, TimeUnit.SECONDS)
                             for (barcode in barcodeResults.take(10)) {
                                 val value = barcode.rawValue?.trim().orEmpty()
-                                if (value.isNotEmpty()) {
-                                    barcodes.put(JSONObject().put("value", value.take(256)).put("format", formatName(barcode.format)))
+                                val productCode = normalizeProductCode(value)
+                                // Never send arbitrary QR contents, URLs, Wi-Fi details or contact data to a product catalogue.
+                                if (productCode != null) {
+                                    barcodes.put(JSONObject().put("value", productCode).put("format", formatName(barcode.format)))
                                 }
                             }
                             photo.put("barcodes", barcodes)
@@ -103,6 +107,14 @@ class ObjectEvidenceBridge(private val webView: WebView) {
                 )
             }
         }
+    }
+
+    private fun normalizeProductCode(raw: String): String? {
+        val value = raw.trim()
+        if (value.matches(Regex("^\\d{8}$|^\\d{12,14}$"))) return value
+        if (value.matches(Regex("^\\d{9}[\\dXx]$"))) return value.uppercase()
+        // GS1 Digital Link QR codes: extract only the GTIN, never transmit the full URL.
+        return Regex("(?:^|/)01/(\\d{14})(?:/|$)").find(value)?.groupValues?.get(1)
     }
 
     private fun formatName(format: Int): String = when (format) {
