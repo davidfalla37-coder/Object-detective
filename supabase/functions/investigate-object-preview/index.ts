@@ -1010,6 +1010,7 @@ async function fetchReferencePhoto(query: string): Promise<Record<string, string
         const license = info?.extmetadata?.LicenseShortName?.value || "Licence details on source page";
         return {
           imageDataUrl,
+          imageUrl: info.thumburl,
           sourceUrl: info.descriptionurl || "https://commons.wikimedia.org/",
           title: String(page.title || "Reference photograph").replace(/^File:/, ""),
           credit: "Source: Wikimedia Commons · " + String(license).replace(/<[^>]*>/g, "").slice(0, 80),
@@ -1033,6 +1034,7 @@ async function fetchReferencePhoto(query: string): Promise<Record<string, string
         if (!imageDataUrl) continue;
         return {
           imageDataUrl,
+          imageUrl: page.thumbnail.source,
           sourceUrl: page.fullurl || "https://en.wikipedia.org/?curid=" + page.pageid,
           title: String(page.title || "Reference photograph"),
           credit: "Source: Wikipedia article image; check the source page for image licensing.",
