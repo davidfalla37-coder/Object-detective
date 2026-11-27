@@ -968,7 +968,7 @@ function applyMachineReadableIdentityEvidence(
   return result;
 }
 
-function conservativeFallback(function conservativeFallback(result: InvestigationResult): InvestigationResult {
+function conservativeFallback(result: InvestigationResult): InvestigationResult {
   const fallback: InvestigationResult = { ...result };
   fallback.confidence = Math.min(fallback.confidence, 0.79);
   fallback.exact_match_confidence = Math.min(fallback.exact_match_confidence, 0.69);
