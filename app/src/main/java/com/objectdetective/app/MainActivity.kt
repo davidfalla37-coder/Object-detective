@@ -59,6 +59,7 @@ class MainActivity : Activity() {
 
         webView = WebView(this)
         webView.addJavascriptInterface(BarcodeScannerBridge(this, webView), "AndroidScanner")
+        webView.addJavascriptInterface(ObjectEvidenceBridge(webView), "AndroidEvidence")
         val appRoot = FrameLayout(this)
         appRoot.clipToPadding = true
         appRoot.addView(
