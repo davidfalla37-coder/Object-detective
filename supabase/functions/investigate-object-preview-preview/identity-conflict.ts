@@ -202,6 +202,21 @@ export function applyUniversalEvidenceReconciliation<T extends UniversalEvidence
     : [];
   const ocrText = photos.map((photo) => typeof photo.visibleText === "string" ? photo.visibleText : "").join(" ");
   const normalizedOcr = normalize(ocrText);
+  // Recover one clear alphanumeric model-style code directly from OCR when the
+  // same photo also contains the already-supported manufacturer mark. Keep it
+  // as a likely model-family match; OCR alone cannot prove a retail variant.
+  const modelCodePattern = /\b[A-Z]{1,5}[- ](?:[A-Z]{1,3})?\d{2,6}(?:[-/][A-Z0-9]{1,5})?\b|\b[A-Z]{1,5}\d{2,6}(?:[-/][A-Z0-9]{1,5})?\b/gi;
+  const ocrModelCodeMap = new Map<string, string>();
+  for (const photo of photos) {
+    const text = typeof photo.visibleText === "string" ? photo.visibleText : "";
+    if (!known(result.brand) || !normalize(text).includes(normalize(result.brand))) continue;
+    for (const match of text.matchAll(modelCodePattern)) {
+      const code = match[0].toUpperCase();
+      ocrModelCodeMap.set(normalize(code), code);
+    }
+  }
+  const ocrModelCodeCandidates = [...ocrModelCodeMap.values()];
+  const ocrModelCode = ocrModelCodeCandidates.length === 1 ? ocrModelCodeCandidates[0] : "";
   const outputIdentifiers = [
     result.model_number, result.part_number,
     primary.model_number, primary.part_number,
@@ -272,6 +287,28 @@ export function applyUniversalEvidenceReconciliation<T extends UniversalEvidence
     result.identifying_clues = [result.identifying_clues, "Photo text confirms identifier " + identifier + "."].filter(known).join(" ");
     result.next_photo = "No additional identifier photo is needed. Verify operation, condition and completeness where relevant.";
     result.confidence_booster = "A readable identifier in the supplied photos supports the model shown. Check function and condition separately.";
+  } else if (ocrModelCode && known(result.brand) && !known(result.model_number) &&
+    (!known(result.model) || !normalize(result.model).includes(normalize(ocrModelCode)))) {
+    result.model = ocrModelCode;
+    result.model_number = ocrModelCode;
+    result.exact_match_status = "likely";
+    result.exact_match_confidence = Math.min(0.78, Math.max(0.68, Number(result.exact_match_confidence) || 0));
+    const broadObject = result.object.replace(new RegExp(result.brand, "ig"), "").replace(/\s+/g, " ").trim();
+    result.object = [result.brand, ocrModelCode, broadObject].filter(Boolean).join(" ");
+    result.exact_match_evidence = [result.exact_match_evidence, "OCR reads the manufacturer and the single model-style code " + ocrModelCode + " in the same photograph. This supports the model family; the full market or colour variant is not confirmed."].filter(known).join(" ");
+    result.identifying_clues = [result.identifying_clues, "Visible manufacturer text and model-style code " + ocrModelCode + " appear together in one photo."].filter(known).join(" ");
+    result.next_photo = "The model family is likely from the visible code. Check a label or packaging for the full variant reference if needed.";
+    result.confidence_booster = "A readable code supports the likely model family; verify the full variant and test operation separately.";
+    if (!/^£\s*\d/i.test(result.value_estimate)) {
+      const supportedRanges = [primary.value_estimate, verification?.value_estimate]
+        .filter((value): value is string => typeof value === "string" && /^£\s*\d/i.test(value.trim()));
+      const firstAmount = (value: string): number => Number(value.match(/£\s*(\d+(?:\.\d+)?)/)?.[1] ?? Number.POSITIVE_INFINITY);
+      supportedRanges.sort((a, b) => firstAmount(a) - firstAmount(b));
+      if (supportedRanges.length) {
+        result.value_estimate = supportedRanges[0];
+        result.value_reasoning = "Retained the lowest available UK used-market range after a model-style code was read from the same photo as the manufacturer. The full variant, working status and condition remain unverified; check recent completed sales before relying on the estimate.";
+      }
+    }
   } else if (barcodeConfirmsCandidate) {
     const product = catalogueMatches[0];
     const productBrand = typeof product.brand === "string" ? product.brand.trim() : "";
