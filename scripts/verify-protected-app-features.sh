@@ -46,12 +46,12 @@ LIVE_URL="https://gboyflbwcobhzbvpdtat.supabase.co/functions/v1/investigate-obje
 PREVIEW_URL="https://gboyflbwcobhzbvpdtat.supabase.co/functions/v1/investigate-object-preview"
 BRANCH_NAME="${GITHUB_REF_NAME:-$(git branch --show-current)}"
 if [[ "$BRANCH_NAME" == "main" || "$BRANCH_NAME" == release/* ]]; then
-  if ! grep -Fq "$LIVE_URL\x27;" "$FILE" || grep -Fq "$PREVIEW_URL" "$FILE"; then
+  if ! grep -Fq "$LIVE_URL';" "$FILE" || grep -Fq "$PREVIEW_URL" "$FILE"; then
     echo "::error::Production/release source must use the live endpoint"
     exit 1
   fi
 else
-  if ! grep -Fq "$PREVIEW_URL\x27;" "$FILE" || grep -Fq "$LIVE_URL\x27;" "$FILE"; then
+  if ! grep -Fq "$PREVIEW_URL';" "$FILE" || grep -Fq "$LIVE_URL';" "$FILE"; then
     echo "::error::Test source must use the isolated preview endpoint"
     exit 1
   fi
