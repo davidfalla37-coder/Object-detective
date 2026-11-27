@@ -44,3 +44,11 @@ grep -Fq 'result.model_number = "SM-R630"' "$PRO_HELPER"
 grep -Fq 'result.model = "Galaxy Buds3 Pro"' "$PRO_HELPER"
 grep -Fq 'investigate-object-preview-preview' app/src/main/assets/index-2.html
 echo "Isolated Pro service, 15-photo capacity, and Samsung model-code mapping verified."
+
+grep -Fq 'const isEarbudItem = /\b(?:earbuds?' "$PRO_HELPER"
+if grep -Fq 'const isEarbudItem = /\\b' "$PRO_HELPER"; then
+  echo "::error::Samsung model-code matcher contains an escaped literal boundary" >&2
+  exit 1
+fi
+grep -Fq "data.exact_match_status!=='exact'" app/src/main/assets/index-2.html
+grep -Fq 'Possible reference' app/src/main/assets/index-2.html

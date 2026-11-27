@@ -18,8 +18,8 @@ android {
         applicationId "com.objectdetective.app"
         minSdk 26
         targetSdk 36
-        versionCode 33
-        versionName "1.27.3-PRO-preview"
+        versionCode 34
+        versionName "1.27.4-PRO-preview"
         if (project.hasProperty('proInstall') && project.property('proInstall') == 'true') {
             applicationIdSuffix ".preview2"
             manifestPlaceholders = [appLabel: "Object Detective PRO", appIcon: "@drawable/ic_launcher_pro"]

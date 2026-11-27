@@ -385,7 +385,7 @@ main{
       <p class="visual-reference-note" id="visual-reference-note">Looking for a genuine reference photograph…</p>
       <div class="visual-comparison-grid">
         <div><label>Your photograph</label><img id="visual-user-photo" alt="Your photographed object"></div>
-        <div><label>Verified reference</label><img id="visual-reference-image" alt="Verified matching reference photograph"></div>
+        <div><label>Possible reference</label><img id="visual-reference-image" alt="Possible reference photograph"></div>
       </div>
       <p class="visual-reference-credit" id="visual-reference-credit"></p>
       <a class="visual-reference-source" id="visual-reference-source" href="#" target="_blank" rel="noopener noreferrer">View original image and licence</a>
@@ -889,6 +889,12 @@ async function loadVisualReference(data,targetContainer){
     const payload=await response.json().catch(()=>({}));
     if(requestId!==visualReferenceRequestId)return;
     if(!response.ok)throw new Error(payload?.error?.message||'Reference image search unavailable.');
+    const expectedModel=String(data.model||'').toLowerCase().replace(/[^a-z0-9]/g,'');
+    const referenceTitle=String(payload.title||'').toLowerCase().replace(/[^a-z0-9]/g,'');
+    if(data.exact_match_status!=='exact'||!expectedModel||expectedModel==='unknown'||!referenceTitle.includes(expectedModel)){
+      note.textContent='No reference photograph could be matched to the exact model. A generic series image is not shown as a match.';
+      return;
+    }
     const embeddedImage=typeof payload.imageDataUrl==='string'&&payload.imageDataUrl.startsWith('data:image/');
     const remoteImage=typeof payload.imageUrl==='string'&&(()=>{try{const url=new URL(payload.imageUrl);return url.protocol==='https:'&&(url.hostname==='upload.wikimedia.org'||url.hostname.endsWith('.wikimedia.org')||url.hostname.endsWith('.wikipedia.org'));}catch{return false;}})();
     if(!embeddedImage&&!remoteImage){
