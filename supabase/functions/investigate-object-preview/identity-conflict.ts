@@ -76,10 +76,10 @@ export function applySamsungEarbudModelEvidence<T extends SamsungEarbudEvidenceR
     machineEvidenceContext, result.brand, result.manufacturer, result.object,
     result.category, result.identifying_clues, result.case_file_summary, result.exact_match_evidence,
   ].join(" ");
-  const isEarbudItem = /\\b(?:earbuds?|wireless\\s+buds|galaxy\\s+buds|charging\\s+case)\\b/i.test(evidence);
-  if (!isEarbudItem || !/\\bsamsung\\b/i.test(evidence)) return result;
+  const isEarbudItem = /\b(?:earbuds?|wireless\s+buds|galaxy\s+buds|charging\s+case)\b/i.test(evidence);
+  if (!isEarbudItem || !/\bsamsung\b/i.test(evidence)) return result;
 
-  const identifiers = [...evidence.matchAll(/\\b(?:SM|EP)-[A-Z0-9]{3,}(?:-[A-Z0-9]+)?\\b/gi)]
+  const identifiers = [...evidence.matchAll(/\b(?:SM|EP)-[A-Z0-9]{3,}(?:-[A-Z0-9]+)?\b/gi)]
     .map((match) => match[0].toUpperCase());
   const modelCode = identifiers.find((value) => value === "SM-R630");
   const preferredIdentifier = modelCode || identifiers.find((value) => value.startsWith("SM-")) || identifiers[0] || "";

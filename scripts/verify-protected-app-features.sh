@@ -57,3 +57,15 @@ if grep -Fq 'result.object = "Wireless earbuds with charging case"' "$LIVE_FUNCT
   echo "::error::Hard-coded earbuds fallback has returned to the live service"
   exit 1
 fi
+
+if ! grep -Fq "applySamsungEarbudModelEvidence" "$FUNCTION"; then
+  echo "::error::Samsung model-code reconciliation missing from Free preview service" >&2
+  exit 1
+fi
+grep -Fq 'const isEarbudItem = /\b(?:earbuds?' "$HELPER"
+if grep -Fq 'const isEarbudItem = /\\b' "$HELPER"; then
+  echo "::error::Samsung model-code matcher contains an escaped literal boundary" >&2
+  exit 1
+fi
+grep -Fq "data.exact_match_status!=='exact'" "$FILE"
+grep -Fq 'Possible reference' "$FILE"

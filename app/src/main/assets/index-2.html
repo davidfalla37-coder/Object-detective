@@ -824,6 +824,12 @@ async function loadVisualReference(data,targetContainer){
     const payload=await response.json().catch(()=>({}));
     if(requestId!==visualReferenceRequestId)return;
     if(!response.ok)throw new Error(payload?.error?.message||'Reference image search unavailable.');
+    const expectedModel=String(data.model||'').toLowerCase().replace(/[^a-z0-9]/g,'');
+    const referenceTitle=String(payload.title||'').toLowerCase().replace(/[^a-z0-9]/g,'');
+    if(data.exact_match_status!=='exact'||!expectedModel||expectedModel==='unknown'||!referenceTitle.includes(expectedModel)){
+      note.textContent='No reference photograph could be matched to the exact model. A generic series image is not shown as a match.';
+      return;
+    }
     const embeddedImage=typeof payload.imageDataUrl==='string'&&payload.imageDataUrl.startsWith('data:image/');
     const remoteImage=typeof payload.imageUrl==='string'&&(()=>{try{const url=new URL(payload.imageUrl);return url.protocol==='https:'&&(url.hostname==='upload.wikimedia.org'||url.hostname.endsWith('.wikimedia.org')||url.hostname.endsWith('.wikipedia.org'));}catch{return false;}})();
     if(!embeddedImage&&!remoteImage){
