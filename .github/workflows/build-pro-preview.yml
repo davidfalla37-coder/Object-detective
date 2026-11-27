@@ -1,0 +1,93 @@
+name: Build isolated Object Detective PRO APK
+
+on:
+  push:
+    branches:
+      - restore-layout-with-history-safeguard
+      - identification-one-update-preview
+      - pro/identification-foundation-preview
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  preview:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Verify protected layout and history features
+        run: bash scripts/verify-protected-app-features.sh
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Set up Gradle 8.9
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+      - name: Restore persistent preview signing key
+        env:
+          KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+        run: printf '%s' "$KEYSTORE_BASE64" | base64 --decode > signing-key.jks
+      - name: Prepare app icon resource
+        run: |
+          mkdir -p app/src/main/res/drawable-nodpi
+          cp ic_launcher.webp app/src/main/res/drawable-nodpi/ic_launcher.webp
+      - name: Point the PRO preview APK at the preview service
+        run: |
+          FILE="app/src/main/assets/index-2.html"
+          LIVE_URL="https://gboyflbwcobhzbvpdtat.supabase.co/functions/v1/investigate-object"
+          PREVIEW_URL="https://gboyflbwcobhzbvpdtat.supabase.co/functions/v1/investigate-object-preview"
+          grep -Fq "$LIVE_URL" "$FILE"
+          sed -i "s|$LIVE_URL|$PREVIEW_URL|g" "$FILE"
+          grep -Fq "$PREVIEW_URL" "$FILE"
+      - name: Validate embedded JavaScript syntax
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          import subprocess
+          html = Path("app/src/main/assets/index-2.html").read_text()
+          scripts = re.findall(r'<script\b[^>]*>([\s\S]*?)</script\s*>', html, flags=re.IGNORECASE)
+          if not scripts:
+              raise SystemExit("No inline JavaScript found")
+          for index, script in enumerate(scripts):
+              path = Path(f"/tmp/object-detective-script-{index}.js")
+              path.write_text(script)
+              subprocess.run(["node", "--check", str(path)], check=True)
+          print(f"Validated {len(scripts)} inline JavaScript block(s).")
+          PY
+      - name: Build isolated PRO APK
+        run: gradle --no-daemon assembleRelease -PproInstall=true
+      - name: Sign PRO APK with persistent key
+        env:
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+        run: |
+          BUILD_TOOLS="$ANDROID_HOME/build-tools/$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -n 1)"
+          "$BUILD_TOOLS/apksigner" sign \
+            --ks signing-key.jks \
+            --ks-key-alias "$KEY_ALIAS" \
+            --ks-pass "pass:$KEYSTORE_PASSWORD" \
+            --key-pass "pass:$KEYSTORE_PASSWORD" \
+            --out app/build/outputs/apk/release/object-detective-pro.apk \
+            app/build/outputs/apk/release/app-release-unsigned.apk
+          "$BUILD_TOOLS/apksigner" verify --verbose app/build/outputs/apk/release/object-detective-preview.apk
+      - name: Verify PRO package identity and visible label
+        run: |
+          BUILD_TOOLS="$ANDROID_HOME/build-tools/$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -n 1)"
+          BADGING=$("$BUILD_TOOLS/aapt" dump badging app/build/outputs/apk/release/object-detective-preview.apk)
+          echo "$BADGING" | grep -F "package: name='com.objectdetective.app.propreview'"
+          echo "$BADGING" | grep -F "application-label:'Object Detective PRO'"
+      - name: Verify installable PRO APK exists
+        run: test -s app/build/outputs/apk/release/object-detective-preview.apk
+      - name: Upload isolated PRO APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: Object-Detective-PRO-Preview-APK
+          path: app/build/outputs/apk/release/object-detective-preview.apk
+          if-no-files-found: error
+          retention-days: 14
