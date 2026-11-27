@@ -205,7 +205,7 @@ export function applyUniversalEvidenceReconciliation<T extends UniversalEvidence
   // Recover one clear alphanumeric model-style code directly from OCR when the
   // same photo also contains the already-supported manufacturer mark. Keep it
   // as a likely model-family match; OCR alone cannot prove a retail variant.
-  const modelCodePattern = /\b[A-Z]{1,5}[- ](?:[A-Z]{1,3})?\d{2,6}(?:[-/][A-Z0-9]{1,5})?\b|\b[A-Z]{1,5}\d{2,6}(?:[-/][A-Z0-9]{1,5})?\b/gi;
+  const modelCodePattern = /\b[A-Z]{1,5}-(?:[A-Z]{1,3})?\d{2,6}(?:[-/][A-Z0-9]{1,5})?\b|\b[A-Z]{1,5}\d{2,6}(?:[-/][A-Z0-9]{1,5})?\b/gi;
   const ocrModelCodeMap = new Map<string, string>();
   for (const photo of photos) {
     const text = typeof photo.visibleText === "string" ? photo.visibleText : "";
