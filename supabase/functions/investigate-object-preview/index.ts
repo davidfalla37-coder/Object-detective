@@ -1521,11 +1521,23 @@ Deno.serve(async (request: Request): Promise<Response> => {
     const brandMissing = !primaryBrandKnown || !verifiedBrandKnown;
     const exactIdentityUnclear = primaryResult.exact_match_status === "not_confirmed" ||
       !verification || verification.exact_match_status === "not_confirmed";
-    const hasReadableSamsungIdentifier = /\bsamsung\b/i.test(machineEvidenceContext) &&
-      /\b(?:SM|EP)-[A-Z0-9]{3,}(?:-[A-Z0-9]+)?\b/i.test(machineEvidenceContext) &&
-      /\b(?:earbuds?|wireless\s+buds|galaxy\s+buds|charging\s+case)\b/i.test(
-        [primaryResult.object, primaryResult.category, primaryResult.identifying_clues].join(" "),
-      );
+    const combinedIdentityEvidence = [
+      machineEvidenceContext,
+      primaryResult.object,
+      primaryResult.category,
+      primaryResult.brand,
+      primaryResult.model_number,
+      primaryResult.exact_match_evidence,
+      primaryResult.identifying_clues,
+      primaryResult.case_file_summary,
+      verification?.object ?? "",
+      verification?.brand ?? "",
+      verification?.model_number ?? "",
+      verification?.evidence ?? "",
+    ].join(" ");
+    const hasReadableSamsungIdentifier = /\bsamsung\b/i.test(combinedIdentityEvidence) &&
+      /\b(?:SM|EP)-[A-Z0-9]{3,}(?:-[A-Z0-9]+)?\b/i.test(combinedIdentityEvidence) &&
+      /\b(?:earbuds?|wireless\s+buds|galaxy\s+buds|charging\s+case)\b/i.test(combinedIdentityEvidence);
     const needsManufacturerRead = !!verification &&
       (brandConflict || (brandMissing && exactIdentityUnclear)) && !hasReadableSamsungIdentifier;
     const researchPromise = shouldRunIdentificationResearch(primaryResult, verification)
@@ -1547,10 +1559,10 @@ Deno.serve(async (request: Request): Promise<Response> => {
     if (verification) {
       const reconciled = reconcileVerification(primaryResult, verification, manufacturerEvidence);
       const machineReconciled = applyMachineReadableIdentityEvidence(reconciled, machineEvidenceContext);
-      return jsonResponse(applySamsungEarbudModelEvidence(machineReconciled, machineEvidenceContext));
+      return jsonResponse(applySamsungEarbudModelEvidence(machineReconciled, combinedIdentityEvidence));
     }
     const fallback = applyMachineReadableIdentityEvidence(conservativeFallback(primaryResult), machineEvidenceContext);
-    return jsonResponse(applySamsungEarbudModelEvidence(fallback, machineEvidenceContext));
+    return jsonResponse(applySamsungEarbudModelEvidence(fallback, combinedIdentityEvidence));
   } catch (error) {
     console.error("OBJECT_INVESTIGATION_FAILED");
     return errorResponse("Unable to investigate the object right now. Please try again.", 500, "internal_error");
