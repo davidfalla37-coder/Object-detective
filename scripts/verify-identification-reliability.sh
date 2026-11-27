@@ -7,6 +7,10 @@ LIVE="supabase/functions/investigate-object/index.ts"
 PREVIEW="supabase/functions/investigate-object-preview/index.ts"
 
 for file in "$LIVE" "$PREVIEW"; do
+  if [[ "$file" == "$PREVIEW" ]]; then
+    grep -Fq "rawImages.length > 15" "$file"
+    grep -Fq "value.slice(0, 15)" "$file"
+  fi
   grep -Fq "Exact-model uncertainty alone must not erase a defensible used-value range" "$file"
   if grep -Fq 'fallback.confidence = Math.min(fallback.confidence, 0.79)' "$file"; then
     echo "Arbitrary 79% confidence cap remains in $file" >&2
