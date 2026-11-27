@@ -381,11 +381,11 @@ main{
       <textarea class="pro-report-export hidden" id="pro-report-export" readonly aria-label="PRO report text to copy"></textarea>
     </section>
     <section class="card visual-reference hidden" id="visual-reference" aria-live="polite">
-      <h3>Visual reference comparison</h3>
+      <h3>Reference image check</h3>
       <p class="visual-reference-note" id="visual-reference-note">Looking for a genuine reference photograph…</p>
       <div class="visual-comparison-grid">
         <div><label>Your photograph</label><img id="visual-user-photo" alt="Your photographed object"></div>
-        <div><label>Possible reference</label><img id="visual-reference-image" alt="Possible catalogue or reference photograph"></div>
+        <div><label>Verified reference</label><img id="visual-reference-image" alt="Verified matching reference photograph"></div>
       </div>
       <p class="visual-reference-credit" id="visual-reference-credit"></p>
       <a class="visual-reference-source" id="visual-reference-source" href="#" target="_blank" rel="noopener noreferrer">View original image and licence</a>
@@ -892,7 +892,7 @@ async function loadVisualReference(data,targetContainer){
     const embeddedImage=typeof payload.imageDataUrl==='string'&&payload.imageDataUrl.startsWith('data:image/');
     const remoteImage=typeof payload.imageUrl==='string'&&(()=>{try{const url=new URL(payload.imageUrl);return url.protocol==='https:'&&(url.hostname==='upload.wikimedia.org'||url.hostname.endsWith('.wikimedia.org')||url.hostname.endsWith('.wikipedia.org'));}catch{return false;}})();
     if(!embeddedImage&&!remoteImage){
-      note.textContent='No suitable reference photograph was found. Your own photograph is shown for comparison; the identification is still available.';
+      note.textContent='No verified matching reference photograph is available. Your own photograph remains visible; unrelated product images are never shown.';
       return;
     }
     let triedRemoteFallback=false;
