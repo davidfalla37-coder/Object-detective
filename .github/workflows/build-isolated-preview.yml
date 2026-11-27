@@ -44,8 +44,18 @@ jobs:
           FILE="app/src/main/assets/index-2.html"
           LIVE_URL="https://gboyflbwcobhzbvpdtat.supabase.co/functions/v1/investigate-object"
           PREVIEW_URL="https://gboyflbwcobhzbvpdtat.supabase.co/functions/v1/investigate-object-preview"
-          grep -Fq "$LIVE_URL" "$FILE"
-          sed -i "s|$LIVE_URL|$PREVIEW_URL|g" "$FILE"
+          if grep -Fq "$PREVIEW_URL" "$FILE"; then
+            echo "Preview endpoint already configured."
+          elif grep -Fq "$LIVE_URL" "$FILE"; then
+            sed -i "s|$LIVE_URL|$PREVIEW_URL|g" "$FILE"
+          else
+            echo "Expected investigation endpoint was not found." >&2
+            exit 1
+          fi
+          if grep -Fq "${PREVIEW_URL}-preview" "$FILE"; then
+            echo "Preview endpoint was duplicated." >&2
+            exit 1
+          fi
           grep -Fq "$PREVIEW_URL" "$FILE"
       - name: Validate embedded JavaScript syntax
         run: |
