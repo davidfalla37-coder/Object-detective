@@ -1,4 +1,4 @@
-import { applyBrandConflictFallback } from "./identity-conflict.ts";
+import { applyBrandConflictFallback, applySamsungEarbudModelEvidence } from "./identity-conflict.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
