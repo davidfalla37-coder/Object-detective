@@ -93,6 +93,7 @@ export function reconcileCrossCheckIdentityEvidence<T extends CrossCheckIdentity
     return { value: "Unknown", conflict: true };
   };
 
+  const rawBrandConflict = known(primary.brand) && known(verification.brand) && normalize(primary.brand) !== normalize(verification.brand);
   const brandChoice = choose(primary.brand, verification.brand);
   const modelChoice = choose(primary.model, verification.model);
   const numberChoice = choose(primary.model_number, verification.model_number);
@@ -111,7 +112,7 @@ export function reconcileCrossCheckIdentityEvidence<T extends CrossCheckIdentity
     if (left.includes(right) && pObject.length > vObject.length) broadObject = pObject;
     else if (right.includes(left) && vObject.length > pObject.length) broadObject = vObject;
     else if (left === right) broadObject = pObject;
-    else if (brandChoice.conflict) {
+    else if (rawBrandConflict) {
       let generic = pObject;
       for (const claim of [primary.brand, verification.brand, primary.model, verification.model, primary.model_number, verification.model_number]) {
         if (known(claim)) generic = generic.split(claim).join(" ");
