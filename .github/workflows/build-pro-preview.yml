@@ -78,7 +78,7 @@ jobs:
         run: |
           BUILD_TOOLS="$ANDROID_HOME/build-tools/$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -n 1)"
           BADGING=$("$BUILD_TOOLS/aapt" dump badging app/build/outputs/apk/release/object-detective-pro.apk)
-          echo "$BADGING" | grep -F "package: name='com.objectdetective.app.propreview'"
+          echo "$BADGING" | grep -F "package: name='com.objectdetective.app.preview2'"
           echo "$BADGING" | grep -F "application-label:'Object Detective PRO'"
       - name: Verify installable PRO APK exists
         run: test -s app/build/outputs/apk/release/object-detective-pro.apk
