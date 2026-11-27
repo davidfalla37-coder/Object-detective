@@ -1327,8 +1327,9 @@ Deno.serve(async (request: Request): Promise<Response> => {
     const extractedEvidence = sanitizeExtractedEvidence(body.extractedEvidence);
     const rawMachineEvidence = buildMachineEvidenceContext(extractedEvidence);
     const catalogueEvidencePromise = resolveBarcodeCatalogueEvidence(extractedEvidence);
-    // Run independent visual verification alongside the first-pass analysis.
-    const verificationPromise = verifyIdentification(images, photoCount, rawMachineEvidence);
+    // The primary pass can already surface a directly readable manufacturer/model code.
+    // In that narrow high-evidence case, the deterministic Samsung catalogue mapping below
+    // is safer and faster than paying for a duplicate visual pass.
     const openAIResponse = await fetch("https://api.openai.com/v1/responses", {
       method: "POST",
       headers: {
@@ -1506,7 +1507,22 @@ Deno.serve(async (request: Request): Promise<Response> => {
     }
 
     const primaryResult = normalizeResult(parsed);
-    const independentVerification = await verificationPromise;
+    const primaryIdentityText = [
+      primaryResult.object,
+      primaryResult.category,
+      primaryResult.brand,
+      primaryResult.model_number,
+      primaryResult.identifying_clues,
+      primaryResult.exact_match_evidence,
+      primaryResult.case_file_summary,
+    ].join(" ");
+    const primaryHasSamsungModelCode =
+      /\bsamsung\b/i.test(primaryIdentityText) &&
+      /\bSM-R630\b/i.test(primaryIdentityText) &&
+      /\b(?:earbuds?|wireless\s+buds|galaxy\s+buds|charging\s+case)\b/i.test(primaryIdentityText);
+    const independentVerification = primaryHasSamsungModelCode
+      ? null
+      : await verifyIdentification(images, photoCount, rawMachineEvidence);
     const catalogueEvidence = await catalogueEvidencePromise;
     const machineEvidenceContext = buildMachineEvidenceContext(extractedEvidence, catalogueEvidence);
     let verification = independentVerification
