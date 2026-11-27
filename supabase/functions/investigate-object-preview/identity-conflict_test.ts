@@ -1,4 +1,4 @@
-import { applyBrandConflictFallback, applySamsungEarbudModelEvidence } from "./identity-conflict.ts";
+import { applyBrandConflictFallback, applySamsungEarbudModelEvidence, reconcileCrossCheckIdentityEvidence } from "./identity-conflict.ts";
 
 function fixture() {
   return {
@@ -87,4 +87,51 @@ Deno.test("Samsung model evidence does not alter unrelated categories", () => {
   };
   applySamsungEarbudModelEvidence(result, "");
   if (result.object !== "Cordless drill") throw new Error("Unrelated object was changed.");
+});
+
+
+function crossCheckFixture() {
+  return {
+    object: "Wireless earbuds with charging case", category: "Electronics",
+    brand: "Unknown", manufacturer: "Unknown", model: "Unknown", model_number: "Unknown",
+    variant: "Unknown", exact_match_status: "not_confirmed", exact_match_confidence: 0.2,
+    exact_match_evidence: "", identifying_clues: "Unknown", case_file_summary: "Unknown",
+    confidence: 0.7, warning: "",
+  };
+}
+
+Deno.test("cross-category reconciliation preserves readable maker and model evidence", () => {
+  const result = crossCheckFixture();
+  reconcileCrossCheckIdentityEvidence(result,
+    { object: "SoundPEATS wireless earbuds", brand: "SoundPEATS", model: "Unknown", model_number: "Unknown", variant: "Unknown", identifying_clues: "Case shape resembles SoundPEATS." },
+    { object: "Samsung wireless earbuds", brand: "Samsung", model: "Galaxy Buds3 Pro", model_number: "SM-R630", variant: "Pro", identifying_clues: "Samsung branding and SM-R630 are visible." },
+    '{"visibleText":"Samsung SM-R630"}');
+  if (result.brand !== "Samsung" || result.model_number !== "SM-R630") throw new Error("Direct evidence did not resolve maker/model.");
+  if (!result.identifying_clues.includes("SoundPEATS") || !result.identifying_clues.includes("Samsung")) throw new Error("Cross-check clues were discarded.");
+});
+
+Deno.test("unresolved manufacturer conflict retains broad object instead of choosing an AI guess", () => {
+  const result = crossCheckFixture();
+  reconcileCrossCheckIdentityEvidence(result,
+    { object: "SoundPEATS wireless earbuds", brand: "SoundPEATS", model: "Air4", model_number: "A4", variant: "Unknown", identifying_clues: "Visual shape resembles SoundPEATS." },
+    { object: "Samsung wireless earbuds", brand: "Samsung", model: "Galaxy Buds", model_number: "SM-X", variant: "Unknown", identifying_clues: "Visual shape resembles Samsung." }, "");
+  if (result.brand !== "Unknown" || result.model !== "Unknown" || result.model_number !== "Unknown") throw new Error("Unsupported brand/model guess survived.");
+  if (!/earbuds/i.test(result.object)) throw new Error("Broad object type was lost.");
+});
+
+Deno.test("a specific primary identity survives a broader Unknown verification", () => {
+  const result = crossCheckFixture();
+  reconcileCrossCheckIdentityEvidence(result,
+    { object: "Renault Megane RS", brand: "Renault", model: "Megane RS265", model_number: "Unknown", variant: "RS265", identifying_clues: "RS badge visible." },
+    { object: "Renault performance hatchback", brand: "Renault", model: "Unknown", model_number: "Unknown", variant: "Unknown", identifying_clues: "Renault badge visible." },
+    '{"visibleText":"Renault RS"}');
+  if (result.brand !== "Renault" || result.model !== "Megane RS265") throw new Error("Specific primary identity was discarded.");
+});
+
+Deno.test("conflicting model numbers are withheld unless one is directly readable", () => {
+  const result = crossCheckFixture();
+  reconcileCrossCheckIdentityEvidence(result,
+    { object: "Cordless drill", brand: "Makita", model: "DHP486", model_number: "DHP486", variant: "Unknown" },
+    { object: "Cordless drill", brand: "Makita", model: "DHP484", model_number: "DHP484", variant: "Unknown" }, "");
+  if (result.model !== "Unknown" || result.model_number !== "Unknown") throw new Error("Conflicting model number was guessed.");
 });
