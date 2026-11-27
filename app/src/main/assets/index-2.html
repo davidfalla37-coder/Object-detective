@@ -697,9 +697,16 @@ async function addSelectedFiles(fileList){
 clear.onclick=()=>{
   selectedFiles=[];
   photoChecks=[];
+  cameraFile.value='';
+  galleryFile.value='';
   preview.removeAttribute('src');preview.style.display='none';
   placeholder.classList.remove('hidden');
-  identify.disabled=true;result.classList.add('hidden');errorBox.classList.add('hidden');
+  identify.disabled=true;
+  takePhoto.disabled=false;
+  chooseGallery.disabled=false;
+  statusBox.classList.add('hidden');
+  result.classList.add('hidden');
+  errorBox.classList.add('hidden');
   updatePhotoGuide();
 };
 
@@ -1643,7 +1650,7 @@ document.getElementById("chat-form").onsubmit=async(event)=>{
     actions.className="od-home-actions";
     actions.innerHTML='<button class="primary" type="button" id="od-start-investigation">Start an investigation</button><p class="photo-guide">Take a photo, add close-ups of labels or model numbers, then review the evidence.</p>';
     hero.closest(".brand-hero").appendChild(actions);
-    document.getElementById("od-start-investigation").addEventListener("click",()=>showScreen("identify"));
+    document.getElementById("od-start-investigation").addEventListener("click",()=>{clear.onclick();showScreen("identify");});
   }
   function showScreen(name){
     const selected=name;
