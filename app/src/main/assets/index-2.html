@@ -824,21 +824,31 @@ async function loadVisualReference(data,targetContainer){
     const payload=await response.json().catch(()=>({}));
     if(requestId!==visualReferenceRequestId)return;
     if(!response.ok)throw new Error(payload?.error?.message||'Reference image search unavailable.');
-    if(typeof payload.imageDataUrl!=='string'||!payload.imageDataUrl.startsWith('data:image/')){
+    const embeddedImage=typeof payload.imageDataUrl==='string'&&payload.imageDataUrl.startsWith('data:image/');
+    const remoteImage=typeof payload.imageUrl==='string'&&(()=>{try{const url=new URL(payload.imageUrl);return url.protocol==='https:'&&(url.hostname==='upload.wikimedia.org'||url.hostname.endsWith('.wikimedia.org')||url.hostname.endsWith('.wikipedia.org'));}catch{return false;}})();
+    if(!embeddedImage&&!remoteImage){
       note.textContent='No suitable reference photograph was found. Your own photograph is shown for comparison; the identification is still available.';
       return;
     }
+    let triedRemoteFallback=false;
     referenceImage.onload=()=>{
       if(requestId!==visualReferenceRequestId)return;
-      source.href=payload.sourceUrl||'#';
-      if(payload.sourceUrl)source.removeAttribute('aria-disabled');
+      source.href=typeof payload.sourceUrl==='string'&&payload.sourceUrl.startsWith('https://')?payload.sourceUrl:'#';
+      if(source.href!=='#')source.removeAttribute('aria-disabled');
       credit.textContent=payload.credit||'Reference source details available on the source page.';
       note.textContent='Reference photograph loaded: '+(payload.title||'Possible match')+'. Compare logos, markings and model details. It may be a similar item, not the exact model.';
     };
     referenceImage.onerror=()=>{
-      if(requestId===visualReferenceRequestId)note.textContent='The reference photograph could not be displayed. Your own photograph remains available for comparison.';
+      if(requestId!==visualReferenceRequestId)return;
+      if(remoteImage&&!triedRemoteFallback&&referenceImage.src!==payload.imageUrl){
+        triedRemoteFallback=true;
+        referenceImage.src=payload.imageUrl;
+        return;
+      }
+      referenceImage.removeAttribute('src');
+      note.textContent='The reference photograph could not be displayed. Your own photograph remains available for comparison.';
     };
-    referenceImage.src=payload.imageDataUrl;
+    referenceImage.src=embeddedImage?payload.imageDataUrl:payload.imageUrl;
   }catch(error){
     if(requestId===visualReferenceRequestId)note.textContent='Reference photographs are temporarily unavailable. Your own photograph is shown; your identification result has not been affected.';
   }
