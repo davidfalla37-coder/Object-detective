@@ -16,8 +16,8 @@ android {
         applicationId "com.objectdetective.app"
         minSdk 26
         targetSdk 36
-        versionCode 28
-        versionName "1.27.5-FREE-preview"
+        versionCode 29
+        versionName "1.27.6-FREE-preview"
         if (project.hasProperty('previewInstall') && project.property('previewInstall') == 'true') {
             applicationIdSuffix ".freepreview"
             manifestPlaceholders = [appLabel: "Object Detective Free Preview"]

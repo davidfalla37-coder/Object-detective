@@ -1,4 +1,4 @@
-import { applyBrandConflictFallback, applySamsungEarbudModelEvidence } from "./identity-conflict.ts";
+import { applyBrandConflictFallback, applySamsungEarbudModelEvidence, applyUniversalEvidenceReconciliation } from "./identity-conflict.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -1469,9 +1469,9 @@ Deno.serve(async (request: Request): Promise<Response> => {
     }
     if (verification) {
       const reconciled = reconcileVerification(primaryResult, verification, manufacturerEvidence);
-      return jsonResponse(applySamsungEarbudModelEvidence(applyMachineReadableIdentityEvidence(reconciled, machineEvidenceContext), machineEvidenceContext));
+      return jsonResponse(applyUniversalEvidenceReconciliation(applySamsungEarbudModelEvidence(applyMachineReadableIdentityEvidence(reconciled, machineEvidenceContext), machineEvidenceContext), primaryResult, verification, machineEvidenceContext));
     }
-    return jsonResponse(applySamsungEarbudModelEvidence(applyMachineReadableIdentityEvidence(conservativeFallback(primaryResult), machineEvidenceContext), machineEvidenceContext));
+    return jsonResponse(applyUniversalEvidenceReconciliation(applySamsungEarbudModelEvidence(applyMachineReadableIdentityEvidence(conservativeFallback(primaryResult), machineEvidenceContext), machineEvidenceContext), primaryResult, null, machineEvidenceContext));
   } catch (error) {
     console.error("OBJECT_INVESTIGATION_FAILED");
     return errorResponse("Unable to investigate the object right now. Please try again.", 500, "internal_error");
