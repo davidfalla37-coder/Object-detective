@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - restore-layout-with-history-safeguard
+      - fix/free-identification-reliability-preview-20261127
   workflow_dispatch:
 
 permissions:
@@ -17,6 +18,8 @@ jobs:
         uses: actions/checkout@v4
       - name: Verify protected layout and history features
         run: bash scripts/verify-protected-app-features.sh
+      - name: Verify identification reliability safeguards
+        run: bash scripts/verify-identification-reliability.sh
       - name: Set up Java 17
         uses: actions/setup-java@v4
         with:
