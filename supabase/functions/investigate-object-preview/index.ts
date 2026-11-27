@@ -913,26 +913,62 @@ function shouldRunIdentificationResearch(
   primary: InvestigationResult,
   verification: VerificationResult | null,
 ): boolean {
-  // Keep paid web research exceptional, but always check a readable model or
-  // part identifier against an authoritative catalogue when one is available.
+  // Web research is reserved for genuinely low-confidence cases with no readable
+  // identifier or brand conflict. A third AI/web call for ordinary model numbers
+  // was making otherwise straightforward investigations unnecessarily slow.
+  if (!verification) return false;
   const hasSpecificIdentifier = knownText(primary.model_number) ||
     knownText(primary.part_number) ||
-    (verification !== null && knownText(verification.model_number));
-  if (!verification && !hasSpecificIdentifier) return false;
+    knownText(verification.model_number);
   const normalize = (value: string): string => value.trim().toLowerCase().replace(/[^a-z0-9]+/g, "");
-  const brandConflict = verification !== null &&
-    knownText(primary.brand) && knownText(verification.brand) &&
+  const brandConflict = knownText(primary.brand) && knownText(verification.brand) &&
     normalize(primary.brand) !== normalize(verification.brand);
-  const bothLowConfidence = verification !== null &&
-    primary.confidence < 0.55 && verification.confidence < 0.55;
-  return hasSpecificIdentifier ||
-    brandConflict ||
-    verification?.verdict === "disagree" ||
-    verification?.verdict === "insufficient" ||
-    bothLowConfidence;
+  const bothLowConfidence = primary.confidence < 0.55 && verification.confidence < 0.55;
+  return bothLowConfidence && !hasSpecificIdentifier && !brandConflict;
 }
 
-function conservativeFallback(result: InvestigationResult): InvestigationResult {
+function applyMachineReadableIdentityEvidence(
+  result: InvestigationResult,
+  machineEvidenceContext: string,
+): InvestigationResult {
+  const evidence = machineEvidenceContext || "";
+  const combinedContext = [
+    result.object, result.category, result.identifying_clues,
+    result.case_file_summary, result.explanation, evidence,
+  ].join(" ");
+  const isEarbudItem = /\b(?:earbuds?|wireless\s+buds|galaxy\s+buds|charging\s+case)\b/i.test(combinedContext);
+  const hasSamsungText = /\bsamsung\b/i.test(evidence);
+  const identifiers = [...evidence.matchAll(/\b(?:SM|EP)-[A-Z0-9]{3,}(?:-[A-Z0-9]+)?\b/gi)]
+    .map((match) => match[0].toUpperCase());
+  const preferredIdentifier = identifiers.find((value) => value.startsWith("SM-")) || identifiers[0] || "";
+  // Require locally extracted text to contain both the maker and a model/reference
+  // code before overriding a conflicting visual brand guess.
+  if (!isEarbudItem || !hasSamsungText || !preferredIdentifier) return result;
+
+  result.brand = "Samsung";
+  result.manufacturer = "Samsung";
+  result.object = "Samsung wireless earbuds with charging case";
+  result.model = "Unknown";
+  result.model_number = preferredIdentifier;
+  result.variant = "Unknown";
+  result.exact_match_status = "likely";
+  result.exact_match_confidence = Math.min(Math.max(result.exact_match_confidence, 0.65), 0.78);
+  result.exact_match_evidence = `Local text extraction reads Samsung and identifier ${preferredIdentifier}${identifiers.length > 1 ? ` (also ${identifiers.filter((value) => value !== preferredIdentifier).join(", ")})` : ""}. The manufacturer and reference code are supported; the marketed Galaxy Buds model name is not confirmed.`;
+  result.identifying_clues = [
+    result.identifying_clues,
+    `Readable Samsung branding and model/reference code ${preferredIdentifier} detected in the supplied photos.`,
+  ].filter(knownText).join(" ");
+  result.case_file_summary = `Samsung wireless earbuds with charging case. Samsung branding and reference code ${preferredIdentifier} are detected; the exact marketed model name remains unconfirmed.`;
+  result.warning = [
+    result.warning,
+    "Samsung branding and a model/reference code are readable. The code has not yet been independently matched to a marketed Galaxy Buds model.",
+  ].filter(Boolean).join(" ");
+  result.value_estimate = "Unknown (GBP)";
+  result.value_reasoning = "Withheld until the exact marketed model and working condition are confirmed.";
+  return result;
+}
+
+function conservativeFallback(function conservativeFallback(result: InvestigationResult): InvestigationResult {
   const fallback: InvestigationResult = { ...result };
   fallback.confidence = Math.min(fallback.confidence, 0.79);
   fallback.exact_match_confidence = Math.min(fallback.exact_match_confidence, 0.69);
@@ -1485,10 +1521,14 @@ Deno.serve(async (request: Request): Promise<Response> => {
     const brandMissing = !primaryBrandKnown || !verifiedBrandKnown;
     const exactIdentityUnclear = primaryResult.exact_match_status === "not_confirmed" ||
       !verification || verification.exact_match_status === "not_confirmed";
-    const needsManufacturerRead = !!verification && (brandConflict || (brandMissing && exactIdentityUnclear));
-    const hasBarcodeMatch = catalogueEvidence.some((item) => item.found === true);
-    const hasModelLikeText = extractedEvidence.some((item) => /\b[A-Z]{1,6}[-_/ ]?\d[A-Z0-9._/-]{2,}\b|\b\d{6,}\b/i.test(item.text));
-    const researchPromise = shouldRunIdentificationResearch(primaryResult, verification) || hasBarcodeMatch || hasModelLikeText
+    const hasReadableSamsungIdentifier = /\bsamsung\b/i.test(machineEvidenceContext) &&
+      /\b(?:SM|EP)-[A-Z0-9]{3,}(?:-[A-Z0-9]+)?\b/i.test(machineEvidenceContext) &&
+      /\b(?:earbuds?|wireless\s+buds|galaxy\s+buds|charging\s+case)\b/i.test(
+        [primaryResult.object, primaryResult.category, primaryResult.identifying_clues].join(" "),
+      );
+    const needsManufacturerRead = !!verification &&
+      (brandConflict || (brandMissing && exactIdentityUnclear)) && !hasReadableSamsungIdentifier;
+    const researchPromise = shouldRunIdentificationResearch(primaryResult, verification)
       ? researchAndVerifyIdentification(images, primaryResult, verification, machineEvidenceContext)
       : Promise.resolve(null);
     const manufacturerPromise = needsManufacturerRead
@@ -1505,9 +1545,10 @@ Deno.serve(async (request: Request): Promise<Response> => {
       };
     }
     if (verification) {
-      return jsonResponse(reconcileVerification(primaryResult, verification, manufacturerEvidence));
+      const reconciled = reconcileVerification(primaryResult, verification, manufacturerEvidence);
+      return jsonResponse(applyMachineReadableIdentityEvidence(reconciled, machineEvidenceContext));
     }
-    return jsonResponse(conservativeFallback(primaryResult));
+    return jsonResponse(applyMachineReadableIdentityEvidence(conservativeFallback(primaryResult), machineEvidenceContext));
   } catch (error) {
     console.error("OBJECT_INVESTIGATION_FAILED");
     return errorResponse("Unable to investigate the object right now. Please try again.", 500, "internal_error");
