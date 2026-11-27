@@ -1,6 +1,11 @@
 package com.objectdetective.app
 
+import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.graphics.Canvas
+import android.graphics.ColorMatrix
+import android.graphics.ColorMatrixColorFilter
+import android.graphics.Paint
 import android.util.Base64
 import android.webkit.JavascriptInterface
 import android.webkit.WebView
@@ -17,6 +22,7 @@ import org.json.JSONArray
 import org.json.JSONObject
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
+import kotlin.math.roundToInt
 
 /**
  * Reads labels, model markings and barcodes from every supplied investigation photo.
@@ -42,7 +48,7 @@ class ObjectEvidenceBridge(private val webView: WebView) {
                 val barcodeClient = BarcodeScanning.getClient(options)
                 scanner = barcodeClient
 
-                for (index in 0 until minOf(images.length(), 5)) {
+                for (index in 0 until minOf(images.length(), 15)) {
                     val photo = JSONObject()
                     val barcodes = JSONArray()
                     photo.put("photoIndex", index)
@@ -67,9 +73,30 @@ class ObjectEvidenceBridge(private val webView: WebView) {
                         }
                         try {
                             val input = InputImage.fromBitmap(bitmap, 0)
-                            val textResult = Tasks.await(textClient.process(input), 12, TimeUnit.SECONDS)
-                            photo.put("text", textResult.text.take(5000))
-                            val barcodeResults = Tasks.await(barcodeClient.process(input), 12, TimeUnit.SECONDS)
+                            val textTask = textClient.process(input)
+                            val barcodeTask = barcodeClient.process(input)
+                            var recognizedText = Tasks.await(textTask, 12, TimeUnit.SECONDS).text
+
+                            if (shouldRetryModelCodeOcr(recognizedText)) {
+                                val enhancedBitmap = enhanceForText(bitmap)
+                                try {
+                                    val enhancedText = Tasks.await(
+                                        textClient.process(InputImage.fromBitmap(enhancedBitmap, 0)),
+                                        8,
+                                        TimeUnit.SECONDS
+                                    ).text
+                                    recognizedText = listOf(recognizedText.trim(), enhancedText.trim())
+                                        .filter { it.isNotEmpty() }
+                                        .distinct()
+                                        .joinToString("\n")
+                                } catch (_: Exception) {
+                                    // Keep the original OCR result if the local enhancement pass fails.
+                                } finally {
+                                    enhancedBitmap.recycle()
+                                }
+                            }
+                            photo.put("text", recognizedText.take(5000))
+                            val barcodeResults = Tasks.await(barcodeTask, 12, TimeUnit.SECONDS)
                             for (barcode in barcodeResults.take(10)) {
                                 val value = barcode.rawValue?.trim().orEmpty()
                                 val productCode = normalizeProductCode(value)
@@ -107,6 +134,45 @@ class ObjectEvidenceBridge(private val webView: WebView) {
                 )
             }
         }
+    }
+
+    private fun shouldRetryModelCodeOcr(text: String): Boolean {
+        val hasLetters = text.any { it.isLetter() }
+        val hasDigits = text.any { it.isDigit() }
+        if (!hasLetters) return false
+        val modelCodePattern = Regex(
+            """\b[A-Z]{1,5}(?:-[A-Z]{1,3})?\d{2,6}(?:[-/]\w{1,5})?\b|\b[A-Z]{1,5}\d{2,6}(?:[-/]\w{1,5})?\b""",
+            RegexOption.IGNORE_CASE
+        )
+        return !hasDigits || !modelCodePattern.containsMatchIn(text)
+    }
+
+    private fun enhanceForText(source: Bitmap): Bitmap {
+        val scale = minOf(1.65f, 2600f / maxOf(source.width, source.height).toFloat())
+        val width = maxOf(1, (source.width * scale).roundToInt())
+        val height = maxOf(1, (source.height * scale).roundToInt())
+        val resized = if (width == source.width && height == source.height) {
+            source
+        } else {
+            Bitmap.createScaledBitmap(source, width, height, true)
+        }
+        val enhanced = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+        val grayscale = ColorMatrix().apply { setSaturation(0f) }
+        val contrast = ColorMatrix(
+            floatArrayOf(
+                1.35f, 0f, 0f, 0f, -28f,
+                0f, 1.35f, 0f, 0f, -28f,
+                0f, 0f, 1.35f, 0f, -28f,
+                0f, 0f, 0f, 1f, 0f
+            )
+        )
+        grayscale.postConcat(contrast)
+        val paint = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG).apply {
+            colorFilter = ColorMatrixColorFilter(grayscale)
+        }
+        Canvas(enhanced).drawBitmap(resized, 0f, 0f, paint)
+        if (resized !== source) resized.recycle()
+        return enhanced
     }
 
     private fun normalizeProductCode(raw: String): String? {
