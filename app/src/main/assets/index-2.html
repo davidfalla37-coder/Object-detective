@@ -748,7 +748,7 @@ async function extractPhotoEvidence(images){
     // Read a tight high-resolution crop for label text instead of asking OCR
     // to decipher the broad centre crop. Keep the broad crop for visual context.
     if(focusedCrop)scans.push(recognizePhotoText(focusedCrop,index));
-    return{evidence:(await Promise.all(scans)).filter(Boolean),detailImage:crop||image};
+    return{evidence:(await Promise.all(scans)).filter(Boolean),detailImage:focusedCrop||crop||image};
   }));
   return{
     extractedEvidence:perPhoto.flatMap(photo=>photo.evidence),
