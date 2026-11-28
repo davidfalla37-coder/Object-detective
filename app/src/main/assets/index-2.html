@@ -331,6 +331,8 @@ main{
     <div class="row"><span class="label">Category</span><span class="value" id="category"></span></div>
     <div class="row"><span class="label">Purpose</span><span class="value" id="purpose"></span></div>
     <div class="row"><span class="label">Estimated second-hand value</span><span class="value" id="value_estimate"></span></div>
+    <a class="link-button" id="sold-price-search" href="https://www.ebay.co.uk/sch/ebayadvsearch" target="_blank" rel="noopener noreferrer">Compare recent eBay UK sold prices</a>
+    <p class="explain" id="sold-price-note">Manual comparison only. Confirm the exact model, condition, postage and included parts. eBay Product Research can show actual accepted-offer prices.</p>
     <div class="row"><span class="label">Condition assessment</span><span class="condition-badge cannot-tell" id="condition_badge">Can't tell</span><span class="value" id="condition"></span></div>
     <div class="row"><span class="label">Object-type confidence</span><span class="value" id="confidence"></span></div>
     <p class="explain" id="confidence-note">This is an AI estimate of the broad object identification, not a verified probability. Exact model certainty is shown separately.</p>
@@ -770,6 +772,7 @@ function render(data,saveResult=true){
   const exactLabels={exact:'AI reports an exact match',likely:'Likely match — check the model number',not_confirmed:'Exact model not confirmed'};
   document.getElementById('exact-match').textContent=(exactLabels[exactStatus]||exactLabels.not_confirmed)+(exactPct===null?'':` (${exactPct}%)`);
   document.getElementById('exact-match-evidence').textContent=data.exact_match_evidence||'Look for a readable brand and model number to confirm an exact match.';
+  updateSoldPriceSearch(data);
   currentFeedbackData=data;
   document.getElementById('feedback-correction').classList.add('hidden');
   document.getElementById('feedback-vote').classList.remove('hidden');
@@ -887,6 +890,36 @@ function buildShopSearchTerms(data){
   const detected=[data.brand,data.model_number,data.model,data.variant,data.object,data.category]
     .map(usefulText).filter(Boolean);
   return [...new Set([...detected,...manual].map(x=>x.trim()).filter(Boolean))].join(" ");
+}
+function buildSoldPriceSearchTerms(data){
+  const brand=usefulText(data.brand);
+  const model=usefulText(data.model);
+  const variant=usefulText(data.variant);
+  const parts=[brand,model,variant].filter(Boolean);
+  const modelCode=usefulText(data.model_number);
+  if(modelCode&&/[A-Z]{1,10}[- ]?\\d+/i.test(modelCode))parts.push(modelCode);
+  if(parts.length<2)parts.push(usefulText(data.object),usefulText(data.category));
+  const unique=[];
+  const seen=new Set();
+  for(const part of parts){
+    const clean=part.trim();
+    const key=clean.toLowerCase().replace(/[^a-z0-9]+/g,"");
+    if(clean&&key&&!seen.has(key)){seen.add(key);unique.push(clean)}
+  }
+  return unique.join(" ");
+}
+function updateSoldPriceSearch(data){
+  const terms=buildSoldPriceSearchTerms(data);
+  const link=document.getElementById("sold-price-search");
+  const note=document.getElementById("sold-price-note");
+  const url=new URL("https://www.ebay.co.uk/sch/i.html");
+  if(terms)url.searchParams.set("_nkw",terms);
+  url.searchParams.set("LH_Sold","1");
+  url.searchParams.set("LH_Complete","1");
+  link.href=url.toString();
+  note.textContent=data.exact_match_status==="exact"
+    ? "Manual comparison only. Match the exact model, condition, postage and included parts. eBay Product Research can show actual accepted-offer prices."
+    : "Search is based on the likely identification. Confirm the exact model, condition, postage and included parts; this is not a verified valuation.";
 }
 function updateShoppingSearches(data){
   const query=encodeURIComponent(buildShopSearchTerms(data));
