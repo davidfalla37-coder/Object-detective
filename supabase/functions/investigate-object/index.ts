@@ -275,6 +275,9 @@ interface VerificationResult {
 interface ManufacturerMarkEvidence {
   readable: boolean;
   brand: string;
+  model_readable: boolean;
+  model: string;
+  model_number: string;
   evidence: string;
 }
 
@@ -323,8 +326,8 @@ function normalizeVerification(value: unknown): VerificationResult {
     condition_grade: conditionGrade,
     condition_evidence: textValue("condition_evidence"),
     evidence: textValue("evidence")
-      .split(/(?<=[.!?])\s+/)
-      .filter((sentence) => !/\bproposed\s+(value|price|estimate)\b/i.test(sentence))
+      .split(/(?<=[.!?])\\s+/)
+      .filter((sentence) => !/\\bproposed\\s+(value|price|estimate)\\b/i.test(sentence))
       .join(" ")
       .trim(),
     next_photo: textValue("next_photo"),
@@ -350,10 +353,14 @@ async function inspectManufacturerMark(
             {
               type: "input_text",
               text: [
-                "You are a literal manufacturer-name and matching-package-label reader. Inspect every supplied photo for printed, embossed, or engraved maker names on the item, case, inside lid, underside, attached labels, and retail packaging that clearly belongs to the photographed item.",
-                "Read the actual letters. Do not infer a maker from shape, colour, design, or resemblance. Clearly readable manufacturer text on matching packaging counts as brand evidence even if the logo on the device itself is faint.",
-                "Transcribe the exact visible words in the evidence field and state where they appear. For example, text reading 'Samsung Wireless Earbuds' on the matching box supports Samsung as the maker of wireless earbuds, but does not prove a Galaxy Buds model unless a model identifier is also readable.",
-                "If the maker name cannot be read or the packaging cannot confidently be linked to the pictured item, set readable to false and brand to Unknown. Never infer an exact product model from generic packaging or design.",
+                "You are a literal reader of maker and product-identification markings. Inspect every supplied photo for printed, embossed, engraved, or stamped text on the photographed item, case, inside lid, underside, and labels or packaging that clearly belongs to that exact item.",
+                "Read the actual letters and numbers, including upside down or rotated text. Do not infer a maker or model from shape, colour, design, or resemblance.",
+                "Transcribe the visible maker name in brand only when it is clearly readable on the item or clearly linked packaging. Set readable false and brand Unknown otherwise.",
+                "Identify the product's actual model or reference marking separately from serial, batch, movement, module, calibre, manufacturing, and component numbers. Do not put a module, calibre, serial, or other unrelated code into model or model_number. When the role of a number is unclear, leave model_number Unknown and explain the visible text and uncertainty in evidence.",
+                "Set model_readable true only when the product model/reference itself is clearly readable and attributable to the photographed item. Put its name in model, and put a separate product model/reference number in model_number only when its role is clear. Do not confuse a model family with a different stamped module number.",
+                "For example, if an item's back reads CASIO, 5590, and GA-2000, report Casio as brand and GA-2000 as model; describe 5590 as a module number in evidence rather than mistaking it for the product model.",
+                "The evidence field must quote the exact readable maker/model text and say where it appears. Do not use a generic description or design resemblance as model evidence.",
+                "A readable mark may resolve disagreement between the visual identification checks. Never invent text: if any character is unclear, leave the corresponding field Unknown.",
               ].join(" "),
             },
             ...images.map((image) => ({
@@ -374,13 +381,16 @@ async function inspectManufacturerMark(
               properties: {
                 readable: { type: "boolean" },
                 brand: { type: "string" },
+                model_readable: { type: "boolean" },
+                model: { type: "string" },
+                model_number: { type: "string" },
                 evidence: { type: "string" },
               },
-              required: ["readable", "brand", "evidence"],
+              required: ["readable", "brand", "model_readable", "model", "model_number", "evidence"],
             },
           },
         },
-        max_output_tokens: 350,
+        max_output_tokens: 450,
       }),
     });
 
@@ -393,16 +403,22 @@ async function inspectManufacturerMark(
     const outputText = body.output_text ?? body.output?.[0]?.content?.[0]?.text;
     if (typeof outputText !== "string" || outputText.length === 0) return null;
     const parsed = JSON.parse(outputText) as Record<string, unknown>;
-    const readable = parsed.readable === true;
-    const brand = typeof parsed.brand === "string" ? parsed.brand.trim() : "Unknown";
+    const readable = parsed.readable === true && typeof parsed.brand === "string" && knownText(parsed.brand);
+    const brand = readable ? String(parsed.brand).trim() : "Unknown";
+    const modelReadable = parsed.model_readable === true && typeof parsed.model === "string" && knownText(parsed.model);
+    const model = modelReadable ? String(parsed.model).trim() : "Unknown";
+    const modelNumber = typeof parsed.model_number === "string" && knownText(parsed.model_number)
+      ? parsed.model_number.trim()
+      : "Unknown";
     const evidence = typeof parsed.evidence === "string" ? parsed.evidence.trim() : "";
-    return readable && knownText(brand) ? { readable, brand, evidence } : null;
+    return readable || modelReadable
+      ? { readable, brand, model_readable: modelReadable, model, model_number: modelReadable ? modelNumber : "Unknown", evidence }
+      : null;
   } catch (error) {
     console.error("Manufacturer-mark review failed:", error instanceof Error ? error.message : error);
     return null;
   }
 }
-
 function rebuiltExplanation(
   result: InvestigationResult,
   verification: VerificationResult,
@@ -564,8 +580,13 @@ function reconcileVerification(
   const supportedBrand = brandClaims.find((claim) =>
     normalizedClaims.filter((candidate) => candidate === normalizeBrand(claim)).length >= 2
   ) ?? "";
-  const explicitReadableBrand = manufacturerEvidence?.brand ?? "";
+  const explicitReadableBrand = manufacturerEvidence?.readable && knownText(manufacturerEvidence.brand)
+    ? manufacturerEvidence.brand
+    : "";
   const explicitBrand = normalizeBrand(explicitReadableBrand);
+  const directModelReadable = manufacturerEvidence?.model_readable === true &&
+    knownText(manufacturerEvidence.model);
+  const directMarkIdentity = Boolean(explicitReadableBrand && directModelReadable);
   const labelTextClaims = [
     ...evidenceText.matchAll(/\\btext\\s+["'“‘]?([A-Z][A-Za-z0-9&.-]{1,30})["'”’]?\\s+(?:printed|shown|visible|on it)\\b/g),
     ...evidenceText.matchAll(/\\b([A-Z][A-Za-z0-9&.-]{1,30})\\s+text\\s+(?:is\\s+)?(?:partially\\s+|faintly\\s+|clearly\\s+)?visible\\b/g),
@@ -575,13 +596,13 @@ function reconcileVerification(
   const hasBrandClaim = brandClaims.length > 0 || labelTextClaims.length > 0;
   // A transcribed maker name on the item or matching package can resolve
   // disagreement between visual checks, but never confirms the exact model.
-  const directBrandDisagreement = Boolean(explicitReadableBrand) && (
+  const directBrandDisagreement = !directMarkIdentity && Boolean(explicitReadableBrand) && (
     distinctClaims.some((claim) => claim !== explicitBrand) ||
     labelDisagreesWithConsensus ||
     noReadableMakerMark ||
     makerMarkIsTentative
   );
-  const brandConflict = !directBrandDisagreement && hasBrandClaim && (
+  const brandConflict = !directMarkIdentity && !directBrandDisagreement && hasBrandClaim && (
     distinctClaims.length > 1 ||
     !supportedBrand ||
     labelDisagreesWithConsensus ||
@@ -745,11 +766,38 @@ function reconcileVerification(
     result.next_photo = verification.next_photo;
   }
 
-  const valuation = reconcileSecondhandValue(primary, verification, brandConflict);
+  const resolvedVerification: VerificationResult = directMarkIdentity
+    ? {
+      ...verification,
+      verdict: "agree",
+      brand: explicitReadableBrand,
+      model: manufacturerEvidence!.model,
+      model_number: manufacturerEvidence!.model_number,
+      exact_match_status: "exact",
+      exact_match_confidence: Math.max(verification.exact_match_confidence, 0.88),
+    }
+    : verification;
+
+  if (directMarkIdentity) {
+    const markModel = manufacturerEvidence!.model;
+    result.brand = explicitReadableBrand;
+    result.model = markModel;
+    result.model_number = manufacturerEvidence!.model_number;
+    result.variant = "Unknown";
+    result.object = `${explicitReadableBrand} ${markModel}`;
+    result.exact_match_status = "exact";
+    result.exact_match_confidence = Math.max(result.exact_match_confidence, 0.88);
+    result.exact_match_evidence = manufacturerEvidence!.evidence;
+    result.case_file_summary = `${explicitReadableBrand} ${markModel}; directly readable maker and model markings on the item.`;
+    result.identifying_clues = manufacturerEvidence!.evidence;
+    result.next_photo = "No additional photo needed.";
+  }
+
+  const valuation = reconcileSecondhandValue(primary, resolvedVerification, brandConflict);
   result.value_estimate = valuation.estimate;
   result.value_reasoning = valuation.reasoning;
 
-  result.explanation = rebuiltExplanation(result, verification, brandConflict, directBrandDisagreement);
+  result.explanation = rebuiltExplanation(result, resolvedVerification, brandConflict, directBrandDisagreement);
   reconcileStrapMaterial(result, primary.object);
   return result;
 }
