@@ -9,6 +9,14 @@ export function normalizeManufacturerName(value: string): string {
   return normalized;
 }
 
+/** True when two provided maker labels refer to different manufacturers. */
+export function manufacturersConflict(first: string, second: string): boolean {
+  const normalizedFirst = normalizeManufacturerName(first);
+  const normalizedSecond = normalizeManufacturerName(second);
+  return normalizedFirst.length > 0 && normalizedSecond.length > 0 &&
+    normalizedFirst !== normalizedSecond;
+}
+
 function extractModelIdentifiers(value: string): Set<string> {
   const matches = value.match(/\b[A-Z]{1,10}(?:[- ]+[A-Z]{1,6})?[- ]?\d+[A-Z0-9-]*\b/gi) ?? [];
   return new Set(matches.map((match) => match.toLowerCase().replace(/[^a-z0-9]/g, "")));
