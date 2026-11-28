@@ -699,7 +699,8 @@ identify.onclick=async()=>{
   statusBox.classList.remove('hidden');errorBox.classList.add('hidden');result.classList.add('hidden');
   try{
     const images=await buildInvestigationImages(selectedFiles,1800,.86);
-    const extractedEvidence=await extractPhotoEvidence(images);
+    const ocrImages=await buildInvestigationImages(selectedFiles,2400,.94);
+    const extractedEvidence=await extractPhotoEvidence(ocrImages);
     const analysisPromise=(async()=>{
       const response=await fetch(FUNCTION_URL,{method:'POST',headers:{'Content-Type':'text/plain;charset=UTF-8'},body:JSON.stringify({images,photoCount:selectedFiles.length,mode:'multi-angle-accuracy',extractedEvidence})});
       const data=await response.json().catch(()=>({}));
