@@ -464,8 +464,9 @@ function rebuiltExplanation(
 }
 
 function deriveVerificationVerdict(primary: InvestigationResult, verification: VerificationResult): VerificationResult["verdict"] {
-  if (knownText(primary.brand) && knownText(verification.brand) &&
-    manufacturersConflict(primary.brand, verification.brand)) return "disagree";
+  const primaryBrand = knownText(primary.brand) ? normalizeManufacturerName(primary.brand) : "";
+  const verificationBrand = knownText(verification.brand) ? normalizeManufacturerName(verification.brand) : "";
+  if (primaryBrand && verificationBrand && manufacturersConflict(primary.brand, verification.brand)) return "disagree";
   if (verification.verdict === "insufficient") return "insufficient";
   if (hasConflictingModelIdentifiers(
     primary.model + " " + primary.model_number,
