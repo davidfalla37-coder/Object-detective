@@ -717,11 +717,37 @@ async function makeCenteredEvidenceCrop(dataUrl){
   context.drawImage(image,sourceX,sourceY,cropWidth,cropHeight,0,0,canvas.width,canvas.height);
   return canvas.toDataURL('image/jpeg',.97);
 }
+async function makeFocusedTextCrop(dataUrl){
+  const image=await loadImage(dataUrl);
+  const width=image.naturalWidth||image.width;
+  const height=image.naturalHeight||image.height;
+  if(!width||!height)return null;
+  // Small product labels are often centred on the underside of a case.
+  // Keep this crop OCR-only; the full photo and broad detail crop still go
+  // to the visual identifier so the crop cannot replace the item context.
+  const cropWidth=Math.max(1,Math.round(width*.62));
+  const cropHeight=Math.max(1,Math.round(height*.18));
+  const sourceX=Math.round((width-cropWidth)/2);
+  const sourceY=Math.round(height*.53-cropHeight/2);
+  const scale=Math.max(1.5,Math.min(3,2400/cropWidth));
+  const canvas=document.createElement('canvas');
+  canvas.width=Math.max(1,Math.round(cropWidth*scale));
+  canvas.height=Math.max(1,Math.round(cropHeight*scale));
+  const context=canvas.getContext('2d');
+  if(!context)return null;
+  context.imageSmoothingEnabled=true;
+  context.imageSmoothingQuality='high';
+  context.drawImage(image,sourceX,sourceY,cropWidth,cropHeight,0,0,canvas.width,canvas.height);
+  return canvas.toDataURL('image/jpeg',.98);
+}
 async function extractPhotoEvidence(images){
   const perPhoto=await Promise.all(images.map(async(image,index)=>{
     const crop=await makeCenteredEvidenceCrop(image).catch(()=>null);
+    const focusedCrop=await makeFocusedTextCrop(image).catch(()=>null);
     const scans=[recognizePhotoText(image,index)];
-    if(crop)scans.push(recognizePhotoText(crop,index));
+    // Read a tight high-resolution crop for label text instead of asking OCR
+    // to decipher the broad centre crop. Keep the broad crop for visual context.
+    if(focusedCrop)scans.push(recognizePhotoText(focusedCrop,index));
     return{evidence:(await Promise.all(scans)).filter(Boolean),detailImage:crop||image};
   }));
   return{
