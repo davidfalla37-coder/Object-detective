@@ -326,8 +326,8 @@ function normalizeVerification(value: unknown): VerificationResult {
     condition_grade: conditionGrade,
     condition_evidence: textValue("condition_evidence"),
     evidence: textValue("evidence")
-      .split(/(?<=[.!?])\\s+/)
-      .filter((sentence) => !/\\bproposed\\s+(value|price|estimate)\\b/i.test(sentence))
+      .split(/(?<=[.!?])\s+/)
+      .filter((sentence) => !/\bproposed\s+(value|price|estimate)\b/i.test(sentence))
       .join(" ")
       .trim(),
     next_photo: textValue("next_photo"),
