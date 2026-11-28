@@ -897,7 +897,7 @@ function buildSoldPriceSearchTerms(data){
   const variant=usefulText(data.variant);
   const parts=[brand,model,variant].filter(Boolean);
   const modelCode=usefulText(data.model_number);
-  if(modelCode&&/[A-Z]{1,10}[- ]?\\d+/i.test(modelCode))parts.push(modelCode);
+  if(modelCode&&/[A-Z]{1,10}[- ]?\d+/i.test(modelCode))parts.push(modelCode);
   if(parts.length<2)parts.push(usefulText(data.object),usefulText(data.category));
   const unique=[];
   const seen=new Set();
