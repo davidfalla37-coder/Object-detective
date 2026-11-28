@@ -3,9 +3,14 @@ package com.objectdetective.app
 import android.app.Activity
 import android.webkit.JavascriptInterface
 import android.webkit.WebView
+import android.graphics.BitmapFactory
+import android.util.Base64
 import com.google.mlkit.vision.codescanner.GmsBarcodeScanning
 import com.google.mlkit.vision.codescanner.GmsBarcodeScannerOptions
 import com.google.mlkit.vision.barcode.common.Barcode
+import com.google.mlkit.vision.common.InputImage
+import com.google.mlkit.vision.text.TextRecognition
+import com.google.mlkit.vision.text.latin.TextRecognizerOptions
 import org.json.JSONObject
 
 class BarcodeScannerBridge(
@@ -63,6 +68,49 @@ class BarcodeScannerBridge(
                     }
                 }
         }
+    }
+
+    @JavascriptInterface
+    fun recognizeText(dataUrl: String, requestId: String, photoIndex: Int) {
+        try {
+            val encoded = dataUrl.substringAfter(",", "")
+            if (encoded.isBlank()) {
+                sendOcrResult(requestId, photoIndex, "", "Invalid image data.")
+                return
+            }
+            val bytes = Base64.decode(encoded, Base64.DEFAULT)
+            val bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
+            if (bitmap == null) {
+                sendOcrResult(requestId, photoIndex, "", "Image could not be decoded.")
+                return
+            }
+
+            val recognizer = TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS)
+            try {
+                recognizer.process(InputImage.fromBitmap(bitmap, 0))
+                    .addOnSuccessListener { result ->
+                        sendOcrResult(requestId, photoIndex, result.text.take(4000), "")
+                    }
+                    .addOnFailureListener {
+                        sendOcrResult(requestId, photoIndex, "", "Text recognition unavailable.")
+                    }
+                    .addOnCompleteListener {
+                        bitmap.recycle()
+                        recognizer.close()
+                    }
+            } catch (error: Exception) {
+                bitmap.recycle()
+                recognizer.close()
+                sendOcrResult(requestId, photoIndex, "", "Text recognition unavailable.")
+            }
+        } catch (error: Exception) {
+            sendOcrResult(requestId, photoIndex, "", "Image processing failed.")
+        }
+    }
+
+    private fun sendOcrResult(requestId: String, photoIndex: Int, text: String, error: String) {
+        val script = "window.onNativeOcrResult?.(${JSONObject.quote(requestId)}, $photoIndex, ${JSONObject.quote(text)}, ${JSONObject.quote(error)})"
+        webView.post { webView.evaluateJavascript(script, null) }
     }
 
     private fun formatName(format: Int): String = when (format) {
