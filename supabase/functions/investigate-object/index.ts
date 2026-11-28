@@ -1,4 +1,5 @@
 import { applyBrandConflictFallback } from "./identity-conflict.ts";
+import { hasConflictingModelIdentifiers } from "./identity-evidence.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -452,6 +453,10 @@ function deriveVerificationVerdict(primary: InvestigationResult, verification: V
   const verificationBrand = knownText(verification.brand) ? normalize(verification.brand) : "";
   if (primaryBrand && verificationBrand && primaryBrand !== verificationBrand) return "disagree";
   if (verification.verdict === "insufficient") return "insufficient";
+  if (hasConflictingModelIdentifiers(
+    primary.model + " " + primary.model_number,
+    verification.model + " " + verification.model_number,
+  )) return "partial";
 
   const ignored = new Set(["the", "and", "with", "from", "used", "item", "device", "product", "this", "that"]);
   const terms = (value: string): Set<string> => new Set(
@@ -785,6 +790,8 @@ async function verifyIdentification(
               text: [
                 "Act as an independent forensic product-identification verifier.",
                 "Independently inspect the supplied photograph(s) from scratch. There is no candidate answer; identify only the object and manufacturer supported by visible evidence.",
+                "First check whether all photos show the same physical item. Never combine a maker mark or model code from a different object, an unrelated background item, or an unlinked package. If the photo set is mixed, retain the broadest supported identification and mark the exact model unconfirmed.",
+                "Compare model/reference codes across the views. If the photos or first pass give different model codes, do not choose one by guesswork; report the conflict as partial agreement and leave the exact model unconfirmed.",
                 "Assess condition independently using the photographs. Cross-check condition and condition_evidence against the object and each other. Never describe the same component with conflicting materials, such as calling a watch strap silicone in object but leather in condition. If its material is uncertain, use neutral wording such as 'strap' and describe only visible wear; do not guess leather, silicone, rubber or another material.",
                 "Use visible evidence only. Never invent text, logos, model numbers, serial numbers, variants, dimensions or provenance.",
                 "Read visible logos and embossed words in every orientation, including upside down or rotated; do not replace an uncertain wordmark with a visually similar brand. Never identify a manufacturer from a faint/ambiguous logo or from design resemblance alone. Clearly readable manufacturer text on retail packaging that visibly belongs to the photographed item supports the brand even if the device logo is faint. If neither the item nor its matching packaging provides readable manufacturer evidence, set brand to Unknown and describe only the broad object type.",
@@ -1039,6 +1046,8 @@ Deno.serve(async (request: Request): Promise<Response> => {
               type: "input_text",
               text: [
                 "Identify the whole item shown in the photograph as accurately as possible, including how its visible major components fit together.",
+                "Before combining evidence across photos, check that they show the same physical item. Do not use a logo, label, model code, or serial from a different object in the frame or from an unrelated photo. If the set contains different items, do not merge their identity or value; identify the primary item cautiously and state that the photos are mixed.",
+                "Use model/reference codes only when they belong to the photographed item. If separate views appear to show conflicting model codes, keep the broad item description, set the exact model to Unknown/not_confirmed, lower exact-match confidence, and request the clearest label photo.",
                 "Do not name a replaceable part as if it were the complete photographed item. If a larger host device or assembly is visible, describe the whole item in object and identify a component model separately in model or variant.",
                 "For example, if a vape tank is attached to a mod, describe the photographed object as the complete vape device with the identified tank; do not infer the mod's model from the tank's label.",
                 "General confidence is for identifying the complete photographed item. If only a component is identified or the host device remains unknown, lower confidence and explain the uncertainty. Confidence does not validate the value estimate, condition, completeness, or marketplace results.",
