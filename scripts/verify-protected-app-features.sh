@@ -3,6 +3,10 @@ set -euo pipefail
 FILE="app/src/main/assets/index-2.html"
 required=(
   'id="od-bottom-nav"'
+  'id="sold-price-search"'
+  'function updateSoldPriceSearch(data)'
+  'url.searchParams.set("LH_Sold","1")'
+  'url.searchParams.set("LH_Complete","1")'
   '.od-screen'
   'indexedDB.open(HISTORY_PHOTOS_DB'
   'restoreHistoryPhotos(item.id)'
