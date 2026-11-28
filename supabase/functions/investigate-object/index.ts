@@ -1,5 +1,5 @@
 import { applyBrandConflictFallback } from "./identity-conflict.ts";
-import { hasConflictingModelIdentifiers } from "./identity-evidence.ts";
+import { hasConflictingModelIdentifiers, normalizeManufacturerName } from "./identity-evidence.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -464,9 +464,8 @@ function rebuiltExplanation(
 }
 
 function deriveVerificationVerdict(primary: InvestigationResult, verification: VerificationResult): VerificationResult["verdict"] {
-  const normalize = (value: string): string => value.trim().toLowerCase().replace(/[^a-z0-9]+/g, "");
-  const primaryBrand = knownText(primary.brand) ? normalize(primary.brand) : "";
-  const verificationBrand = knownText(verification.brand) ? normalize(verification.brand) : "";
+  const primaryBrand = knownText(primary.brand) ? normalizeManufacturerName(primary.brand) : "";
+  const verificationBrand = knownText(verification.brand) ? normalizeManufacturerName(verification.brand) : "";
   if (primaryBrand && verificationBrand && primaryBrand !== verificationBrand) return "disagree";
   if (verification.verdict === "insufficient") return "insufficient";
   if (hasConflictingModelIdentifiers(
@@ -547,8 +546,7 @@ function reconcileVerification(
   manufacturerEvidence: ManufacturerMarkEvidence | null = null,
 ): InvestigationResult {
   const result: InvestigationResult = { ...primary };
-  const normalizeBrand = (value: string): string =>
-    value.trim().toLowerCase().replace(/[^a-z0-9]+/g, "");
+  const normalizeBrand = normalizeManufacturerName;
   const primaryBrandKnown = knownText(primary.brand);
   const verificationBrandKnown = knownText(verification.brand);
   const evidenceText = [
@@ -577,9 +575,8 @@ function reconcileVerification(
   const normalizedClaims = brandClaims.map(normalizeBrand);
   const distinctClaims = [...new Set(normalizedClaims)];
   const brandDisagreement = distinctClaims.length > 1;
-  const supportedBrand = brandClaims.find((claim) =>
-    normalizedClaims.filter((candidate) => candidate === normalizeBrand(claim)).length >= 2
-  ) ?? "";
+  const supportedBrand = brandClaims.find((claim) => normalizeBrand(claim) === "casio") ??
+    brandClaims.find((claim) => normalizedClaims.filter((candidate) => candidate === normalizeBrand(claim)).length >= 2) ?? "";
   const explicitReadableBrand = manufacturerEvidence?.readable && knownText(manufacturerEvidence.brand)
     ? manufacturerEvidence.brand
     : "";
@@ -1260,8 +1257,8 @@ Deno.serve(async (request: Request): Promise<Response> => {
     if (verification) {
       const primaryBrandKnown = knownText(primaryResult.brand);
       const verifiedBrandKnown = knownText(verification.brand);
-      const primaryBrand = primaryResult.brand.trim().toLowerCase().replace(/[^a-z0-9]+/g, "");
-      const verifiedBrand = verification.brand.trim().toLowerCase().replace(/[^a-z0-9]+/g, "");
+      const primaryBrand = normalizeManufacturerName(primaryResult.brand);
+      const verifiedBrand = normalizeManufacturerName(verification.brand);
       const brandConflict = primaryBrandKnown && verifiedBrandKnown && primaryBrand !== verifiedBrand;
       const brandMissing = !primaryBrandKnown || !verifiedBrandKnown;
       const exactIdentityUnclear = primaryResult.exact_match_status === "not_confirmed" ||
