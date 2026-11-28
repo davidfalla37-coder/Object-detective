@@ -472,7 +472,7 @@ interface GbpRange { low: number; high: number; }
 
 function parseGbpRange(value: string): GbpRange | null {
   if (!knownText(value) || !value.includes("£")) return null;
-  const amounts = [...value.matchAll(/£\\s*([\\d,]+(?:\\.\\d{1,2})?)/g)]
+  const amounts = [...value.matchAll(/£\s*([\d,]+(?:\.\d{1,2})?)/g)]
     .map((match) => Number(match[1].replace(/,/g, "")))
     .filter((amount) => Number.isFinite(amount) && amount >= 0 && amount <= 10_000_000);
   if (amounts.length === 0) return null;
