@@ -14,7 +14,7 @@
     .card{background:rgba(17,28,48,.95);border:1px solid var(--line);border-radius:22px;padding:18px;margin-top:18px;box-shadow:0 18px 50px #0005}
     .photo{aspect-ratio:4/3;border:2px dashed #486184;border-radius:16px;display:grid;place-items:center;overflow:hidden;background:#091426;text-align:center;color:var(--muted)}.photo{cursor:pointer;touch-action:manipulation;transition:border-color .15s,background-color .15s}.photo:focus-visible{outline:3px solid var(--accent);outline-offset:3px}.photo:active{border-color:var(--accent);background:#102039}.photo[aria-disabled="true"]{cursor:default;opacity:.75}
     .photo img{width:100%;height:100%;object-fit:contain;display:none}.emoji{font-size:52px;display:block}
-    .photo-guide{margin:12px 0 0;font-size:14px}.photo-count{color:var(--accent);font-weight:750}.thumbs{display:flex;gap:8px;margin-top:10px;overflow-x:auto}.thumb-wrap{position:relative;flex:0 0 78px}.thumb{width:78px;height:78px;border-radius:12px;object-fit:cover;border:2px solid #354b6c}.thumb-remove{position:absolute;right:3px;top:3px;width:25px;height:25px;min-height:0;padding:0;border-radius:50%;background:#07101fdd;color:#fff;font-size:15px}.quality{margin-top:10px;padding:10px 12px;border-radius:12px;font-size:14px;border:1px solid #29506b;background:#0b2131;color:#bcecff}.quality.warn{border-color:#745a25;background:#2d2512;color:#ffe2a3}.tip{padding:11px 12px;border-radius:12px;background:#0b1930;border:1px solid #233b5c;color:#c9d6e8;margin-top:12px;font-size:14px}.match-helper{border-color:#365274}.match-helper p{margin:8px 0 12px}.match-fields{display:grid;grid-template-columns:1fr 1fr;gap:10px}.match-fields label{display:block;color:var(--muted);font-size:13px}.match-fields input{width:100%;margin-top:5px;padding:12px;border-radius:11px;border:1px solid #354b6c;background:#091426;color:var(--text);font:inherit}.match-helper .secondary{width:100%;margin-top:10px}.match-note{font-size:13px}.match-helper.strap-mode{border-color:#5276a0}@media(max-width:420px){.match-fields{grid-template-columns:1fr}}
+    .photo-guide{margin:12px 0 0;font-size:14px}.photo-count{color:var(--accent);font-weight:750}.thumbs{display:flex;gap:8px;margin-top:10px;overflow-x:auto}.thumb-wrap{position:relative;flex:0 0 78px}.thumb-select{width:78px;min-height:0;height:82px;padding:0;border:0;border-radius:14px;background:transparent}.thumb{width:78px;height:78px;border-radius:12px;object-fit:cover;border:2px solid #354b6c;display:block}.thumb-select.active .thumb{border-color:#64d6ff;box-shadow:0 0 0 2px #64d6ff66}.thumb-remove{position:absolute;right:3px;top:3px;width:25px;height:25px;min-height:0;padding:0;border-radius:50%;background:#07101fdd;color:#fff;font-size:15px}.quality{margin-top:10px;padding:10px 12px;border-radius:12px;font-size:14px;border:1px solid #29506b;background:#0b2131;color:#bcecff}.quality.warn{border-color:#745a25;background:#2d2512;color:#ffe2a3}.tip{padding:11px 12px;border-radius:12px;background:#0b1930;border:1px solid #233b5c;color:#c9d6e8;margin-top:12px;font-size:14px}.match-helper{border-color:#365274}.match-helper p{margin:8px 0 12px}.match-fields{display:grid;grid-template-columns:1fr 1fr;gap:10px}.match-fields label{display:block;color:var(--muted);font-size:13px}.match-fields input{width:100%;margin-top:5px;padding:12px;border-radius:11px;border:1px solid #354b6c;background:#091426;color:var(--text);font:inherit}.match-helper .secondary{width:100%;margin-top:10px}.match-note{font-size:13px}.match-helper.strap-mode{border-color:#5276a0}@media(max-width:420px){.match-fields{grid-template-columns:1fr}}
     .buttons{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px;margin-top:14px}.photo-actions button{min-height:60px}.camera-action{background:#64d6ff!important;color:#07101f!important;border:2px solid #a6ecff!important;box-shadow:0 0 0 3px #64d6ff33,0 8px 22px #0005}button{border:0;border-radius:14px;padding:15px 10px;min-height:52px;font-size:16px;line-height:1.2;font-weight:750}button.primary{background:#f8fafc;color:#07101f}button.secondary{background:#1b2a44;color:#fff;border:1px solid #354b6c}button:disabled{opacity:.45}
     #status{margin-top:14px;text-align:center;color:var(--accent)}#error{margin-top:14px;color:var(--danger);white-space:pre-wrap}.hidden{display:none!important}
     h2{margin:0 0 8px}.row{display:block;width:100%;padding:13px 0;border-bottom:1px solid var(--line);min-width:0}.label,.value{display:block;width:100%;max-width:none;min-width:0}.label{color:var(--muted)}.value{text-align:left;font-weight:700;margin-top:6px;line-height:1.4;font-size:17px;overflow-wrap:anywhere;word-break:break-word}.explain{color:#d5deeb}.warning{padding:12px;border-radius:12px;background:#332712;color:#f7d794;margin-top:12px;overflow-wrap:anywhere}
@@ -582,6 +582,7 @@ async function restoreHistoryPhotos(id){
 const CORRECTIONS_KEY='object-detective-photo-corrections-v1';
 let selectedFiles=[];
 let photoChecks=[];
+let selectedPhotoIndex=0;
 
 function openCamera(){
   if(selectedFiles.length>=5)return;
@@ -616,10 +617,7 @@ async function addSelectedFiles(fileList){
       selectedFiles.push(selectedFile);
       photoChecks.push(check);
     }
-    const latest=selectedFiles[selectedFiles.length-1];
-    preview.src=URL.createObjectURL(latest);
-    preview.style.display='block';
-    placeholder.classList.add('hidden');
+    if(selectedFiles.length===incoming.length)selectedPhotoIndex=0;
     result.classList.add('hidden');
     errorBox.classList.add('hidden');
   }finally{
@@ -631,6 +629,7 @@ async function addSelectedFiles(fileList){
 clear.onclick=()=>{
   selectedFiles=[];
   photoChecks=[];
+  selectedPhotoIndex=0;
   preview.removeAttribute('src');preview.style.display='none';
   placeholder.classList.remove('hidden');
   identify.disabled=true;result.classList.add('hidden');errorBox.classList.add('hidden');
@@ -651,13 +650,25 @@ function updatePhotoGuide(){
   clear.classList.toggle('hidden',count===0);
   thumbs.classList.toggle('hidden',count===0);
   thumbs.innerHTML='';
+  if(count){
+    selectedPhotoIndex=Math.max(0,Math.min(selectedPhotoIndex,count-1));
+    preview.src=URL.createObjectURL(selectedFiles[selectedPhotoIndex]);
+    preview.style.display='block';
+    placeholder.classList.add('hidden');
+  }else{
+    preview.removeAttribute('src');preview.style.display='none';
+    placeholder.classList.remove('hidden');
+  }
   selectedFiles.forEach((item,index)=>{
     const wrap=document.createElement('div');wrap.className='thumb-wrap';
+    const select=document.createElement('button');select.className='thumb-select'+(index===selectedPhotoIndex?' active':'');select.type='button';select.setAttribute('aria-label',`Show photograph ${index+1}`);select.setAttribute('aria-pressed',index===selectedPhotoIndex?'true':'false');
     const image=document.createElement('img');
-    image.className='thumb';image.alt=`Photograph ${index+1}`;image.src=URL.createObjectURL(item);
+    image.className='thumb';image.alt='';image.src=URL.createObjectURL(item);
+    select.appendChild(image);
+    select.onclick=()=>{selectedPhotoIndex=index;updatePhotoGuide()};
     const remove=document.createElement('button');remove.className='thumb-remove';remove.type='button';remove.textContent='×';remove.setAttribute('aria-label',`Remove photograph ${index+1}`);
-    remove.onclick=()=>{selectedFiles.splice(index,1);photoChecks.splice(index,1);if(selectedFiles.length){preview.src=URL.createObjectURL(selectedFiles[selectedFiles.length-1])}else{preview.removeAttribute('src');preview.style.display='none';placeholder.classList.remove('hidden')}result.classList.add('hidden');updatePhotoGuide()};
-    wrap.append(image,remove);thumbs.appendChild(wrap);
+    remove.onclick=event=>{event.stopPropagation();selectedFiles.splice(index,1);photoChecks.splice(index,1);if(index<selectedPhotoIndex)selectedPhotoIndex--;else if(index===selectedPhotoIndex)selectedPhotoIndex=Math.min(index,selectedFiles.length-1);result.classList.add('hidden');updatePhotoGuide()};
+    wrap.append(select,remove);thumbs.appendChild(wrap);
   });
   const warnings=photoChecks.map((check,index)=>check.level==='warn'?`Photo ${index+1}: ${check.message}`:'').filter(Boolean);
   qualityBox.classList.toggle('hidden',count===0);
