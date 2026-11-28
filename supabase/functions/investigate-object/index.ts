@@ -1,5 +1,5 @@
 import { applyBrandConflictFallback } from "./identity-conflict.ts";
-import { hasConflictingModelIdentifiers, normalizeManufacturerName } from "./identity-evidence.ts";
+import { hasConflictingModelIdentifiers, manufacturersConflict, normalizeManufacturerName } from "./identity-evidence.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -464,9 +464,8 @@ function rebuiltExplanation(
 }
 
 function deriveVerificationVerdict(primary: InvestigationResult, verification: VerificationResult): VerificationResult["verdict"] {
-  const primaryBrand = knownText(primary.brand) ? normalizeManufacturerName(primary.brand) : "";
-  const verificationBrand = knownText(verification.brand) ? normalizeManufacturerName(verification.brand) : "";
-  if (primaryBrand && verificationBrand && primaryBrand !== verificationBrand) return "disagree";
+  if (knownText(primary.brand) && knownText(verification.brand) &&
+    manufacturersConflict(primary.brand, verification.brand)) return "disagree";
   if (verification.verdict === "insufficient") return "insufficient";
   if (hasConflictingModelIdentifiers(
     primary.model + " " + primary.model_number,
@@ -1257,9 +1256,8 @@ Deno.serve(async (request: Request): Promise<Response> => {
     if (verification) {
       const primaryBrandKnown = knownText(primaryResult.brand);
       const verifiedBrandKnown = knownText(verification.brand);
-      const primaryBrand = normalizeManufacturerName(primaryResult.brand);
-      const verifiedBrand = normalizeManufacturerName(verification.brand);
-      const brandConflict = primaryBrandKnown && verifiedBrandKnown && primaryBrand !== verifiedBrand;
+      const brandConflict = primaryBrandKnown && verifiedBrandKnown &&
+        manufacturersConflict(primaryResult.brand, verification.brand);
       const brandMissing = !primaryBrandKnown || !verifiedBrandKnown;
       const exactIdentityUnclear = primaryResult.exact_match_status === "not_confirmed" ||
         verification.exact_match_status === "not_confirmed";
