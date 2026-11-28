@@ -667,14 +667,41 @@ function updatePhotoGuide(){
   photoTip.textContent=count===0?'Show the whole object first. Include a label or model number if visible. For watch straps, photograph both attachment points and the back of the watch; a ruler beside the strap helps show width.':count===1?'For better matching, add a close-up of the label or model number. For watch straps, show the connector and watch back.':count===2?'A final close-up of any code, connector or distinctive detail can help narrow the match.':'Extra views are ready. Photo quality does not confirm the exact model or fit.';
 }
 
+const nativeOcrPending=new Map();
+window.onNativeOcrResult=(requestId,photoIndex,text,error)=>{
+  const pending=nativeOcrPending.get(requestId);
+  if(!pending)return;
+  clearTimeout(pending.timer);nativeOcrPending.delete(requestId);
+  pending.resolve(text?{photoIndex,text,barcodes:[]}:null);
+};
+function recognizePhotoText(imageDataUrl,photoIndex){
+  if(!window.AndroidScanner||typeof window.AndroidScanner.recognizeText!=="function")return Promise.resolve(null);
+  return new Promise(resolve=>{
+    const requestId="ocr-"+Date.now()+"-"+photoIndex+"-"+Math.random().toString(36).slice(2);
+    const timer=setTimeout(()=>{nativeOcrPending.delete(requestId);resolve(null);},7000);
+    nativeOcrPending.set(requestId,{resolve,timer});
+    try{window.AndroidScanner.recognizeText(imageDataUrl,requestId,photoIndex);}
+    catch(error){clearTimeout(timer);nativeOcrPending.delete(requestId);resolve(null);}
+  });
+}
+async function extractPhotoEvidence(images){
+  const evidence=[];
+  for(let i=0;i<images.length;i++){
+    const result=await recognizePhotoText(images[i],i);
+    if(result)evidence.push(result);
+  }
+  return evidence;
+}
+
 identify.onclick=async()=>{
   if(!selectedFiles.length)return;
   identify.disabled=true;takePhoto.disabled=true;chooseGallery.disabled=true;
   statusBox.classList.remove('hidden');errorBox.classList.add('hidden');result.classList.add('hidden');
   try{
     const images=await buildInvestigationImages(selectedFiles,1800,.86);
+    const extractedEvidence=await extractPhotoEvidence(images);
     const analysisPromise=(async()=>{
-      const response=await fetch(FUNCTION_URL,{method:'POST',headers:{'Content-Type':'text/plain;charset=UTF-8'},body:JSON.stringify({images,photoCount:selectedFiles.length,mode:'multi-angle-accuracy'})});
+      const response=await fetch(FUNCTION_URL,{method:'POST',headers:{'Content-Type':'text/plain;charset=UTF-8'},body:JSON.stringify({images,photoCount:selectedFiles.length,mode:'multi-angle-accuracy',extractedEvidence})});
       const data=await response.json().catch(()=>({}));
       return{response,data};
     })();
