@@ -1,4 +1,4 @@
-import { hasConflictingModelIdentifiers } from "./identity-evidence.ts";
+import { hasConflictingModelIdentifiers, manufacturersConflict, normalizeManufacturerName } from "./identity-evidence.ts";
 
 Deno.test("different model codes cannot be treated as an exact agreement", () => {
   if (!hasConflictingModelIdentifiers("Samsung Galaxy Buds3 Pro SM-R630", "Samsung Galaxy Buds2 Pro SM-R510")) {
@@ -24,5 +24,21 @@ Deno.test("generic names and missing identifiers do not create a false conflict"
   }
   if (hasConflictingModelIdentifiers("SM-R630", "Unknown")) {
     throw new Error("Expected one missing identifier to leave the result partial, not conflicting");
+  }
+});
+
+
+Deno.test("Casio and G-SHOCK are one manufacturer, not an identity conflict", () => {
+  if (normalizeManufacturerName("CASIO") !== normalizeManufacturerName("G-SHOCK")) {
+    throw new Error("Expected the Casio maker mark and G-SHOCK product-line mark to agree");
+  }
+  if (manufacturersConflict("Casio", "G-SHOCK")) {
+    throw new Error("Expected Casio/G-SHOCK photos to avoid the unknown-identity fallback");
+  }
+});
+
+Deno.test("genuinely different manufacturers still trigger a conflict", () => {
+  if (!manufacturersConflict("Casio", "Samsung")) {
+    throw new Error("Expected unrelated manufacturer marks to remain a conflict");
   }
 });
