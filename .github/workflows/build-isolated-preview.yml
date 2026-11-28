@@ -7,6 +7,7 @@ on:
       - fix/free-identification-reliability-preview-20261127
       - fix/pro-identification-reliability-20261127
       - fix/global-identification-reliability-20261127
+      - fix/free-used-value-consensus-2026-11-28
   workflow_dispatch:
 
 permissions:
@@ -41,7 +42,7 @@ jobs:
         run: |
           FILE="app/src/main/assets/index-2.html"
           LIVE_URL="https://gboyflbwcobhzbvpdtat.supabase.co/functions/v1/investigate-object"
-          PREVIEW_URL="https://gboyflbwcobhzbvpdtat.supabase.co/functions/v1/investigate-object-preview"
+          PREVIEW_URL="https://gboyflbwcobhzbvpdtat.supabase.co/functions/v1/investigate-object-free-preview"
           grep -Fq "$LIVE_URL" "$FILE"
           sed -i "s|$LIVE_URL|$PREVIEW_URL|g" "$FILE"
           grep -Fq "$PREVIEW_URL" "$FILE"

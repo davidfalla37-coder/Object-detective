@@ -14,7 +14,7 @@
     .card{background:rgba(17,28,48,.95);border:1px solid var(--line);border-radius:22px;padding:18px;margin-top:18px;box-shadow:0 18px 50px #0005}
     .photo{aspect-ratio:4/3;border:2px dashed #486184;border-radius:16px;display:grid;place-items:center;overflow:hidden;background:#091426;text-align:center;color:var(--muted)}.photo{cursor:pointer;touch-action:manipulation;transition:border-color .15s,background-color .15s}.photo:focus-visible{outline:3px solid var(--accent);outline-offset:3px}.photo:active{border-color:var(--accent);background:#102039}.photo[aria-disabled="true"]{cursor:default;opacity:.75}
     .photo img{width:100%;height:100%;object-fit:contain;display:none}.emoji{font-size:52px;display:block}
-    .photo-guide{margin:12px 0 0;font-size:14px}.photo-count{color:var(--accent);font-weight:750}.thumbs{display:flex;gap:8px;margin-top:10px;overflow-x:auto}.thumb-wrap{position:relative;flex:0 0 78px}.thumb{width:78px;height:78px;border-radius:12px;object-fit:cover;border:2px solid #354b6c}.thumb-remove{position:absolute;right:3px;top:3px;width:25px;height:25px;min-height:0;padding:0;border-radius:50%;background:#07101fdd;color:#fff;font-size:15px}.quality{margin-top:10px;padding:10px 12px;border-radius:12px;font-size:14px;border:1px solid #29506b;background:#0b2131;color:#bcecff}.quality.warn{border-color:#745a25;background:#2d2512;color:#ffe2a3}.tip{padding:11px 12px;border-radius:12px;background:#0b1930;border:1px solid #233b5c;color:#c9d6e8;margin-top:12px;font-size:14px}.match-helper{border-color:#365274}.match-helper p{margin:8px 0 12px}.match-fields{display:grid;grid-template-columns:1fr 1fr;gap:10px}.match-fields label{display:block;color:var(--muted);font-size:13px}.match-fields input{width:100%;margin-top:5px;padding:12px;border-radius:11px;border:1px solid #354b6c;background:#091426;color:var(--text);font:inherit}.match-helper .secondary{width:100%;margin-top:10px}.match-note{font-size:13px}.match-helper.strap-mode{border-color:#5276a0}@media(max-width:420px){.match-fields{grid-template-columns:1fr}}
+    .photo-guide{margin:12px 0 0;font-size:14px}.photo-count{color:var(--accent);font-weight:750}.thumbs{display:flex;gap:8px;margin-top:10px;overflow-x:auto}.thumb-wrap{position:relative;flex:0 0 78px}.thumb-select{width:78px;min-height:0;height:82px;padding:0;border:0;border-radius:14px;background:transparent}.thumb{width:78px;height:78px;border-radius:12px;object-fit:cover;border:2px solid #354b6c;display:block}.thumb-select.active .thumb{border-color:#64d6ff;box-shadow:0 0 0 2px #64d6ff66}.thumb-remove{position:absolute;right:3px;top:3px;width:25px;height:25px;min-height:0;padding:0;border-radius:50%;background:#07101fdd;color:#fff;font-size:15px}.quality{margin-top:10px;padding:10px 12px;border-radius:12px;font-size:14px;border:1px solid #29506b;background:#0b2131;color:#bcecff}.quality.warn{border-color:#745a25;background:#2d2512;color:#ffe2a3}.tip{padding:11px 12px;border-radius:12px;background:#0b1930;border:1px solid #233b5c;color:#c9d6e8;margin-top:12px;font-size:14px}.match-helper{border-color:#365274}.match-helper p{margin:8px 0 12px}.match-fields{display:grid;grid-template-columns:1fr 1fr;gap:10px}.match-fields label{display:block;color:var(--muted);font-size:13px}.match-fields input{width:100%;margin-top:5px;padding:12px;border-radius:11px;border:1px solid #354b6c;background:#091426;color:var(--text);font:inherit}.match-helper .secondary{width:100%;margin-top:10px}.match-note{font-size:13px}.match-helper.strap-mode{border-color:#5276a0}@media(max-width:420px){.match-fields{grid-template-columns:1fr}}
     .buttons{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px;margin-top:14px}.photo-actions button{min-height:60px}.camera-action{background:#64d6ff!important;color:#07101f!important;border:2px solid #a6ecff!important;box-shadow:0 0 0 3px #64d6ff33,0 8px 22px #0005}button{border:0;border-radius:14px;padding:15px 10px;min-height:52px;font-size:16px;line-height:1.2;font-weight:750}button.primary{background:#f8fafc;color:#07101f}button.secondary{background:#1b2a44;color:#fff;border:1px solid #354b6c}button:disabled{opacity:.45}
     #status{margin-top:14px;text-align:center;color:var(--accent)}#error{margin-top:14px;color:var(--danger);white-space:pre-wrap}.hidden{display:none!important}
     h2{margin:0 0 8px}.row{display:block;width:100%;padding:13px 0;border-bottom:1px solid var(--line);min-width:0}.label,.value{display:block;width:100%;max-width:none;min-width:0}.label{color:var(--muted)}.value{text-align:left;font-weight:700;margin-top:6px;line-height:1.4;font-size:17px;overflow-wrap:anywhere;word-break:break-word}.explain{color:#d5deeb}.warning{padding:12px;border-radius:12px;background:#332712;color:#f7d794;margin-top:12px;overflow-wrap:anywhere}
@@ -331,6 +331,8 @@ main{
     <div class="row"><span class="label">Category</span><span class="value" id="category"></span></div>
     <div class="row"><span class="label">Purpose</span><span class="value" id="purpose"></span></div>
     <div class="row"><span class="label">Estimated second-hand value</span><span class="value" id="value_estimate"></span></div>
+    <a class="link-button" id="sold-price-search" href="https://www.ebay.co.uk/sch/ebayadvsearch" target="_blank" rel="noopener noreferrer">Compare recent eBay UK sold prices</a>
+    <p class="explain" id="sold-price-note">Manual comparison only. Confirm the exact model, condition, postage and included parts. eBay Product Research can show actual accepted-offer prices.</p>
     <div class="row"><span class="label">Condition assessment</span><span class="condition-badge cannot-tell" id="condition_badge">Can't tell</span><span class="value" id="condition"></span></div>
     <div class="row"><span class="label">Object-type confidence</span><span class="value" id="confidence"></span></div>
     <p class="explain" id="confidence-note">This is an AI estimate of the broad object identification, not a verified probability. Exact model certainty is shown separately.</p>
@@ -580,6 +582,7 @@ async function restoreHistoryPhotos(id){
 const CORRECTIONS_KEY='object-detective-photo-corrections-v1';
 let selectedFiles=[];
 let photoChecks=[];
+let selectedPhotoIndex=0;
 
 function openCamera(){
   if(selectedFiles.length>=5)return;
@@ -614,10 +617,7 @@ async function addSelectedFiles(fileList){
       selectedFiles.push(selectedFile);
       photoChecks.push(check);
     }
-    const latest=selectedFiles[selectedFiles.length-1];
-    preview.src=URL.createObjectURL(latest);
-    preview.style.display='block';
-    placeholder.classList.add('hidden');
+    if(selectedFiles.length===incoming.length)selectedPhotoIndex=0;
     result.classList.add('hidden');
     errorBox.classList.add('hidden');
   }finally{
@@ -629,6 +629,7 @@ async function addSelectedFiles(fileList){
 clear.onclick=()=>{
   selectedFiles=[];
   photoChecks=[];
+  selectedPhotoIndex=0;
   preview.removeAttribute('src');preview.style.display='none';
   placeholder.classList.remove('hidden');
   identify.disabled=true;result.classList.add('hidden');errorBox.classList.add('hidden');
@@ -649,13 +650,25 @@ function updatePhotoGuide(){
   clear.classList.toggle('hidden',count===0);
   thumbs.classList.toggle('hidden',count===0);
   thumbs.innerHTML='';
+  if(count){
+    selectedPhotoIndex=Math.max(0,Math.min(selectedPhotoIndex,count-1));
+    preview.src=URL.createObjectURL(selectedFiles[selectedPhotoIndex]);
+    preview.style.display='block';
+    placeholder.classList.add('hidden');
+  }else{
+    preview.removeAttribute('src');preview.style.display='none';
+    placeholder.classList.remove('hidden');
+  }
   selectedFiles.forEach((item,index)=>{
     const wrap=document.createElement('div');wrap.className='thumb-wrap';
+    const select=document.createElement('button');select.className='thumb-select'+(index===selectedPhotoIndex?' active':'');select.type='button';select.setAttribute('aria-label',`Show photograph ${index+1}`);select.setAttribute('aria-pressed',index===selectedPhotoIndex?'true':'false');
     const image=document.createElement('img');
-    image.className='thumb';image.alt=`Photograph ${index+1}`;image.src=URL.createObjectURL(item);
+    image.className='thumb';image.alt='';image.src=URL.createObjectURL(item);
+    select.appendChild(image);
+    select.onclick=()=>{selectedPhotoIndex=index;updatePhotoGuide()};
     const remove=document.createElement('button');remove.className='thumb-remove';remove.type='button';remove.textContent='×';remove.setAttribute('aria-label',`Remove photograph ${index+1}`);
-    remove.onclick=()=>{selectedFiles.splice(index,1);photoChecks.splice(index,1);if(selectedFiles.length){preview.src=URL.createObjectURL(selectedFiles[selectedFiles.length-1])}else{preview.removeAttribute('src');preview.style.display='none';placeholder.classList.remove('hidden')}result.classList.add('hidden');updatePhotoGuide()};
-    wrap.append(image,remove);thumbs.appendChild(wrap);
+    remove.onclick=event=>{event.stopPropagation();selectedFiles.splice(index,1);photoChecks.splice(index,1);if(index<selectedPhotoIndex)selectedPhotoIndex--;else if(index===selectedPhotoIndex)selectedPhotoIndex=Math.min(index,selectedFiles.length-1);result.classList.add('hidden');updatePhotoGuide()};
+    wrap.append(select,remove);thumbs.appendChild(wrap);
   });
   const warnings=photoChecks.map((check,index)=>check.level==='warn'?`Photo ${index+1}: ${check.message}`:'').filter(Boolean);
   qualityBox.classList.toggle('hidden',count===0);
@@ -665,14 +678,94 @@ function updatePhotoGuide(){
   photoTip.textContent=count===0?'Show the whole object first. Include a label or model number if visible. For watch straps, photograph both attachment points and the back of the watch; a ruler beside the strap helps show width.':count===1?'For better matching, add a close-up of the label or model number. For watch straps, show the connector and watch back.':count===2?'A final close-up of any code, connector or distinctive detail can help narrow the match.':'Extra views are ready. Photo quality does not confirm the exact model or fit.';
 }
 
+const nativeOcrPending=new Map();
+window.onNativeOcrResult=(requestId,photoIndex,text,error)=>{
+  const pending=nativeOcrPending.get(requestId);
+  if(!pending)return;
+  clearTimeout(pending.timer);nativeOcrPending.delete(requestId);
+  pending.resolve(text?{photoIndex,text,barcodes:[]}:null);
+};
+function recognizePhotoText(imageDataUrl,photoIndex){
+  if(!window.AndroidScanner||typeof window.AndroidScanner.recognizeText!=="function")return Promise.resolve(null);
+  return new Promise(resolve=>{
+    const requestId="ocr-"+Date.now()+"-"+photoIndex+"-"+Math.random().toString(36).slice(2);
+    const timer=setTimeout(()=>{nativeOcrPending.delete(requestId);resolve(null);},7000);
+    nativeOcrPending.set(requestId,{resolve,timer});
+    try{window.AndroidScanner.recognizeText(imageDataUrl,requestId,photoIndex);}
+    catch(error){clearTimeout(timer);nativeOcrPending.delete(requestId);resolve(null);}
+  });
+}
+async function makeCenteredEvidenceCrop(dataUrl){
+  const image=await loadImage(dataUrl);
+  const width=image.naturalWidth||image.width;
+  const height=image.naturalHeight||image.height;
+  if(!width||!height)return null;
+  // Scan the full photo and an enlarged centre crop so small labels are easier
+  // to read without losing markings near the edges.
+  const cropWidth=Math.max(1,Math.round(width*.76));
+  const cropHeight=Math.max(1,Math.round(height*.48));
+  const sourceX=Math.round((width-cropWidth)/2);
+  const sourceY=Math.round((height-cropHeight)/2);
+  const scale=Math.min(2.5,Math.max(1.5,1800/Math.max(cropWidth,cropHeight)));
+  const canvas=document.createElement('canvas');
+  canvas.width=Math.max(1,Math.round(cropWidth*scale));
+  canvas.height=Math.max(1,Math.round(cropHeight*scale));
+  const context=canvas.getContext('2d');
+  if(!context)return null;
+  context.imageSmoothingEnabled=true;
+  context.imageSmoothingQuality='high';
+  context.drawImage(image,sourceX,sourceY,cropWidth,cropHeight,0,0,canvas.width,canvas.height);
+  return canvas.toDataURL('image/jpeg',.97);
+}
+async function makeFocusedTextCrop(dataUrl){
+  const image=await loadImage(dataUrl);
+  const width=image.naturalWidth||image.width;
+  const height=image.naturalHeight||image.height;
+  if(!width||!height)return null;
+  // Small product labels are often centred on the underside of a case.
+  // Keep this crop OCR-only; the full photo and broad detail crop still go
+  // to the visual identifier so the crop cannot replace the item context.
+  const cropWidth=Math.max(1,Math.round(width*.62));
+  const cropHeight=Math.max(1,Math.round(height*.18));
+  const sourceX=Math.round((width-cropWidth)/2);
+  const sourceY=Math.round(height*.53-cropHeight/2);
+  const scale=Math.max(1.5,Math.min(3,2400/cropWidth));
+  const canvas=document.createElement('canvas');
+  canvas.width=Math.max(1,Math.round(cropWidth*scale));
+  canvas.height=Math.max(1,Math.round(cropHeight*scale));
+  const context=canvas.getContext('2d');
+  if(!context)return null;
+  context.imageSmoothingEnabled=true;
+  context.imageSmoothingQuality='high';
+  context.drawImage(image,sourceX,sourceY,cropWidth,cropHeight,0,0,canvas.width,canvas.height);
+  return canvas.toDataURL('image/jpeg',.98);
+}
+async function extractPhotoEvidence(images){
+  const perPhoto=await Promise.all(images.map(async(image,index)=>{
+    const crop=await makeCenteredEvidenceCrop(image).catch(()=>null);
+    const focusedCrop=await makeFocusedTextCrop(image).catch(()=>null);
+    const scans=[recognizePhotoText(image,index)];
+    // Read a tight high-resolution crop for label text instead of asking OCR
+    // to decipher the broad centre crop. Keep the broad crop for visual context.
+    if(focusedCrop)scans.push(recognizePhotoText(focusedCrop,index));
+    return{evidence:(await Promise.all(scans)).filter(Boolean),detailImage:focusedCrop||crop||image};
+  }));
+  return{
+    extractedEvidence:perPhoto.flatMap(photo=>photo.evidence),
+    detailImages:perPhoto.map(photo=>photo.detailImage)
+  };
+}
+
 identify.onclick=async()=>{
   if(!selectedFiles.length)return;
   identify.disabled=true;takePhoto.disabled=true;chooseGallery.disabled=true;
   statusBox.classList.remove('hidden');errorBox.classList.add('hidden');result.classList.add('hidden');
   try{
     const images=await buildInvestigationImages(selectedFiles,1800,.86);
+    const ocrImages=await buildInvestigationImages(selectedFiles,2400,.94);
+    const {extractedEvidence,detailImages}=await extractPhotoEvidence(ocrImages);
     const analysisPromise=(async()=>{
-      const response=await fetch(FUNCTION_URL,{method:'POST',headers:{'Content-Type':'text/plain;charset=UTF-8'},body:JSON.stringify({images,photoCount:selectedFiles.length,mode:'multi-angle-accuracy'})});
+      const response=await fetch(FUNCTION_URL,{method:'POST',headers:{'Content-Type':'text/plain;charset=UTF-8'},body:JSON.stringify({images,detailImages,photoCount:selectedFiles.length,mode:'multi-angle-accuracy',extractedEvidence})});
       const data=await response.json().catch(()=>({}));
       return{response,data};
     })();
@@ -770,6 +863,7 @@ function render(data,saveResult=true){
   const exactLabels={exact:'AI reports an exact match',likely:'Likely match — check the model number',not_confirmed:'Exact model not confirmed'};
   document.getElementById('exact-match').textContent=(exactLabels[exactStatus]||exactLabels.not_confirmed)+(exactPct===null?'':` (${exactPct}%)`);
   document.getElementById('exact-match-evidence').textContent=data.exact_match_evidence||'Look for a readable brand and model number to confirm an exact match.';
+  updateSoldPriceSearch(data);
   currentFeedbackData=data;
   document.getElementById('feedback-correction').classList.add('hidden');
   document.getElementById('feedback-vote').classList.remove('hidden');
@@ -887,6 +981,36 @@ function buildShopSearchTerms(data){
   const detected=[data.brand,data.model_number,data.model,data.variant,data.object,data.category]
     .map(usefulText).filter(Boolean);
   return [...new Set([...detected,...manual].map(x=>x.trim()).filter(Boolean))].join(" ");
+}
+function buildSoldPriceSearchTerms(data){
+  const brand=usefulText(data.brand);
+  const model=usefulText(data.model);
+  const variant=usefulText(data.variant);
+  const parts=[brand,model,variant].filter(Boolean);
+  const modelCode=usefulText(data.model_number);
+  if(modelCode&&/[A-Z]{1,10}[- ]?\d+/i.test(modelCode))parts.push(modelCode);
+  if(parts.length<2)parts.push(usefulText(data.object),usefulText(data.category));
+  const unique=[];
+  const seen=new Set();
+  for(const part of parts){
+    const clean=part.trim();
+    const key=clean.toLowerCase().replace(/[^a-z0-9]+/g,"");
+    if(clean&&key&&!seen.has(key)){seen.add(key);unique.push(clean)}
+  }
+  return unique.join(" ");
+}
+function updateSoldPriceSearch(data){
+  const terms=buildSoldPriceSearchTerms(data);
+  const link=document.getElementById("sold-price-search");
+  const note=document.getElementById("sold-price-note");
+  const url=new URL("https://www.ebay.co.uk/sch/i.html");
+  if(terms)url.searchParams.set("_nkw",terms);
+  url.searchParams.set("LH_Sold","1");
+  url.searchParams.set("LH_Complete","1");
+  link.href=url.toString();
+  note.textContent=data.exact_match_status==="exact"
+    ? "Manual comparison only. Match the exact model, condition, postage and included parts. eBay Product Research can show actual accepted-offer prices."
+    : "Search is based on the likely identification. Confirm the exact model, condition, postage and included parts; this is not a verified valuation.";
 }
 function updateShoppingSearches(data){
   const query=encodeURIComponent(buildShopSearchTerms(data));

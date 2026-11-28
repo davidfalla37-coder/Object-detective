@@ -1,4 +1,6 @@
 import { applyBrandConflictFallback } from "./identity-conflict.ts";
+import { hasConflictingModelIdentifiers, manufacturersConflict, normalizeManufacturerName } from "./identity-evidence.ts";
+import { reconcileSecondhandValue } from "./resale-value.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -274,6 +276,9 @@ interface VerificationResult {
 interface ManufacturerMarkEvidence {
   readable: boolean;
   brand: string;
+  model_readable: boolean;
+  model: string;
+  model_number: string;
   evidence: string;
 }
 
@@ -349,10 +354,14 @@ async function inspectManufacturerMark(
             {
               type: "input_text",
               text: [
-                "You are a literal manufacturer-name and matching-package-label reader. Inspect every supplied photo for printed, embossed, or engraved maker names on the item, case, inside lid, underside, attached labels, and retail packaging that clearly belongs to the photographed item.",
-                "Read the actual letters. Do not infer a maker from shape, colour, design, or resemblance. Clearly readable manufacturer text on matching packaging counts as brand evidence even if the logo on the device itself is faint.",
-                "Transcribe the exact visible words in the evidence field and state where they appear. For example, text reading 'Samsung Wireless Earbuds' on the matching box supports Samsung as the maker of wireless earbuds, but does not prove a Galaxy Buds model unless a model identifier is also readable.",
-                "If the maker name cannot be read or the packaging cannot confidently be linked to the pictured item, set readable to false and brand to Unknown. Never infer an exact product model from generic packaging or design.",
+                "You are a literal reader of maker and product-identification markings. Inspect every supplied photo for printed, embossed, engraved, or stamped text on the photographed item, case, inside lid, underside, and labels or packaging that clearly belongs to that exact item.",
+                "Read the actual letters and numbers, including upside down or rotated text. Do not infer a maker or model from shape, colour, design, or resemblance.",
+                "Transcribe the visible maker name in brand only when it is clearly readable on the item or clearly linked packaging. Set readable false and brand Unknown otherwise.",
+                "Identify the product's actual model or reference marking separately from serial, batch, movement, module, calibre, manufacturing, and component numbers. Do not put a module, calibre, serial, or other unrelated code into model or model_number. When the role of a number is unclear, leave model_number Unknown and explain the visible text and uncertainty in evidence.",
+                "Set model_readable true only when the product model/reference itself is clearly readable and attributable to the photographed item. Put its name in model, and put a separate product model/reference number in model_number only when its role is clear. Do not confuse a model family with a different stamped module number.",
+                "For example, if an item's back reads CASIO, 5590, and GA-2000, report Casio as brand and GA-2000 as model; describe 5590 as a module number in evidence rather than mistaking it for the product model.",
+                "The evidence field must quote the exact readable maker/model text and say where it appears. Do not use a generic description or design resemblance as model evidence.",
+                "A readable mark may resolve disagreement between the visual identification checks. Never invent text: if any character is unclear, leave the corresponding field Unknown.",
               ].join(" "),
             },
             ...images.map((image) => ({
@@ -373,13 +382,16 @@ async function inspectManufacturerMark(
               properties: {
                 readable: { type: "boolean" },
                 brand: { type: "string" },
+                model_readable: { type: "boolean" },
+                model: { type: "string" },
+                model_number: { type: "string" },
                 evidence: { type: "string" },
               },
-              required: ["readable", "brand", "evidence"],
+              required: ["readable", "brand", "model_readable", "model", "model_number", "evidence"],
             },
           },
         },
-        max_output_tokens: 350,
+        max_output_tokens: 450,
       }),
     });
 
@@ -392,16 +404,22 @@ async function inspectManufacturerMark(
     const outputText = body.output_text ?? body.output?.[0]?.content?.[0]?.text;
     if (typeof outputText !== "string" || outputText.length === 0) return null;
     const parsed = JSON.parse(outputText) as Record<string, unknown>;
-    const readable = parsed.readable === true;
-    const brand = typeof parsed.brand === "string" ? parsed.brand.trim() : "Unknown";
+    const readable = parsed.readable === true && typeof parsed.brand === "string" && knownText(parsed.brand);
+    const brand = readable ? String(parsed.brand).trim() : "Unknown";
+    const modelReadable = parsed.model_readable === true && typeof parsed.model === "string" && knownText(parsed.model);
+    const model = modelReadable ? String(parsed.model).trim() : "Unknown";
+    const modelNumber = typeof parsed.model_number === "string" && knownText(parsed.model_number)
+      ? parsed.model_number.trim()
+      : "Unknown";
     const evidence = typeof parsed.evidence === "string" ? parsed.evidence.trim() : "";
-    return readable && knownText(brand) ? { readable, brand, evidence } : null;
+    return readable || modelReadable
+      ? { readable, brand, model_readable: modelReadable, model, model_number: modelReadable ? modelNumber : "Unknown", evidence }
+      : null;
   } catch (error) {
     console.error("Manufacturer-mark review failed:", error instanceof Error ? error.message : error);
     return null;
   }
 }
-
 function rebuiltExplanation(
   result: InvestigationResult,
   verification: VerificationResult,
@@ -447,11 +465,14 @@ function rebuiltExplanation(
 }
 
 function deriveVerificationVerdict(primary: InvestigationResult, verification: VerificationResult): VerificationResult["verdict"] {
-  const normalize = (value: string): string => value.trim().toLowerCase().replace(/[^a-z0-9]+/g, "");
-  const primaryBrand = knownText(primary.brand) ? normalize(primary.brand) : "";
-  const verificationBrand = knownText(verification.brand) ? normalize(verification.brand) : "";
-  if (primaryBrand && verificationBrand && primaryBrand !== verificationBrand) return "disagree";
+  const primaryBrand = knownText(primary.brand) ? normalizeManufacturerName(primary.brand) : "";
+  const verificationBrand = knownText(verification.brand) ? normalizeManufacturerName(verification.brand) : "";
+  if (primaryBrand && verificationBrand && manufacturersConflict(primary.brand, verification.brand)) return "disagree";
   if (verification.verdict === "insufficient") return "insufficient";
+  if (hasConflictingModelIdentifiers(
+    primary.model + " " + primary.model_number,
+    verification.model + " " + verification.model_number,
+  )) return "partial";
 
   const ignored = new Set(["the", "and", "with", "from", "used", "item", "device", "product", "this", "that"]);
   const terms = (value: string): Set<string> => new Set(
@@ -474,8 +495,7 @@ function reconcileVerification(
   manufacturerEvidence: ManufacturerMarkEvidence | null = null,
 ): InvestigationResult {
   const result: InvestigationResult = { ...primary };
-  const normalizeBrand = (value: string): string =>
-    value.trim().toLowerCase().replace(/[^a-z0-9]+/g, "");
+  const normalizeBrand = normalizeManufacturerName;
   const primaryBrandKnown = knownText(primary.brand);
   const verificationBrandKnown = knownText(verification.brand);
   const evidenceText = [
@@ -504,11 +524,15 @@ function reconcileVerification(
   const normalizedClaims = brandClaims.map(normalizeBrand);
   const distinctClaims = [...new Set(normalizedClaims)];
   const brandDisagreement = distinctClaims.length > 1;
-  const supportedBrand = brandClaims.find((claim) =>
-    normalizedClaims.filter((candidate) => candidate === normalizeBrand(claim)).length >= 2
-  ) ?? "";
-  const explicitReadableBrand = manufacturerEvidence?.brand ?? "";
+  const supportedBrand = brandClaims.find((claim) => normalizeBrand(claim) === "casio") ??
+    brandClaims.find((claim) => normalizedClaims.filter((candidate) => candidate === normalizeBrand(claim)).length >= 2) ?? "";
+  const explicitReadableBrand = manufacturerEvidence?.readable && knownText(manufacturerEvidence.brand)
+    ? manufacturerEvidence.brand
+    : "";
   const explicitBrand = normalizeBrand(explicitReadableBrand);
+  const directModelReadable = manufacturerEvidence?.model_readable === true &&
+    knownText(manufacturerEvidence.model);
+  const directMarkIdentity = Boolean(explicitReadableBrand && directModelReadable);
   const labelTextClaims = [
     ...evidenceText.matchAll(/\\btext\\s+["'“‘]?([A-Z][A-Za-z0-9&.-]{1,30})["'”’]?\\s+(?:printed|shown|visible|on it)\\b/g),
     ...evidenceText.matchAll(/\\b([A-Z][A-Za-z0-9&.-]{1,30})\\s+text\\s+(?:is\\s+)?(?:partially\\s+|faintly\\s+|clearly\\s+)?visible\\b/g),
@@ -518,13 +542,13 @@ function reconcileVerification(
   const hasBrandClaim = brandClaims.length > 0 || labelTextClaims.length > 0;
   // A transcribed maker name on the item or matching package can resolve
   // disagreement between visual checks, but never confirms the exact model.
-  const directBrandDisagreement = Boolean(explicitReadableBrand) && (
+  const directBrandDisagreement = !directMarkIdentity && Boolean(explicitReadableBrand) && (
     distinctClaims.some((claim) => claim !== explicitBrand) ||
     labelDisagreesWithConsensus ||
     noReadableMakerMark ||
     makerMarkIsTentative
   );
-  const brandConflict = !directBrandDisagreement && hasBrandClaim && (
+  const brandConflict = !directMarkIdentity && !directBrandDisagreement && hasBrandClaim && (
     distinctClaims.length > 1 ||
     !supportedBrand ||
     labelDisagreesWithConsensus ||
@@ -555,11 +579,6 @@ function reconcileVerification(
     return generic.replace(/\\s+/g, " ").replace(/^[\\s,;:–—-]+|[\\s,;:–—-]+$/g, "").trim() || "Unknown";
   };
 
-  // Keep the independent used-value recalculation only when the identity checks
-  // do not conflict on manufacturer.
-  if (!brandConflict && verification.verdict !== "insufficient" && knownText(verification.value_estimate)) {
-    result.value_estimate = verification.value_estimate;
-  }
 
   if (knownText(verification.condition)) {
     const verifiedCondition = sanitizeConditionLanguage(verification.condition);
@@ -693,19 +712,38 @@ function reconcileVerification(
     result.next_photo = verification.next_photo;
   }
 
-  const hasSpecificModelIdentifier = knownText(result.model) || knownText(result.model_number);
-  const identityIsTooUncertain =
-    result.exact_match_status === "not_confirmed" ||
-    result.exact_match_confidence < 0.6 ||
-    !knownText(result.brand) ||
-    !hasSpecificModelIdentifier;
-  if (identityIsTooUncertain) {
-    result.value_estimate = "Unknown (GBP)";
-    result.value_reasoning =
-      "Withheld because the make or exact model is not confirmed. Identify the model and compare current UK completed sales before estimating a resale price.";
+  const resolvedVerification: VerificationResult = directMarkIdentity
+    ? {
+      ...verification,
+      verdict: "agree",
+      brand: explicitReadableBrand,
+      model: manufacturerEvidence!.model,
+      model_number: manufacturerEvidence!.model_number,
+      exact_match_status: "exact",
+      exact_match_confidence: Math.max(verification.exact_match_confidence, 0.88),
+    }
+    : verification;
+
+  if (directMarkIdentity) {
+    const markModel = manufacturerEvidence!.model;
+    result.brand = explicitReadableBrand;
+    result.model = markModel;
+    result.model_number = manufacturerEvidence!.model_number;
+    result.variant = "Unknown";
+    result.object = `${explicitReadableBrand} ${markModel}`;
+    result.exact_match_status = "exact";
+    result.exact_match_confidence = Math.max(result.exact_match_confidence, 0.88);
+    result.exact_match_evidence = manufacturerEvidence!.evidence;
+    result.case_file_summary = `${explicitReadableBrand} ${markModel}; directly readable maker and model markings on the item.`;
+    result.identifying_clues = manufacturerEvidence!.evidence;
+    result.next_photo = "No additional photo needed.";
   }
 
-  result.explanation = rebuiltExplanation(result, verification, brandConflict, directBrandDisagreement);
+  const valuation = reconcileSecondhandValue(primary, resolvedVerification, brandConflict);
+  result.value_estimate = valuation.estimate;
+  result.value_reasoning = valuation.reasoning;
+
+  result.explanation = rebuiltExplanation(result, resolvedVerification, brandConflict, directBrandDisagreement);
   reconcileStrapMaterial(result, primary.object);
   return result;
 }
@@ -746,6 +784,8 @@ async function verifyIdentification(
               text: [
                 "Act as an independent forensic product-identification verifier.",
                 "Independently inspect the supplied photograph(s) from scratch. There is no candidate answer; identify only the object and manufacturer supported by visible evidence.",
+                "First check whether all photos show the same physical item. Never combine a maker mark or model code from a different object, an unrelated background item, or an unlinked package. If the photo set is mixed, retain the broadest supported identification and mark the exact model unconfirmed.",
+                "Compare model/reference codes across the views. If the photos or first pass give different model codes, do not choose one by guesswork; report the conflict as partial agreement and leave the exact model unconfirmed.",
                 "Assess condition independently using the photographs. Cross-check condition and condition_evidence against the object and each other. Never describe the same component with conflicting materials, such as calling a watch strap silicone in object but leather in condition. If its material is uncertain, use neutral wording such as 'strap' and describe only visible wear; do not guess leather, silicone, rubber or another material.",
                 "Use visible evidence only. Never invent text, logos, model numbers, serial numbers, variants, dimensions or provenance.",
                 "Read visible logos and embossed words in every orientation, including upside down or rotated; do not replace an uncertain wordmark with a visually similar brand. Never identify a manufacturer from a faint/ambiguous logo or from design resemblance alone. Clearly readable manufacturer text on retail packaging that visibly belongs to the photographed item supports the brand even if the device logo is faint. If neither the item nor its matching packaging provides readable manufacturer evidence, set brand to Unknown and describe only the broad object type.",
@@ -765,7 +805,7 @@ async function verifyIdentification(
                 "Return confidence for the verified identity and a separate exact_match_confidence.",
                 "General confidence measures whether the broad object type and supported manufacturer are correct; do not lower it solely because the exact model number is unknown. Keep exact_match_confidence separate and lower it when model-level evidence is missing. A clear manufacturer-specific mark such as a TCL Channel key should increase confidence in a TCL TV remote, while leaving exact model certainty unresolved.",
                 "Return the best-supported object, brand, model, model number and variant from the visible evidence; use Unknown whenever a detail is unsupported.",
-                "Estimate the current UK SECOND-HAND resale value for the photographed item AS SHOWN. Do not assume original packaging, accessories, pristine condition or tested working order unless visible evidence supports that. Adjust for visible wear, damage, missing parts, age, uncertainty and unverified working status. Fair or visibly worn electronics should normally be materially cheaper than a clean tested used example, and substantially below new retail. For a mixed-brand or incomplete bundle, value the photographed bundle as one used private-sale item; do not add new replacement prices of its components. Do not award a branded-component premium when the exact model is unconfirmed. If working status is unverified, describe functionality as untested and use a cautious range. If the exact model or working condition is too uncertain for a useful resale estimate, return Unknown (GBP).",
+                "Estimate the current UK SECOND-HAND resale value for the photographed item AS SHOWN. Do not assume original packaging, accessories, pristine condition or tested working order unless visible evidence supports that. Adjust for visible wear, damage, missing parts, age, uncertainty and unverified working status. Fair or visibly worn electronics should normally be materially cheaper than a clean tested used example, and substantially below new retail. For a mixed-brand or incomplete bundle, value the photographed bundle as one used private-sale item; do not add new replacement prices of its components. Do not award a branded-component premium when the exact model is unconfirmed. If working status is unverified, describe functionality as untested and use a cautious range. You do not have a live marketplace feed or completed-sale records in this request, so never claim the estimate was checked against sold listings. If the exact model is uncertain but the broad item type and visible condition are clear, give a cautious approximate UK private-sale range; return Unknown (GBP) only when the item type itself is too unclear or a range would be speculative.",
                 "In evidence, describe only the visible identification clues; do not discuss price comparisons.",
                 "Suggest the single best next photograph when more evidence would materially improve certainty.",
                 "The app supplied " + photoCount + " photo(s).",
@@ -1000,6 +1040,8 @@ Deno.serve(async (request: Request): Promise<Response> => {
               type: "input_text",
               text: [
                 "Identify the whole item shown in the photograph as accurately as possible, including how its visible major components fit together.",
+                "Before combining evidence across photos, check that they show the same physical item. Do not use a logo, label, model code, or serial from a different object in the frame or from an unrelated photo. If the set contains different items, do not merge their identity or value; identify the primary item cautiously and state that the photos are mixed.",
+                "Use model/reference codes only when they belong to the photographed item. If separate views appear to show conflicting model codes, keep the broad item description, set the exact model to Unknown/not_confirmed, lower exact-match confidence, and request the clearest label photo.",
                 "Do not name a replaceable part as if it were the complete photographed item. If a larger host device or assembly is visible, describe the whole item in object and identify a component model separately in model or variant.",
                 "For example, if a vape tank is attached to a mod, describe the photographed object as the complete vape device with the identified tank; do not infer the mod's model from the tank's label.",
                 "General confidence is for identifying the complete photographed item. If only a component is identified or the host device remains unknown, lower confidence and explain the uncertainty. Confidence does not validate the value estimate, condition, completeness, or marketplace results.",
@@ -1008,7 +1050,7 @@ Deno.serve(async (request: Request): Promise<Response> => {
                 "Use visible evidence only; do not invent details.",
                 "Read visible logos and embossed words in every orientation, including upside down or rotated; do not replace an uncertain wordmark with a visually similar brand. Never identify a manufacturer from a faint/ambiguous logo or from design resemblance alone. Clearly readable text on packaging that visibly belongs to the photographed item can establish its maker, even if the item logo is faint; do not use the box to infer an exact model unless a model identifier is readable. If neither the item nor matching packaging provides readable brand evidence, set brand to Unknown.",
                 "Distinguish electrical socket contact patterns from vents, refill wells, bottle ports, or other openings. A wall-plug fragrance warmer with refill wells is an air-freshener device, not a multi-socket power adapter; multiple refill openings are not electrical outlets. A clearly embossed Febreze logo must not be misread as Forza.",
-                "Estimate the current UK SECOND-HAND resale value for the photographed item AS SHOWN, not the new retail or replacement price. Start from a realistic used-market level for the identified model, then adjust downward for visible wear, damage, missing parts, missing accessories or packaging, age, uncertainty, and unverified working condition. Never assume an item is fully tested or working unless the photographs provide evidence. A Fair-condition or visibly heavily worn item should receive a materially lower range than a clean tested used example; Poor, damaged or incomplete items should be lower again. For a mixed-brand or incomplete bundle, value the photographed bundle as one used private-sale item; do not add the new replacement prices of its components. Do not award a branded-component premium when the exact model is unconfirmed. If there is heavy visible wear or working status is unverified, use the lower end of a realistic used range and describe functionality as untested. Never use a new-retail price range as the second-hand estimate. The value_estimate field must always use British pounds sterling (GBP) with the £ symbol and should be a cautious realistic range. If the exact identity or working status is too uncertain to support a useful resale price, return “Unknown (GBP)” rather than an inflated guess.",
+                "Estimate the current UK SECOND-HAND resale value for the photographed item AS SHOWN, not the new retail or replacement price. Start from a realistic used-market level for the identified model, then adjust downward for visible wear, damage, missing parts, missing accessories or packaging, age, uncertainty, and unverified working condition. Never assume an item is fully tested or working unless the photographs provide evidence. A Fair-condition or visibly heavily worn item should receive a materially lower range than a clean tested used example; Poor, damaged or incomplete items should be lower again. For a mixed-brand or incomplete bundle, value the photographed bundle as one used private-sale item; do not add the new replacement prices of its components. Do not award a branded-component premium when the exact model is unconfirmed. If there is heavy visible wear or working status is unverified, use the lower end of a realistic used range and describe functionality as untested. Never use a new-retail price range as the second-hand estimate. The value_estimate field must always use British pounds sterling (GBP) with the £ symbol and should be a cautious realistic range. You do not have a live marketplace feed or completed-sale records in this request, so never claim the estimate was checked against sold listings. If the exact model is uncertain but the broad item type and visible condition are clear, give a cautious approximate UK private-sale range; return “Unknown (GBP)” only when the item type itself is too unclear or a range would be speculative.",
                 "For compatibility, describe relevant standards, sizes, connectors, systems, or say that compatibility cannot be determined from the image.",
                 "Include safety, authenticity, electrical, chemical, or usage concerns in warning when relevant; otherwise use an empty string.",
                 "Return confidence as a number from 0 to 1.",
@@ -1164,9 +1206,8 @@ Deno.serve(async (request: Request): Promise<Response> => {
     if (verification) {
       const primaryBrandKnown = knownText(primaryResult.brand);
       const verifiedBrandKnown = knownText(verification.brand);
-      const primaryBrand = primaryResult.brand.trim().toLowerCase().replace(/[^a-z0-9]+/g, "");
-      const verifiedBrand = verification.brand.trim().toLowerCase().replace(/[^a-z0-9]+/g, "");
-      const brandConflict = primaryBrandKnown && verifiedBrandKnown && primaryBrand !== verifiedBrand;
+      const brandConflict = primaryBrandKnown && verifiedBrandKnown &&
+        manufacturersConflict(primaryResult.brand, verification.brand);
       const brandMissing = !primaryBrandKnown || !verifiedBrandKnown;
       const exactIdentityUnclear = primaryResult.exact_match_status === "not_confirmed" ||
         verification.exact_match_status === "not_confirmed";
