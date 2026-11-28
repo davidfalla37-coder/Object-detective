@@ -468,6 +468,58 @@ function deriveVerificationVerdict(primary: InvestigationResult, verification: V
   return "disagree";
 }
 
+interface GbpRange { low: number; high: number; }
+
+function parseGbpRange(value: string): GbpRange | null {
+  if (!knownText(value) || !value.includes("£")) return null;
+  const amounts = [...value.matchAll(/£\\s*([\\d,]+(?:\\.\\d{1,2})?)/g)]
+    .map((match) => Number(match[1].replace(/,/g, "")))
+    .filter((amount) => Number.isFinite(amount) && amount >= 0 && amount <= 10_000_000);
+  if (amounts.length === 0) return null;
+  return { low: Math.min(...amounts), high: Math.max(...amounts) };
+}
+
+function reconcileSecondhandValue(
+  primary: InvestigationResult,
+  verification: VerificationResult,
+  brandConflict: boolean,
+): { estimate: string; reasoning: string } {
+  const unknown = (reason: string) => ({ estimate: "Unknown (GBP)", reasoning: reason });
+  if (brandConflict || verification.verdict !== "agree") {
+    return unknown("No price shown because the independent identification checks did not agree. Confirm the item identity before estimating its second-hand value.");
+  }
+  if (primary.confidence < 0.55 || verification.confidence < 0.55) {
+    return unknown("No price shown because confidence in the broad item identification is too low to support a useful estimate.");
+  }
+
+  const first = parseGbpRange(primary.value_estimate);
+  const second = parseGbpRange(verification.value_estimate);
+  if (!first || !second) {
+    return unknown("No price shown because both independent checks did not provide a usable GBP estimate.");
+  }
+
+  const overlapLow = Math.max(first.low, second.low);
+  const overlapHigh = Math.min(first.high, second.high);
+  if (overlapLow > overlapHigh) {
+    return unknown("No price shown because the independent value ranges did not overlap. Confirm the exact item and check completed UK sales.");
+  }
+
+  // Keep the shared part of the two ranges, with a modest margin so rounding
+  // does not imply more precision than a visual estimate can support.
+  const low = Math.max(0, Math.floor(overlapLow * 0.9));
+  const high = Math.ceil(overlapHigh * 1.1);
+  const estimate = "£" + low + "–£" + high;
+  const exactModelConfirmed = primary.exact_match_status !== "not_confirmed" &&
+    verification.exact_match_status !== "not_confirmed";
+  const identityNote = exactModelConfirmed
+    ? "The exact model is supported by both identification passes."
+    : "The broad item is supported, but the exact model is not confirmed.";
+  return {
+    estimate,
+    reasoning: "Approximate UK private-sale estimate: " + estimate + ". " + identityNote + " The two independent visual estimates overlapped after accounting for visible condition and unverified functionality. No live completed-sale feed was checked, so compare recent sold listings before relying on this figure.",
+  };
+}
+
 function reconcileVerification(
   primary: InvestigationResult,
   verification: VerificationResult,
@@ -555,11 +607,6 @@ function reconcileVerification(
     return generic.replace(/\\s+/g, " ").replace(/^[\\s,;:–—-]+|[\\s,;:–—-]+$/g, "").trim() || "Unknown";
   };
 
-  // Keep the independent used-value recalculation only when the identity checks
-  // do not conflict on manufacturer.
-  if (!brandConflict && verification.verdict !== "insufficient" && knownText(verification.value_estimate)) {
-    result.value_estimate = verification.value_estimate;
-  }
 
   if (knownText(verification.condition)) {
     const verifiedCondition = sanitizeConditionLanguage(verification.condition);
@@ -693,17 +740,9 @@ function reconcileVerification(
     result.next_photo = verification.next_photo;
   }
 
-  const hasSpecificModelIdentifier = knownText(result.model) || knownText(result.model_number);
-  const identityIsTooUncertain =
-    result.exact_match_status === "not_confirmed" ||
-    result.exact_match_confidence < 0.6 ||
-    !knownText(result.brand) ||
-    !hasSpecificModelIdentifier;
-  if (identityIsTooUncertain) {
-    result.value_estimate = "Unknown (GBP)";
-    result.value_reasoning =
-      "Withheld because the make or exact model is not confirmed. Identify the model and compare current UK completed sales before estimating a resale price.";
-  }
+  const valuation = reconcileSecondhandValue(primary, verification, brandConflict);
+  result.value_estimate = valuation.estimate;
+  result.value_reasoning = valuation.reasoning;
 
   result.explanation = rebuiltExplanation(result, verification, brandConflict, directBrandDisagreement);
   reconcileStrapMaterial(result, primary.object);
@@ -765,7 +804,7 @@ async function verifyIdentification(
                 "Return confidence for the verified identity and a separate exact_match_confidence.",
                 "General confidence measures whether the broad object type and supported manufacturer are correct; do not lower it solely because the exact model number is unknown. Keep exact_match_confidence separate and lower it when model-level evidence is missing. A clear manufacturer-specific mark such as a TCL Channel key should increase confidence in a TCL TV remote, while leaving exact model certainty unresolved.",
                 "Return the best-supported object, brand, model, model number and variant from the visible evidence; use Unknown whenever a detail is unsupported.",
-                "Estimate the current UK SECOND-HAND resale value for the photographed item AS SHOWN. Do not assume original packaging, accessories, pristine condition or tested working order unless visible evidence supports that. Adjust for visible wear, damage, missing parts, age, uncertainty and unverified working status. Fair or visibly worn electronics should normally be materially cheaper than a clean tested used example, and substantially below new retail. For a mixed-brand or incomplete bundle, value the photographed bundle as one used private-sale item; do not add new replacement prices of its components. Do not award a branded-component premium when the exact model is unconfirmed. If working status is unverified, describe functionality as untested and use a cautious range. If the exact model or working condition is too uncertain for a useful resale estimate, return Unknown (GBP).",
+                "Estimate the current UK SECOND-HAND resale value for the photographed item AS SHOWN. Do not assume original packaging, accessories, pristine condition or tested working order unless visible evidence supports that. Adjust for visible wear, damage, missing parts, age, uncertainty and unverified working status. Fair or visibly worn electronics should normally be materially cheaper than a clean tested used example, and substantially below new retail. For a mixed-brand or incomplete bundle, value the photographed bundle as one used private-sale item; do not add new replacement prices of its components. Do not award a branded-component premium when the exact model is unconfirmed. If working status is unverified, describe functionality as untested and use a cautious range. You do not have a live marketplace feed or completed-sale records in this request, so never claim the estimate was checked against sold listings. If the exact model is uncertain but the broad item type and visible condition are clear, give a cautious approximate UK private-sale range; return Unknown (GBP) only when the item type itself is too unclear or a range would be speculative.",
                 "In evidence, describe only the visible identification clues; do not discuss price comparisons.",
                 "Suggest the single best next photograph when more evidence would materially improve certainty.",
                 "The app supplied " + photoCount + " photo(s).",
@@ -1008,7 +1047,7 @@ Deno.serve(async (request: Request): Promise<Response> => {
                 "Use visible evidence only; do not invent details.",
                 "Read visible logos and embossed words in every orientation, including upside down or rotated; do not replace an uncertain wordmark with a visually similar brand. Never identify a manufacturer from a faint/ambiguous logo or from design resemblance alone. Clearly readable text on packaging that visibly belongs to the photographed item can establish its maker, even if the item logo is faint; do not use the box to infer an exact model unless a model identifier is readable. If neither the item nor matching packaging provides readable brand evidence, set brand to Unknown.",
                 "Distinguish electrical socket contact patterns from vents, refill wells, bottle ports, or other openings. A wall-plug fragrance warmer with refill wells is an air-freshener device, not a multi-socket power adapter; multiple refill openings are not electrical outlets. A clearly embossed Febreze logo must not be misread as Forza.",
-                "Estimate the current UK SECOND-HAND resale value for the photographed item AS SHOWN, not the new retail or replacement price. Start from a realistic used-market level for the identified model, then adjust downward for visible wear, damage, missing parts, missing accessories or packaging, age, uncertainty, and unverified working condition. Never assume an item is fully tested or working unless the photographs provide evidence. A Fair-condition or visibly heavily worn item should receive a materially lower range than a clean tested used example; Poor, damaged or incomplete items should be lower again. For a mixed-brand or incomplete bundle, value the photographed bundle as one used private-sale item; do not add the new replacement prices of its components. Do not award a branded-component premium when the exact model is unconfirmed. If there is heavy visible wear or working status is unverified, use the lower end of a realistic used range and describe functionality as untested. Never use a new-retail price range as the second-hand estimate. The value_estimate field must always use British pounds sterling (GBP) with the £ symbol and should be a cautious realistic range. If the exact identity or working status is too uncertain to support a useful resale price, return “Unknown (GBP)” rather than an inflated guess.",
+                "Estimate the current UK SECOND-HAND resale value for the photographed item AS SHOWN, not the new retail or replacement price. Start from a realistic used-market level for the identified model, then adjust downward for visible wear, damage, missing parts, missing accessories or packaging, age, uncertainty, and unverified working condition. Never assume an item is fully tested or working unless the photographs provide evidence. A Fair-condition or visibly heavily worn item should receive a materially lower range than a clean tested used example; Poor, damaged or incomplete items should be lower again. For a mixed-brand or incomplete bundle, value the photographed bundle as one used private-sale item; do not add the new replacement prices of its components. Do not award a branded-component premium when the exact model is unconfirmed. If there is heavy visible wear or working status is unverified, use the lower end of a realistic used range and describe functionality as untested. Never use a new-retail price range as the second-hand estimate. The value_estimate field must always use British pounds sterling (GBP) with the £ symbol and should be a cautious realistic range. You do not have a live marketplace feed or completed-sale records in this request, so never claim the estimate was checked against sold listings. If the exact model is uncertain but the broad item type and visible condition are clear, give a cautious approximate UK private-sale range; return “Unknown (GBP)” only when the item type itself is too unclear or a range would be speculative.",
                 "For compatibility, describe relevant standards, sizes, connectors, systems, or say that compatibility cannot be determined from the image.",
                 "Include safety, authenticity, electrical, chemical, or usage concerns in warning when relevant; otherwise use an empty string.",
                 "Return confidence as a number from 0 to 1.",
