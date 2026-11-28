@@ -7,6 +7,7 @@ on:
       - fix/free-identification-reliability-preview-20261127
       - fix/pro-identification-reliability-20261127
       - fix/global-identification-reliability-20261127
+      - fix/free-used-value-consensus-2026-11-28
   workflow_dispatch:
 
 permissions:
