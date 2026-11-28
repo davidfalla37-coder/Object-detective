@@ -722,9 +722,12 @@ async function extractPhotoEvidence(images){
     const crop=await makeCenteredEvidenceCrop(image).catch(()=>null);
     const scans=[recognizePhotoText(image,index)];
     if(crop)scans.push(recognizePhotoText(crop,index));
-    return (await Promise.all(scans)).filter(Boolean);
+    return{evidence:(await Promise.all(scans)).filter(Boolean),detailImage:crop||image};
   }));
-  return perPhoto.flat();
+  return{
+    extractedEvidence:perPhoto.flatMap(photo=>photo.evidence),
+    detailImages:perPhoto.map(photo=>photo.detailImage)
+  };
 }
 
 identify.onclick=async()=>{
@@ -734,9 +737,9 @@ identify.onclick=async()=>{
   try{
     const images=await buildInvestigationImages(selectedFiles,1800,.86);
     const ocrImages=await buildInvestigationImages(selectedFiles,2400,.94);
-    const extractedEvidence=await extractPhotoEvidence(ocrImages);
+    const {extractedEvidence,detailImages}=await extractPhotoEvidence(ocrImages);
     const analysisPromise=(async()=>{
-      const response=await fetch(FUNCTION_URL,{method:'POST',headers:{'Content-Type':'text/plain;charset=UTF-8'},body:JSON.stringify({images,photoCount:selectedFiles.length,mode:'multi-angle-accuracy',extractedEvidence})});
+      const response=await fetch(FUNCTION_URL,{method:'POST',headers:{'Content-Type':'text/plain;charset=UTF-8'},body:JSON.stringify({images,detailImages,photoCount:selectedFiles.length,mode:'multi-angle-accuracy',extractedEvidence})});
       const data=await response.json().catch(()=>({}));
       return{response,data};
     })();
